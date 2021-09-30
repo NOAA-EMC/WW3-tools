@@ -2,4 +2,5 @@
 
 # pre-processing
 # post-processing
-# auxiliar(rename)
+# supplementary
+# operational
