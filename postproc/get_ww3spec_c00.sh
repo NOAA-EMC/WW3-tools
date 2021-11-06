@@ -7,7 +7,7 @@ source /etc/bash.bashrc
 # start python
 . /home/ricardo/python/anaconda/setanaconda3.sh
 
-# server address
+# server address 
 SERVER="https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod"
 # work directory
 DIR="/home/ricardo/teste"
