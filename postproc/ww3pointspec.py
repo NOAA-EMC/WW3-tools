@@ -28,7 +28,7 @@ palette = plt.cm.gist_stern_r
 
 # lowest period (upper limit frequency) for the directional wave spectra (2D) polat plot
 lper=3.5
-# lowest period (upper limit frequency) for the power spectra (2D) plot
+# lowest period (upper limit frequency) for the power spectra (1D) plot
 lper2=1.0
 
 # Input arguments
