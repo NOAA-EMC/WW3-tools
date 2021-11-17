@@ -60,6 +60,8 @@ if np.str(fname).split('.')[-1] == 'nc':
 	dire=np.array(ds['direction'].values[:])
 	# frequencies
 	freq=np.array(ds['frequency'].values[:])
+	# DF in frequency (dfreq)
+	dfreq=np.array(np.array(ds['frequency2'].values[:] - ds['frequency1'].values[:]))
 	# wind intensity and wind direction
 	wnds=np.array(ds['wnd'].values[:,:])
 	wndd=np.array(ds['wnddir'].values[:,:])
@@ -131,6 +133,14 @@ else:
 			for i in range(0,rncf):
 				freq[k]=float(line[i])
 				k=k+1	
+
+		# DF in frequency (dfreq)
+		dfreq=np.zeros(freq.shape[0],'f')
+		for i in range(0,freq.shape[0]):
+			if i==0 or i==(freq.shape[0]-1):
+				dfreq[i] = freq[i]*(1+ ( ((freq[-1]/freq[-2])-1)/2 )) - freq[i]
+			else:
+				dfreq[i] = freq[i]*(freq[-1]/freq[-2]) - freq[i]
 
 		# Directions ---------------------
 		ncd=np.int(np.floor(nd/7));rncd=np.int(np.round(7*((float(nd)/7)-ncd)))
@@ -210,20 +220,7 @@ indf2=int(np.where(abs(freq-(1/lper2))==min(abs(freq-(1/lper2))))[0][0])
 ndire=np.zeros((dire.shape[0]+2),'f'); ndire[1:-1]=dire[:]; ndire[0]=0; ndire[-1]=360
 angle = np.radians(ndire)
 r, theta = np.meshgrid(freq[0:indf], angle)
-# ---
-
-# DF in frequency (dfim)     
-fretab=np.zeros((nf),'f');  dfim=np.zeros((nf),'f')	
-fre1 = freq[0] ; fretab[0] = fre1
-co = freq[(nf-1)]/freq[(nf-2)] 
-dfim[0] = (co-1) * np.pi / nd * fretab[0] 
-for ifre in range(1,nf-1):
-	fretab[ifre] = fretab[ifre-1] * co 
-	dfim[ifre] = (co-1) * np.pi / nd * (fretab[ifre]+fretab[ifre-1]) 
-
-fretab[nf-1] = fretab[nf-2]*co
-dfim[nf-1] = (co-1) * np.pi / nd * fretab[(nf-2)]       
-# ------------------ 
+# --- 
 
 # --- PLOT ---
 pwst=np.zeros((nt,nf),'f')
@@ -232,7 +229,8 @@ for t in range(0,nt):
 	for il in range(0,nf):	
 		pwst[t,il]=sum(dspec[t,il,:])
 
-	pwst[t,:]=pwst[t,:]*dfim[:]
+	pwst[t,:]=pwst[t,:]*dfreq[:]
+	# can confirm the spectrum agrees with Hs through 4.01*sqrt(np.sum(pwst[t,:]))
 
 	# Polar Plot ===========================================
 	ndspec=np.zeros((freq.shape[0],ndire.shape[0]),'f')
