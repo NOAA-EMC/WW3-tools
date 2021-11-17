@@ -61,7 +61,7 @@ if np.str(fname).split('.')[-1] == 'nc':
 	# frequencies
 	freq=np.array(ds['frequency'].values[:])
 	# DF in frequency (dfreq)
-	dfreq=np.array(np.array(ds['frequency2'].values[:] - ds['frequency1'].values[:]))
+	dfreq=np.array(ds['frequency2'].values[:] - ds['frequency1'].values[:])
 	# wind intensity and wind direction
 	wnds=np.array(ds['wnd'].values[:,:])
 	wndd=np.array(ds['wnddir'].values[:,:])
