@@ -209,7 +209,7 @@ for t in range(0,nt):
             dspec[t,:,i]=adspec[t,:,nd-i-1]
 	    
         adspec[t,:,0:int(nd/2)]=dspec[t,:,int(nd/2):nd]
-        adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]
+        adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]W
         dspec[t,:,:]=adspec[t,:,:]
 
 dire=np.sort(dire)
@@ -227,7 +227,7 @@ pwst=np.zeros((nt,nf),'f')
 for t in range(0,nt):
 
 	for il in range(0,nf):	
-		pwst[t,il]=sum(dspec[t,il,:])
+		pwst[t,il]=sum(dspec[t,il,:]*(2*np.pi)/nd)
 
 	pwst[t,:]=pwst[t,:]*dfreq[:]
 	# can confirm the spectrum agrees with Hs through 4.01*sqrt(np.sum(pwst[t,:]))
