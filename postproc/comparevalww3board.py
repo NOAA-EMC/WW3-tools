@@ -33,9 +33,11 @@ slat=np.array([5,65]); slon=np.array([-90,-20])
 # variable for the field plots
 wvar="hs"
 # Paths
-wrun1="/home/ricardo/cimas/ww3runs/events/sep2016/stream6"; trun1="WDTHCG_1.5" # Title of run
-wrun2="/home/ricardo/cimas/ww3runs/events/sep2016/stream10"; trun2="WDTHCG_7.5"
-pbuoys="/home/ricardo/cimas/ww3runs/events/sep2016/evalGSE/buoys"
+wsim=np.array(['PR3.UQ.WDTHTH_1.5','PR3.UQ.WDTHTH_2.5','PR3.UQ.WDTHTH_3.5','PR3.UQ.WDTHTH_4.0','PR3.UQ.WDTHTH_5.5','PR3.UQ.WDTHTH_7.5','PR3.UNO.default','PR2.UQ.default','PR2.UNO.default','PR1.default'])
+
+wrun1="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream10/c00"; trun1="PR3.UQ.WDTHTH_1.5" # Title of run
+wrun2="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream17/c00"; trun2="PR2.UQ.default"
+pbuoys="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/buoys"
 
 # READ DATA ********************
 dt = np.arange(datetime(2016,10,4), datetime(2016,11,3), timedelta(days=1)).astype(datetime) # initial/final date of hindcast (each file with 1 day)
@@ -366,6 +368,7 @@ for t in range(20,size(wtime)-20):
 	axs[2,2].axis('tight')
 	axs[2,2].set_xlim( tsm_time[indtst-60:indtst+61].min(), tsm_time[indtst-60:indtst+61].max() )
 
+	fig.canvas.draw() # https://github.com/SciTools/cartopy/issues/1207
 	fig.tight_layout()
 	plt.savefig('ComparisonBoard_'+stname+'_'+np.str(pd.to_datetime(wtime[:][t]).strftime('%Y%m%d%H'))+'_'+trun1+'_'+trun2+'.png', dpi=300, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, pad_inches=0.1)
