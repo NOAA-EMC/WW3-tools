@@ -33,11 +33,12 @@ slat=np.array([5,65]); slon=np.array([-90,-20])
 # variable for the field plots
 wvar="hs"
 # Paths
-wsim=np.array(['PR3.UQ.WDTHTH_1.5','PR3.UQ.WDTHTH_2.5','PR3.UQ.WDTHTH_3.5','PR3.UQ.WDTHTH_4.0','PR3.UQ.WDTHTH_5.5','PR3.UQ.WDTHTH_7.5','PR3.UNO.default','PR2.UQ.default','PR2.UNO.default','PR1.default'])
-
-wrun1="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream10/c00"; trun1="PR3.UQ.WDTHTH_1.5" # Title of run
-wrun2="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream17/c00"; trun2="PR2.UQ.default"
+wrun1="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream10/c00"; trun1="PR3.UQ.WDTH1.5" # Title of run
+wrun2="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream21/c00"; trun2="PR3.UQ.WDTH1.5_48D"
 pbuoys="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/buoys"
+
+wsim=np.array(['PR3.UQ.WDTHTH_1.5','PR3.UQ.WDTHTH_2.5','PR3.UQ.WDTHTH_3.5','PR3.UQ.WDTHTH_4.0','PR3.UQ.WDTHTH_5.5','PR3.UQ.WDTHTH_7.5','PR3.UNO.default','PR2.UQ.default','PR2.UNO.default','PR1.default','PR3.UQ.WDTHTH1.5_72Dir'])
+
 
 # READ DATA ********************
 dt = np.arange(datetime(2016,10,4), datetime(2016,11,3), timedelta(days=1)).astype(datetime) # initial/final date of hindcast (each file with 1 day)
@@ -237,7 +238,7 @@ for t in range(20,size(wtime)-20):
 	axs[1,0].set_rlabel_position(-135)
 	axs[1,0].set_rticks([0.1,0.15,0.20]); axs[1,0].set_rmax(1/lper)
 	im = axs[1,0].contourf(theta, r, ndspec1[0:indf,:].T,slevels,cmap=plt.cm.gist_stern_r,norm=colors.PowerNorm(gamma=0.5), extend="max")
-	axs[1,0].set_title('WW3Spec '+stname+', '+trun1+'  '+pd.to_datetime(wtime[:][t]).strftime('%Y/%m/%d %H')+'Z') 
+	axs[1,0].set_title('WW3Spec '+stname+', '+trun1+' '+pd.to_datetime(wtime[:][t]).strftime('%Y/%m/%d %H')+'Z',size=11) 
 	del im
 	# 
 	ndspec2=np.zeros((spm_freq.shape[0],ndire.shape[0]),'f')
@@ -253,7 +254,7 @@ for t in range(20,size(wtime)-20):
 	axs[1,1].set_rlabel_position(-135)
 	axs[1,1].set_rticks([0.1,0.15,0.20]); axs[1,1].set_rmax(0.27)
 	im = axs[1,1].contourf(theta, r, ndspec2[0:indf,:].T,slevels,cmap=plt.cm.gist_stern_r,norm=colors.PowerNorm(gamma=0.5), extend="max")
-	axs[1,1].set_title('WW3Spec '+stname+', '+trun2+'  '+pd.to_datetime(wtime[:][t]).strftime('%Y/%m/%d %H')+'Z') 
+	axs[1,1].set_title('WW3Spec '+stname+', '+trun2+' '+pd.to_datetime(wtime[:][t]).strftime('%Y/%m/%d %H')+'Z',size=11) 
 	cax = axs[1,1].inset_axes([1.13, 0.2, 0.05, 0.6], transform=axs[1,1].transAxes)
 	cbar = plt.colorbar(im, ax=axs[1,1], cax=cax)
 	tick_locator = ticker.MaxNLocator(nbins=6); cbar.locator = tick_locator; cbar.update_ticks()
@@ -266,7 +267,7 @@ for t in range(20,size(wtime)-20):
 	axs[1,2].set_rlabel_position(-135)
 	axs[1,2].set_rticks([0.1,0.15,0.20]); axs[1,2].set_rmax(1/lper)
 	im = axs[1,2].contourf(theta, r, ndspec2[0:indf,:].T - ndspec1[0:indf,:].T ,sdlevels,cmap=plt.cm.RdBu_r,extend="both")
-	axs[1,2].set_title('WW3Spec '+stname+', '+trun1+' - '+trun2) 
+	axs[1,2].set_title('WW3Spec '+stname+', '+trun1+' - '+trun2,size=10) 
 	cax = axs[1,2].inset_axes([1.13, 0.2, 0.05, 0.6], transform=axs[1,2].transAxes)
 	cbar = plt.colorbar(im, ax=axs[1,2], cax=cax)
 	tick_locator = ticker.MaxNLocator(nbins=6); cbar.locator = tick_locator; cbar.update_ticks()
