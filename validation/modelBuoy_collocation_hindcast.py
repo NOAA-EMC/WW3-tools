@@ -1,3 +1,6 @@
+# Collocation/pairing ww3 point output results with wave buoys.
+# This code is restricted to ww3 hindcasts, where multiple files can be appended, creating a continuous time array.
+
 import numpy as np
 from matplotlib.mlab import *
 from pylab import *
