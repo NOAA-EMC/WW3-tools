@@ -1,20 +1,12 @@
-import pylab
+import numpy as np
+from matplotlib.mlab import *
 from pylab import *
 import os
-from matplotlib.mlab import *
 import netCDF4 as nc
-import numpy as np
-import shutil
-import statistics
 import pyresample
-from geopy.distance import great_circle
 from mpl_toolkits.basemap import shiftgrid
-import os
 import time
 from calendar import timegm
-import datetime
-import pandas as pd
-import copy
 import warnings
 warnings.filterwarnings("ignore")
 tstart = time.time()
@@ -26,7 +18,7 @@ pia=10 # power of initial array 10**pia that will be used to allocate satellite 
 dlim=25000.
 maxti=1800.
 dirs='/media/data/observations/satellite/altimeter/AODN_altm'
-wpath='/home/rmc/EXWAV/2collocation'
+wpath='/home/dataproc/2collocation'
 datelim='2021123123'
 # Satellite missions selected, pick one (s)!
 s=np.int(sys.argv[1]) # satellite ID for satellite mission selection.
