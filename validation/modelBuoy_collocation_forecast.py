@@ -6,7 +6,6 @@ from matplotlib.mlab import *
 from pylab import *
 import xarray as xr
 import netCDF4 as nc
-import numpy as np
 import time
 from time import strptime
 from calendar import timegm
@@ -17,9 +16,12 @@ fnetcdf="NETCDF4"
 # Users have to check the buoys' names at the "f=nc.Dataset" lines below.
 
 # Paths
-mpath="/work/noaa/marine/ricardo.campos/work/ww3runs/results/stream01/c00"
-ndbcp="/work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam"
-copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
+# WW3 Model
+mpath="/ww3runs/c00"
+# NDBC buoys
+ndbcp="/data/buoys/NDBC/wparam"
+# Copernicus buoys
+copernp="/data/buoys/Copernicus/wtimeseries"
 # import os; os.system("ls "+mpath+"/*tab.nc > ww3list.txt &")
 wlist=np.loadtxt('ww3list.txt',dtype=str)
 
