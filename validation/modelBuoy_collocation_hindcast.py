@@ -140,7 +140,7 @@ ind=np.where((mdm>360.)|(mdm<-180.))
 if size(ind)>0:
 	mdm[ind]=np.nan; del ind
 
-# Save netcdf output file
+# Save netcdf output file 
 lon[lon>180.]=lon[lon>180.]-360.
 inidate=np.str(time.gmtime(mtime.min())[0])+np.str(time.gmtime(mtime.min())[1]).zfill(2)+np.str(time.gmtime(mtime.min())[2]).zfill(2)+np.str(time.gmtime(mtime.min())[3]).zfill(2)
 findate=np.str(time.gmtime(mtime.max())[0])+np.str(time.gmtime(mtime.max())[1]).zfill(2)+np.str(time.gmtime(mtime.max())[2]).zfill(2)+np.str(time.gmtime(mtime.max())[3]).zfill(2)
