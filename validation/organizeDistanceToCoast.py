@@ -1,3 +1,5 @@
+# Small code to organize the GSFC/NASA global information of distance to the coast, into a gridded netcdf file 
+
 import numpy as np
 from matplotlib.mlab import *
 from pylab import *
@@ -7,12 +9,14 @@ from netCDF4 import Dataset
 colormap = cm.GMT_polar
 palette = plt.cm.jet
 palette.set_bad('aqua', 10.0)
+# netcdf format
+fnetcdf="NETCDF4"
 
 # GSFC/NASA file can be downloaded at
 # https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/
 rdfc=np.loadtxt('dist2coast.txt', usecols=(2,))
-rlon=frange(-179.98,179.98,0.04)
-rlat=frange(-89.98,89.98,0.04)
+rlon=np.arange(-179.98,179.98,0.04)
+rlat=np.arange(-89.98,89.98,0.04)
 
 dfc = np.zeros((rlat.shape[0],rlon.shape[0]),'f')
 
@@ -23,11 +27,9 @@ for i in xrange(0,rlat.shape[0]):
 		c = c+1
 	print(repr(i))
 
-#save netcdf
-fnetcdf="NETCDF3_CLASSIC"
 # open a new netCDF file for writing.
 ncfile = Dataset('distFromCoast.nc', "w", format=fnetcdf) 
-ncfile.history="Distance to coast NASA/NOAA" 
+ncfile.history="Distance to coast GSFC/NASA and NOAA" 
 # create the lat and lon dimensions.
 ncfile.createDimension( 'latitude' , rlat.shape[0] ) 
 ncfile.createDimension( 'longitude' , rlon.shape[0] ) 
