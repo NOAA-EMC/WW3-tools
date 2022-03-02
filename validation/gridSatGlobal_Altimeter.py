@@ -23,9 +23,9 @@ fnetcdf="NETCDF4"
 npcs=5
 # power of initial array 10**pia (size) that will be used to allocate satellite data (faster than append)
 pia=10
-# Maximum distance (km) for pyresample weighted average
+# Maximum distance (m) for pyresample weighted average
 dlim=25000.
-# Maximum temporal distance (seconds) for pyresample weighted average
+# Maximum temporal distance (s) for pyresample weighted average
 maxti=1800.
 # Directory where AODN altimeter data is saved, downloaded using get_AODN_AltData.sh
 dirs='/data/satellite/AODN_altm'
