@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 fnetcdf="NETCDF4"
 
-# nohup ipython3 procyclmap.py 2019 >> nohup_cyclmap_2019.txt 2>&1 &
+# nohup python3 procyclmap.py 2019 >> nohup_cyclmap_2019.txt 2>&1 &
 
 year=np.int(sys.argv[1]) # input argument
 datelim=np.str(year)+'123123'
@@ -28,7 +28,7 @@ ftime = np.array(np.arange(float(timegm( time.strptime(np.str(year)+'010100', '%
 tcr=500.; etr=1000.
 
 # READ mask
-f=nc.Dataset('gridInfo_GEFS.nc')
+f=nc.Dataset('gridInfo.nc')
 latm=f.variables['latitude'][:]; lonm=f.variables['longitude'][:]
 maskm=f.variables['mask'][:,:]; mdist=f.variables['distcoast'][:,:]
 f.close(); del f
