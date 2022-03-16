@@ -416,6 +416,8 @@ vfoni = ncfile.createVariable('GlobalOceansSeas',dtype('float32').char,('latitud
 vhsmz = ncfile.createVariable('HighSeasMarineZones',dtype('float32').char,('latitude','longitude'))
 vofmz = ncfile.createVariable('OffshoreMarineZones',dtype('float32').char,('latitude','longitude'))
 # Assign units attributes
+vdfc.units = 'km'
+vib.units = 'm'
 lats.units = 'degrees_north'
 lons.units = 'degrees_east'
 # write data to vars.
