@@ -10,7 +10,6 @@ import xarray as xr
 
 import io
 import urllib
-import urllib.request
 from pathlib2 import Path
 from tqdm import *
 
