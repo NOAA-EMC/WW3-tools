@@ -209,7 +209,7 @@ for t in range(0,nt):
             dspec[t,:,i]=adspec[t,:,nd-i-1]
 	    
         adspec[t,:,0:int(nd/2)]=dspec[t,:,int(nd/2):nd]
-        adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]W
+        adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]
         dspec[t,:,:]=adspec[t,:,:]
 
 dire=np.sort(dire)
@@ -224,7 +224,7 @@ r, theta = np.meshgrid(freq[0:indf], angle)
 
 # --- PLOT ---
 pwst=np.zeros((nt,nf),'f')
-for t in range(0,nt):
+for t in range(0,nt,sk):
 
 	for il in range(0,nf):	
 		pwst[t,il]=sum(dspec[t,il,:]*(2*np.pi)/nd)
@@ -247,7 +247,7 @@ for t in range(0,nt):
 	levels=[0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
 	plt.contourf(theta, r, ndspec[0:indf,:].T,levels,cmap=palette,norm=colors.Normalize(vmin=0.02,vmax=1.0,clip=False), extent=[-3,3,-3,3])
 
-	plt.figtext(0.2,0.93,'Wave Spectrum at '+stname+',  '+pd.to_datetime(ntime[::sk][t]).strftime('%Y/%m/%d %H')+'Z', fontsize=14)
+	plt.figtext(0.2,0.93,'Wave Spectrum at '+stname+',  '+pd.to_datetime(ntime[t]).strftime('%Y/%m/%d %H')+'Z', fontsize=14)
 	ax = plt.gca()
 	ax.set_rmin(-0.04)
 	pos = ax.get_position()
@@ -284,7 +284,7 @@ for t in range(0,nt):
 	plt.figtext(0.05,0.61,"Wind Speed: "+str(np.round(wnds[t],2))+" m/s",fontsize=13)
 	plt.figtext(0.05,0.54,"Wind Direc: "+str(np.round(wndd[t]))+"$^\circ$",fontsize=13)
 
-	plt.savefig('wspectrum_'+stname+'_'+np.str(pd.to_datetime(ntime[::sk][t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
+	plt.savefig('wspectrum_'+stname+'_'+np.str(pd.to_datetime(ntime[t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
 		papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 	plt.close(); del ax, fig
