@@ -1,9 +1,5 @@
 # WW3-tools
 
-# pre-processing
-# post-processing
-# supplementary
-# operational
+# postproc
 # download_observations
 # validation
-
