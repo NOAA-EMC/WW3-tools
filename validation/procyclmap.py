@@ -2,6 +2,7 @@
 # The result is a simple netcdf with integers, as explained at ncfile.info
 # For long hindcast/reforecasts it is better to run this code by year. It reads an argument with the year of interest, np.int(sys.argv[1])
 # the nohup line below shows an example of how to run multiple years at the same time.
+#   nohup python3 procyclmap.py 2019 >> nohup_cyclmap_2019.txt 2>&1 &
 
 import pylab
 from pylab import *
@@ -14,9 +15,7 @@ import time
 from calendar import timegm
 import matplotlib.pyplot as plt
 import pandas as pd
-fnetcdf="NETCDF4"
-
-# nohup python3 procyclmap.py 2019 >> nohup_cyclmap_2019.txt 2>&1 &
+fnetcdf="NETCDF4_CLASSIC"
 
 year=np.int(sys.argv[1]) # input argument
 datelim=np.str(year)+'123123'
@@ -122,25 +121,25 @@ for t in range(0,ftime.shape[0]):
 	print('  t : '+repr(t)+'   of '+repr(ftime.shape[0]))
 
 # Save netcdf
-# cmask, ftime, latm, lonm
 cmask[cmask<0.]=-1
 ncfile = nc.Dataset('CycloneMap_'+repr(year)+'.nc', "w", format=fnetcdf) 
 ncfile.history='Cyclone Map using IBtracks cyclone tracks, with same grid resolution as GEFSv12 winds.'
-ncfile.info='IDs: 0(no cyclone), 1(Missing,conflicting,or not reported), 2(disturbance), 3(extratropical), 4(subtropical storm/cyclone), 5(tropical storm/cyclone).'
+ncfile.info='IDs: 0(no cyclone); 1(Missing,conflicting,or not reported); 2(disturbance); 3(extratropical); 4(subtropical storm/cyclone); 5(tropical storm/cyclone)'
 # create  dimensions.
 ncfile.createDimension('time', ftime.shape[0])
 ncfile.createDimension('lat', latm.shape[0])
 ncfile.createDimension('lon', lonm.shape[0])
-# time, forecast time, lat, and lon
-vt = ncfile.createVariable('time',np.dtype('float64'),('time'))
-vlat = ncfile.createVariable('lat',dtype('float32'),('lat',))
-vlon = ncfile.createVariable('lon',np.dtype('float32'),('lon'))
 # Model results
 vcmap = ncfile.createVariable('cmap',np.dtype('int32'),('time','lat','lon'))
+#
+vt = ncfile.createVariable('time',np.dtype('float64'),('time'))
+vlat = ncfile.createVariable('lat',np.dtype('float32'),('lat',))
+vlon = ncfile.createVariable('lon',np.dtype('float32'),('lon'))
 # Units
 vlat.units = 'degrees_north' ; vlon.units = 'degrees_east'
+vt.units = "seconds since 1970-01-01 00:00:00.0 0:00"
 # Allocate Data
-vt[:] = ftime; vlat[:] = latm; vlon[:] = lonm
+vt[:] = ftime[:]; vlat[:] = latm[:]; vlon[:] = lonm[:]
 vcmap[:,:,:] = cmask
 ncfile.close()
 print('netcdf ok ')

@@ -38,6 +38,7 @@ lons = ncfile.createVariable('longitude',dtype('float32').char,('longitude',))
 # Assign units attributes to coordinate var data. This attaches a text attribute to each of the coordinate variables, containing the units.
 lats.units = 'degrees_north'
 lons.units = 'degrees_east'
+fdfc.units = 'km'
 # write data to coordinate vars.
 lats[:] = rlat
 lons[:] = rlon
