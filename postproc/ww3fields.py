@@ -1,16 +1,37 @@
-# Wave Field Map plots of WAVEWATCHIII results using cartopy. It reads both netcdf and grib2 format.
-# Mandatory Inputs: fileName and VariableName
-# Additional/Optional Inputs after the Mandatory Inputs: 
-#    skipTime (plot at lower time resolution), 1(plot everything), 2(skip one time) etc
-#    min/max latitude (select an specific smaller domain)
-#    min/max longitude (select an specific smaller domain)
-# if you want to change the resolution (for publications), edit savefig
-# examples:
-# python3 ww3fields.py ww3gefs.20160921_field.nc hs
-# python3 ww3fields.py ww3gefs.20160921_field.grib2 swh
-# python3 ww3fields.py ww3gefs.20160921_field.nc t01 2 
-# python3 ww3fields.py ww3gefs.20160921_field.nc phs1 1 [-10,65] [-150,10]
-# nohup python3 ww3fields.py ww3gefs.20160921_field.nc hs 1 [10,60] [-100,10] >> nohup_ww3fields_20160921_hs.txt 2>&1 &
+"""
+ww3fields.py
+
+PURPOSE:
+ Wave Field Map plots of WAVEWATCHIII results using cartopy. 
+ It reads both netcdf and grib2 format.
+
+USAGE:
+ Mandatory Inputs: fileName and VariableName
+ Examples (from linux/terminal command line):
+  python3 ww3fields.py ww3gefs.20160921_field.nc hs
+  python3 ww3fields.py ww3gefs.20160921_field.grib2 swh
+  python3 ww3fields.py ww3gefs.20160921_field.nc t01 2 
+  python3 ww3fields.py ww3gefs.20160921_field.nc phs1 1 [-10,65] [-150,10]
+  nohup python3 ww3fields.py ww3gefs.20160921_field.nc hs 1 [10,60] [-100,10] >> nohup_ww3fields_20160921_hs.txt 2>&1 &
+ Additional optional Inputs after the Mandatory Inputs: 
+  skipTime (plot at lower time resolution), 1(plot everything), 2(skip one time) etc
+  min/max latitude (select an specific smaller domain)
+  min/max longitude (select an specific smaller domain)
+
+OUTPUT:
+ png figures of the wave fields of selected variable of choice.
+ If you want to change the resolution (for publications), edit savefig
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import matplotlib
 matplotlib.use('Agg')

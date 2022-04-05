@@ -1,9 +1,37 @@
-# Build a panel with multiple plots to compare two WAVEWATCHIII similations, wrun1 and wrun2
-# initial and final date time is defined by dt (see below)
-# a domain-selection(zoom-in) is done for the wave field plots by defining slat and slon
+"""
+comparevalww3board.py
+
+PURPOSE:
+ Build a panel with multiple plots to compare two WAVEWATCHIII 
+ similations, wrun1 and wrun2.
+ Initial and final date time is defined by dt (see below) a 
+ domain-selection(zoom-in) is done for the wave field plots by 
+ defining slat and slon
+
+USAGE:
+ variable of interest (wvar) must be informed below
+ paths of wave simulations have to be included (wrun)
+  and paths of buoy observations
+ lat/lon limits/zoom-in for the plots can be edited
+
+OUTPUT:
+ png figures with multiple subplots: wave fiels, directional spectrum,
+  power spectrum, and time-series of Hs, Tm, and Dm.
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+ It uses function wread.py
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import matplotlib
-# matplotlib.use('Agg')  # uncomment this for backend plots, not for rendering in a window
+matplotlib.use('Agg')  # uncomment this for backend plots, not for rendering in a window
 import xarray as xr
 import numpy as np
 from pylab import *
@@ -36,9 +64,6 @@ wvar="hs"
 wrun1="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream10/c00"; trun1="PR3.UQ.WDTH1.5" # Title of run
 wrun2="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/stream21/c00"; trun2="PR3.UQ.WDTH1.5_48D"
 pbuoys="/home/ricardo/cimas/analysis/3assessments/evalGSE/data/buoys"
-
-wsim=np.array(['PR3.UQ.WDTHTH_1.5','PR3.UQ.WDTHTH_2.5','PR3.UQ.WDTHTH_3.5','PR3.UQ.WDTHTH_4.0','PR3.UQ.WDTHTH_5.5','PR3.UQ.WDTHTH_7.5','PR3.UNO.default','PR2.UQ.default','PR2.UNO.default','PR1.default','PR3.UQ.WDTHTH1.5_72Dir'])
-
 
 # READ DATA ********************
 dt = np.arange(datetime(2016,10,4), datetime(2016,11,3), timedelta(days=1)).astype(datetime) # initial/final date of hindcast (each file with 1 day)
