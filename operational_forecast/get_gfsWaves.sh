@@ -1,27 +1,69 @@
 #!/bin/bash
 
-# Script to fetch NCEP Ensemble forecasts GEFS
-# -------------------------------------------
+# get_gfsWaves.sh
 #
-# By default the downloads are made into the ./data directory of the repository
-#  containing this script, and the logging is made into ./log/<date>/
+# VERSION AND LAST UPDATE:
+#  v2.0  10/01/2020
+#  v1.1  07/01/2020
+#  v1.0  08/01/2017
 #
-# The variables defined in the next section #CONTROLABLE ARGUMENTS can be passed
-#  to this script by defining them when calling the script, ex:
+# PURPOSE:
+#  Script to download NOAA Global Forecast System (deterministic), Wave 
+#   Forecast from WAVEWATCH III. Download from ftp, not nomads.
+#  By default the downloads are made into the ./data directory of the repository
+#   containing this script, and the logging is made into ./log/<date>/
+#  To speed up the download and processing, multiple jobs can be used,
+#   taking advantage of multiple cores, if they are available (see and 
+#   edit NJOBS below) 
 #
-#      $ NJOBS=40 DATA_DIR=/my/preferred/directory/ forecast/get_cfs.sh
+# USAGE:
+#  It can be directly run with ./get_gfsWaves.sh
+#   or informing the programs/libraries location (e.g., which wgrib2):
+#   WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gfsWaves.sh
+#  It can also be added to crontab file, so the download is done automaticaly:
 #
-# Besides the variables defined in this section it is also possible to define
-#  the used programs like wgrib2, cdo, wget, etc. , these programs are defined
-#  in the functions file forecast/lib/util.sh however it is still
-#  possible to control its values in the same way. For example if the script is
-#  not finding your installation for wgrib2 the program path can be given with
-#  an uppercase variable with the same name. Ex:
+#   00 06 * * * WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gfsWaves.sh
 #
-#      $ WGRIB2=/usr/local/grib2/wgrib2/wgrib2 forecast/get_cfs.sh
+#  Customizing the dowload, the variables defined in the next section 
+#   #CONTROLABLE ARGUMENTS can be passed to this script, such as
 #
-#  This can be usefull for running these scripts in a crontab since the path might
-#   not contain some programs.
+#    $ NJOBS=40 DATA_DIR=/my/preferred/directory/ forecast/get_cfs.sh
+#
+#   or LATMIN, LATMAX, LONMIN, LONMAX
+#  Besides the variables defined, it is also possible to define the used
+#   programs like wgrib2, cdo, wget, etc. 
+#  These programs are defined in the functions file forecast/lib/util.sh
+#   however it is still possible to control its values in the same way. 
+#   For example, if the script is not finding your installation for 
+#   wgrib2 the program path can be given with an uppercase variable with
+#   the same name. Ex:
+#
+#   $ WGRIB2=/usr/local/grib2/wgrib2/wgrib2 forecast/get_cfs.sh
+#
+#   This can be usefull for running these scripts in a crontab since the
+#   path might not contain some programs.
+# 
+# OUTPUT:
+#  One cycle of NOAA's GFS Waves forecast. Netcdf format.
+#  A directory is created with format YYYYMMDD00 and one file 
+#   ww3.global.0p25.YYYYMMDD00.nc
+#
+# DEPENDENCIES:
+#  wget, perl, CDO, NCO, wgrib2
+#
+# AUTHOR and DATE:
+#  08/01/2017: Ricardo M. Campos, first version based on Ronaldo 
+#    Palmeira's codes using perl scripts to select specific variables 
+#    from NOAA .idx files.
+#  07/01/2020: Ricardo M. Campos, first version for GFS Waves, including 
+#    region selection, variables, and post-processing (compression).
+#  10/01/2020: Fabio Almeida. New structure and great improvement using
+#    shell functions, better coding, new config and lib directory (see util.sh),
+#    and option to inform each programs/libraries full path.
+#
+# PERSON OF CONTACT:
+#  Ricardo M Campos: ricardo.campos@noaa.gov
+#
 
 set -u
 

@@ -5,6 +5,8 @@
 # The functions defined here expect a few variables to be set:
 #   LOG_FILE -- This variable must contain the name of the main log file
 #                if nothing is given this will default to a temporary file in /tmp/downcast.XXXXX.log
+#
+# 10/01/2020: Fabio Almeida. 
 
 # Here is a list of the dependencies of these functions, if they don't exist in the PATH then
 #  a variable with the program name in uppercase can be defined with the command to execute for each.

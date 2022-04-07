@@ -1,6 +1,7 @@
 
 # Functions to log to the screen and to a file
 # All of them expect a file as the first argument and a message as the second
+#  10/01/2020: Fabio Almeida. 
 
 log() {
 	echo -e "[INFO] \033[1;34m${FUNCNAME[1]}:\033[m $2"
