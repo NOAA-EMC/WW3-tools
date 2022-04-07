@@ -15,10 +15,9 @@
 #  Users must have an active python. If it is not, it can be activated 
 #   hrough the the souce command below (uncoment and edit line 35)
 #  The python code ww3pointspec.py is used for the plots.
-#
-# Examples (from linux/terminal command line):
-#  ./get_ww3spec_c00.sh /home/user/work 41002
-#  nohup ./get_ww3spec_c00.sh /home/user/work 41002 >> nohup_get_ww3spec_c00.out 2>&1 &
+#  Examples (from linux/terminal command line):
+#   ./get_ww3spec_c00.sh /home/user/work 41002
+#   nohup ./get_ww3spec_c00.sh /home/user/work 41002 >> nohup_get_ww3spec_c00.out 2>&1 &
 #
 # OUTPUT:
 #  A ww3spec_${ANO}${MES}${DIA}${HORA} directory is created inside the 
