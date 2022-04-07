@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 ww3fields.py
 
@@ -15,7 +18,7 @@ USAGE:
   python3 ww3fields.py ww3gefs.20160921_field.grib2 swh
   python3 ww3fields.py ww3gefs.20160921_field.nc t01 2 
   python3 ww3fields.py ww3gefs.20160921_field.nc phs1 1 [-10,65] [-150,10]
-  nohup python3 ww3fields.py ww3gefs.20160921_field.nc hs 1 [10,60] [-100,10] >> nohup_ww3fields_20160921_hs.txt 2>&1 &
+  nohup python3 ww3fields.py ww3gefs.20160921_field.nc hs 1 [10,60] [-100,10] >> nohup_ww3fields_20160921_hs.out 2>&1 &
  Additional optional Inputs after the Mandatory Inputs: 
   skipTime (plot at lower time resolution), 1(plot everything), 2(skip one time) etc
   min/max latitude (select an specific smaller domain)

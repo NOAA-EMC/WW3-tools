@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 ww3pointspec.py
 
@@ -15,7 +18,7 @@ USAGE:
  Examples (from linux/terminal command line):
   python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002
   python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002 2
-  nohup python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41004 >> nohup_ww3pointspec_20160928.txt 2>&1 &
+  nohup python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41004 >> nohup_ww3pointspec_20160928.out 2>&1 &
  A shell script, get_ww3spec_c00.sh, can be run to test this code 
   ww3pointspec.py operationally, plotting today's forecast spectra.
 

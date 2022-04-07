@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 ww3pointimeseries.py
 
@@ -13,7 +16,7 @@ USAGE:
   StationName(or ID, starting with 0)
  Examples (from linux/terminal command line):
   python3 ww3pointimeseries.py ww3gefs.20160928_tab.nc 41002
-  nohup python3 ww3pointimeseries.py ww3gefs.20160928_tab.nc 41002 >> nohup_ww3pointimeseries_20160928.txt 2>&1 &
+  nohup python3 ww3pointimeseries.py ww3gefs.20160928_tab.nc 41002 >> nohup_ww3pointimeseries_20160928.out 2>&1 &
 
 OUTPUT:
  png figures of the time series, for the specific point/station 

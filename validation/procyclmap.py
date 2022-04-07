@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 procyclmap.py
 
@@ -16,7 +19,7 @@ USAGE:
  The file ibtracs.since1980.list.v04r00.csv must be saved (or symbolic link)
  Example:
   python3 procyclmap.py 2010
-  nohup python3 procyclmap.py 2019 >> nohup_cyclmap_2019.txt 2>&1 &
+  nohup python3 procyclmap.py 2019 >> nohup_cyclmap_2019.out 2>&1 &
 
 OUTPUT:
  netcdf file with integers where, for each grid point and time:
@@ -40,6 +43,7 @@ PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
 
 """
+
 import pylab
 from pylab import *
 from matplotlib.mlab import *

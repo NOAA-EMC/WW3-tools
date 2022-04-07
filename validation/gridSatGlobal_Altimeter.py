@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
 gridSatGlobal_Altimeter.py
 
@@ -18,7 +21,7 @@ USAGE:
   and date interval (datemin and datemax)
  Example (from linux/terminal command line):
   An example for JASON3 (first in the sdname list) is
-   nohup python3 gridSatGlobal_Altimeter.py 0 >> nohup_sat0.txt 2>&1 &
+   nohup python3 gridSatGlobal_Altimeter.py 0 >> nohup_sat0.out 2>&1 &
 
 OUTPUT:
  netcdf file AltimeterGridded_*.nc containing the collocated altimeter

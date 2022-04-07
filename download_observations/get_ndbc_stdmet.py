@@ -1,11 +1,45 @@
-# Download the historical NDBC buoy data in stdmet format
-# https://www.ndbc.noaa.gov/rsa.shtml
-# https://www.ndbc.noaa.gov/measdes.shtml
-# https://www.ndbc.noaa.gov/stndesc.shtml
-# four arguments: firstYear, lastYear, file list name, output dir
-# examples:
-#      python3 get_ndbc_stdmet.py 2010 2020 allbstations.dat /home/name/Dowloads
-#      nohup python3 get_ndbc_stdmet.py 2010 2020 allbstations.dat /home/name/Dowloads >> nohup_get_ndbc_stdmet.txt 2>&1 &
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+"""
+get_ndbc_stdmet.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Download the historical NDBC buoy data in stdmet format
+  https://www.ndbc.noaa.gov/rsa.shtml
+  https://www.ndbc.noaa.gov/measdes.shtml
+  https://www.ndbc.noaa.gov/stndesc.shtml
+ The url used for download refers to quality-controlled observations,
+  and the code is meant for historical data (archive). Recent data (last
+  week or month) is not included.
+ For near-real time data, a different url source and script must be used.
+ NOAA National Data Buoy Center
+  https://www.ndbc.noaa.gov/
+
+USAGE:
+ Four arguments: firstYear, lastYear, station list, output dir
+ Examples (from linux/terminal command line):
+  python3 get_ndbc_stdmet.py 2010 2020 allbstations.dat /home/name/Dowloads
+  nohup python3 get_ndbc_stdmet.py 2010 2020 allbstations.dat /home/name/Dowloads >> nohup_get_ndbc_stdmet.out 2>&1 &
+
+OUTPUT:
+ Text files with NDBC metocean data for the buoys listed in 
+  the station list (third argument).
+ One file per buoy.
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import os
 import sys

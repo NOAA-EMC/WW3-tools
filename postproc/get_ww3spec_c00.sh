@@ -70,4 +70,3 @@ mkdir "${DIR}/ww3spec_"${ANO}${MES}${DIA}${HORA} >> ${DIR}/logWW3spec_${ANO}${ME
 mv "${DIR}/gfswave.${spt}.spec" "${DIR}/ww3spec_"${ANO}${MES}${DIA}${HORA} >> ${DIR}/logWW3spec_$ANO$MES$DIA$HORA 2>&1
 mv "${DIR}/wspectrum_${spt}*.png" "${DIR}/ww3spec_"${ANO}${MES}${DIA}${HORA} >> ${DIR}/logWW3spec_${ANO}${MES}${DIA}${HORA} 2>&1
 
-
