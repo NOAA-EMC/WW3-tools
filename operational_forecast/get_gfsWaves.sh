@@ -14,7 +14,7 @@
 #   containing this script, and the logging is made into ./log/<date>/
 #  To speed up the download and processing, multiple jobs can be used,
 #   taking advantage of multiple cores, if they are available (see and 
-#   edit NJOBS below) 
+#   edit NJOBS below).
 #
 # USAGE:
 #  It can be directly run with ./get_gfsWaves.sh
