@@ -1,6 +1,41 @@
-import matplotlib
-# matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+"""
+merrevalstats.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Group of python functions for statistical analyses and validation. 
+ Users can import as a standard python function, and use it accordingly:
+ For example:
+  import merrevalstats
+  merrevalstats.metrics(model,obs,0.01,20,15)
+ Users can help() each function to obtain information about inputs/outputs
+  help(merrevalstats.metrics)
+
+USAGE:
+ functions
+   smrstat
+   metrics
+ Explanation for each function is contained in the headers
+
+OUTPUT:
+ summary statistics values; and error metrics 
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+ lmoments3 is a library/module not included in anaconda by default.
+  It can be installed with
+  pip install git+https://github.com/OpenHydrology/lmoments3.git
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
+
 from pylab import *
 from matplotlib.mlab import *
 import numpy as np
@@ -11,18 +46,15 @@ import lmoments3 as lm
 import sys
 import warnings; warnings.filterwarnings("ignore")
 
-# Plot Style ---
-sl=14
-matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl) 
-matplotlib.rc('xtick', labelsize=sl); matplotlib.rc('ytick', labelsize=sl); matplotlib.rcParams.update({'font.size': sl})
-
-
 # Table summary statistics
 def smrstat(*args):
 	'''
 	Summary Statistics
 	Input: one array of interest
 	Output: mean, variance, skewness, kurtosis, min, max, percentile80, percentile90, percentile95, percentile99, percentile99.9
+	Example:
+	  import merrevalstats
+	  sresult = merrevalstats.smrstat(hs,0,20)
 	'''
 	vmin=-np.inf; vmax=np.inf
 	if len(args) == 1:
@@ -66,10 +98,11 @@ def smrstat(*args):
 
 def metrics(*args):
 	'''
-	Error Metrics. Mentaschi et al. (2013)
+	Error Metrics. Equations from Mentaschi et al. (2013)
+	 https://doi.org/10.1016/j.ocemod.2013.08.003
 	Input: two arrays of model and observation, respectively.
 		They must have the same size
-	Output: ferr array with shape equal to 8
+	Output: numpy array with shape equal to 8:
 		bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC
 	'''
 

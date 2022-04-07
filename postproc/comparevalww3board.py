@@ -1,6 +1,9 @@
 """
 comparevalww3board.py
 
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
 PURPOSE:
  Build a panel with multiple plots to compare two WAVEWATCHIII 
  similations, wrun1 and wrun2.

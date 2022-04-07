@@ -1,4 +1,33 @@
-# Small code to organize the GSFC/NASA global information of distance to the coast, into a gridded netcdf file 
+"""
+organizeDistanceToCoast.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Small code to organize the GSFC/NASA global information of distance to 
+  the coast, into a gridded netcdf file.
+
+USAGE:
+ Download dist2coast.txt from
+  https://oceancolor.gsfc.nasa.gov/docs/distfromcoast/
+ And define lat and lon arrays where you want the information,
+  rlon, rlon (edit below)
+
+OUTPUT:
+ netcdf file distFromCoast.nc with distance to the nearest coast
+  at rlon rlat points defined by the user.
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import numpy as np
 from matplotlib.mlab import *

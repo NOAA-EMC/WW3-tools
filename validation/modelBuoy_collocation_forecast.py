@@ -1,5 +1,45 @@
-# Collocation/pairing ww3 point output forecast results with wave buoys.
-# This code is designed for ww3 forecasts, with two time dimensions (cycle time, and forecast lead time)
+"""
+modelBuoy_collocation_forecast.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Collocation/pairing ww3 point output forecast results with wave buoys.
+ Matchups of ww3 results and buoy data are generated, for the same
+  points (lat/lon) and time.
+
+USAGE:
+ This code is designed for ww3 forecasts, results will have two time 
+  dimensions (cycle time, and forecast lead time)
+ Ww3 netcdf results for point output tables (tab) is utilized.
+ In order to process multiple ww3 files and append results, a list of
+  ww3 output tab files is read, ww3list.txt, which must be informed. 
+ It uses two public buoy databases, NDBC and Copernicus,
+  which (at least one) must have been previously downloaded. See
+  get_buoydata_copernicus.sh and retrieve_ndbc_nc.py
+ Edit mpath, ndbcp, and copernp to set paths.
+ Users have to confirm the buoys' names at the "f=nc.Dataset" lines below.
+ Python code can be run directly, without input arguments.
+
+OUTPUT:
+ netcdf file ww3buoy_collocation_*.nc containing the matchups of buoy 
+  and ww3 data, for the stations (lat/lon) where both data sources 
+  are available.
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+ ww3 table results in netcdf format (list of files ww3list.txt)
+ NDBC buoy data (see retrieve_ndbc_nc.py)
+ Copernicus buoy data (see get_buoydata_copernicus.sh)
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import numpy as np
 from matplotlib.mlab import *
@@ -12,8 +52,6 @@ from calendar import timegm
 import warnings; warnings.filterwarnings("ignore")
 # netcdf format
 fnetcdf="NETCDF4"
-
-# Users have to check the buoys' names at the "f=nc.Dataset" lines below.
 
 # Paths
 # WW3 Model

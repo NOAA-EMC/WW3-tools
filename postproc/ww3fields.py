@@ -1,6 +1,9 @@
 """
 ww3fields.py
 
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
 PURPOSE:
  Wave Field Map plots of WAVEWATCHIII results using cartopy. 
  It reads both netcdf and grib2 format.

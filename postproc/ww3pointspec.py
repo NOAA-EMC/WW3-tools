@@ -1,12 +1,39 @@
-# Directional Spectrum plots of WAVEWATCHIII results using polar plots. It reads both netcdf and text format.
-# Mandatory Inputs: fileName and StationName(or ID, starting with 0)
-# Additional/Optional Inputs after the Mandatory Inputs: 
-#    skipTime (plot at lower time resolution) where 1(plot everything), 2(skip one time) etc
-# if you want to change the resolution (for publications), edit savefig
-# examples:
-# python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002
-# python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002 2
-# nohup python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41004 >> nohup_ww3pointspec_20160928.txt 2>&1 &
+"""
+ww3pointspec.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Directional Spectrum plots of WAVEWATCHIII results using polar plots.
+ It reads both netcdf and text format.
+
+USAGE:
+ Mandatory Inputs: fileName and StationName (or ID, starting with 0)
+ Additional optional Inputs after the Mandatory Inputs: 
+   skipTime (plot at lower time resolution) where 1(plot everything), 2(skip one time) etc
+ Examples (from linux/terminal command line):
+  python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002
+  python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41002 2
+  nohup python3 ww3pointspec.py ww3gefs.20160928_spec.nc 41004 >> nohup_ww3pointspec_20160928.txt 2>&1 &
+ A shell script, get_ww3spec_c00.sh, can be run to test this code 
+  ww3pointspec.py operationally, plotting today's forecast spectra.
+
+OUTPUT:
+ png figures of the directional and power spectrum for the specific 
+  point/station selected as input.
+ If you want to change the resolution (for publications), edit savefig
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import matplotlib
 matplotlib.use('Agg')

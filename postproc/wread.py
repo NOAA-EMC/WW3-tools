@@ -1,6 +1,45 @@
-# Read Wave data: WAVEWATCHIII results, and NDBC and Copernicus buoys.
-# tseriesnc = time series (table of integrated parameters versus time).
-# spec = wave spectrum
+"""
+wread.py
+
+VERSION AND LAST UPDATE:
+ v1.0  04/04/2022
+
+PURPOSE:
+ Group of python functions to Read Wave data: 
+  WAVEWATCHIII results, and NDBC and Copernicus buoys.
+ Prefix meaning:
+ tseriesnc = time series (table of integrated parameters versus time).
+ spec = wave spectrum.
+ Users can import as a standard python function, and use it accordingly:
+ For example:
+  import wread
+  wread.tseriesnc_ww3(filename.nc,stationID)
+ Users can help() each function to obtain information about inputs/outputs
+  help(wread.tseriesnc_ww3)
+
+USAGE:
+ functions
+   tseriesnc_ndbc
+   tseriesnc_copernicus
+   tseriesnc_ww3
+   spec_ndbc
+   spec_ww3
+ Explanation for each function is contained in the headers
+
+OUTPUT:
+ numpy arrays. Description of variables is contained in the header 
+  of each function 
+
+DEPENDENCIES:
+ See dependencies.py and the imports below.
+
+AUTHOR and DATE:
+ 04/04/2022: Ricardo M. Campos, first version.
+
+PERSON OF CONTACT:
+ Ricardo M Campos: ricardo.campos@noaa.gov
+
+"""
 
 import matplotlib
 # matplotlib.use('Agg')
