@@ -82,19 +82,46 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 	if wvar=='hs':
 		wvar=np.str('swh')
 
-	wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
+	if size(ds[wvar].shape)==3:
+		# Structured
+		gstr=2
+		wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
+	elif size(ds[wvar].shape)==2:
+		# Unstructured
+		gstr=1
+		wdata = np.array(ds[wvar].values)
+	else:
+		sys.exit(' Unexpected file shape.')
 
 else:
 	# netcdf format
 	ds = xr.open_dataset(fname)
 	wtime = np.array(ds.time.values)
-	wdata = np.array(ds[wvar].values[:,:,:])
+	if size(ds[wvar].shape)==3:
+		# Structured
+		gstr=2
+		wdata = np.array(ds[wvar].values)
+	elif size(ds[wvar].shape)==2:
+		# Unstructured
+		gstr=1
+		if ds[wvar].shape[0] == wtime.shape[0]:
+			wdata = np.array(ds[wvar].values)
+		else:
+			wdata = np.array(ds[wvar].values).T
+
+	else:
+		sys.exit(' Unexpected file shape.')
 
 units_wdata = np.str(ds[wvar].units)
-lat = np.sort(np.array(ds.latitude.values[:]))
+if gstr==2:
+	lat = np.sort(np.array(ds.latitude.values[:]))
+else:
+	lat = np.array(ds.latitude.values[:])
+
 lon = np.array(ds.longitude.values[:])
 ds.close(); del ds
 # -----------
+
 if np.any(slat):
 	slat=np.sort(slat)
 else:
@@ -109,22 +136,45 @@ else:
 	slon=np.array([np.nanmin(lon),np.nanmax(lon)])
 
 # cbar levels
-levels = np.linspace(np.nanmin(wdata),np.nanpercentile(wdata,99.99),101)
+extdm=1
+if "dir" in wvar or "dp" in wvar or "wlv" in wvar or "u" in wvar or "v" in wvar:
+	levels = np.linspace(np.nanmin(wdata),np.nanmax(wdata),101)
+	extdm=0
+elif "fp" in wvar:
+	levels = np.linspace(0.,np.nanpercentile(wdata,99.995),101)
+else:
+	levels = np.linspace(np.nanmin(wdata),np.nanpercentile(wdata,99.995),101)
+
 print("ww3fields.py maps, file: "+fname+",  field: "+wvar)
 # loop time
-for t in range(wdata[::sk,:,:].shape[0]):
-	fig, ax = plt.subplots()
+for t in range(wtime[::sk].shape[0]):
+
+	# fig, ax = plt.subplots()
 	ax = plt.axes(projection=ccrs.PlateCarree()) 
-	ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())  
-	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+	ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
+	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
 	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-	plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette,extend="max", zorder=2)
+	if gstr==1:
+		# Unstructured
+		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)[0]
+		if extdm==1:
+			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,extend="max", zorder=1)
+		else:
+			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
+
+	else:
+		# Structured
+		if extdm==1:
+			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette,extend="max", zorder=1)
+		else:
+			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette, zorder=1)
+
 	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5)
-	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1)
-	ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alpha=1)
+	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+	ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
 	plt.title(wvar+' ('+units_wdata+')    '+pd.to_datetime(wtime[::sk][t]).strftime('%Y/%m/%d %H')+'Z') 
-	fig.tight_layout()
+	plt.tight_layout()
 	ax = plt.gca()
 	pos = ax.get_position()
 	l, b, w, h = pos.bounds
@@ -132,12 +182,14 @@ for t in range(wdata[::sk,:,:].shape[0]):
 	cbar=plt.colorbar(cax=cax, orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
 	tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
 	plt.axes(ax)  # make the original axes current again
-	fig.tight_layout()
+	plt.tight_layout()
 	# plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
 	plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	
-	# pickle.dump(fig, open('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
-	plt.close('all'); del ax, fig
+	# pickle.dump(ax, open('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
+	plt.close('all'); del ax
 
+# For gif animation using .png figures:
+# convert -delay 15 -loop 0 wfields_*.png wfields.gif
 
