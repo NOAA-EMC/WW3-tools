@@ -79,7 +79,7 @@ elif len(sys.argv) > 6:
 	sys.exit(' Too many inputs')
 
 # ----- READ DATA ----- 
-if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'grb2':
+if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'grb2': 
 	# grib2 format
 	ds = xr.open_dataset(fname, engine='cfgrib')
 	wtime = np.array(ds.time.values + ds.step.values )
