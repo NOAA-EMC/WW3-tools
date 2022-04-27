@@ -42,8 +42,12 @@ PERSON OF CONTACT:
 import matplotlib
 matplotlib.use('Agg')
 import xarray as xr
+import netCDF4 as nc
 import numpy as np
 from pylab import *
+from calendar import timegm
+from time import strptime
+from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import sys
 import pandas as pd
@@ -82,6 +86,9 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 	if wvar=='hs':
 		wvar=np.str('swh')
 
+	if (wvar in list(ds.keys()))==False:
+		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
+
 	if size(ds[wvar].shape)==3:
 		# Structured
 		gstr=2
@@ -93,47 +100,47 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 	else:
 		sys.exit(' Unexpected file shape.')
 
+	units_wdata = np.str(ds[wvar].units)
+	lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
+	if gstr==2 and size(lat.shape)==1:
+		lat = np.sort(lat)
+
+	ds.close(); del ds
+	# -----------
+
 else:
 	# netcdf format
-	ds = xr.open_dataset(fname)
-	wtime = np.array(ds.time.values)
-	if size(ds[wvar].shape)==3:
+	f=nc.Dataset(fname)
+	if (wvar in list(f.variables.keys()))==False:
+		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
+
+	wdata = np.array(f.variables[wvar])
+	units_wdata = np.str(f.variables[wvar].units)
+	lat = np.array(f.variables['latitude']); lon = np.array(f.variables['longitude'])
+	if size(wdata.shape)==3 and size(lat.shape)==1:
 		# Structured
 		gstr=2
-		wdata = np.array(ds[wvar].values)
-	elif size(ds[wvar].shape)==2:
+	elif size(wdata.shape)==2 or size(lat.shape)==2:
 		# Unstructured
 		gstr=1
-		if ds[wvar].shape[0] == wtime.shape[0]:
-			wdata = np.array(ds[wvar].values)
-		else:
-			wdata = np.array(ds[wvar].values).T
 
-	else:
-		sys.exit(' Unexpected file shape.')
+	# time
+	auxt = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+	f.close(); del f
+	
+	wtime=[]
+	for i in range(0,auxt.shape[0]):
+		wtime = np.append(wtime,datetime.fromtimestamp(auxt[i], timezone.utc))
 
-units_wdata = np.str(ds[wvar].units)
-if gstr==2:
-	lat = np.sort(np.array(ds.latitude.values[:]))
-else:
-	lat = np.array(ds.latitude.values[:])
+	del auxt
 
-lon = np.array(ds.longitude.values[:])
-ds.close(); del ds
-# -----------
+	wdata[wdata>360]=np.nan
 
-if np.any(slat):
-	slat=np.sort(slat)
-else:
-	slat=np.array([np.nanmin(lat),np.nanmax(lat)])
+if size(wdata.shape)==3 and size(lat.shape)==2:
+	lon[lon>180]=lon[lon>180]-360.
 
-if np.any(slon):
-	slon=np.sort(slon)
-	if slon.min()<-180. :
-		sys.exit(' Longitude below -180. Keep the longitude standard: 0to360 or -180to180 degrees.')
-
-else:
-	slon=np.array([np.nanmin(lon),np.nanmax(lon)])
+slat=np.array([np.nanmin(lat),np.nanmax(lat)])
+slon=np.array([np.nanmin(lon),np.nanmax(lon)])
 
 # cbar levels
 extdm=1
@@ -156,15 +163,17 @@ for t in range(wtime[::sk].shape[0]):
 	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
 	if gstr==1:
 		# Unstructured
-		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)[0]
-		if extdm==1:
-			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,extend="max", zorder=1)
+		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)
+		if extdm==1:	
+			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
 		else:
 			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
 
 	else:
 		# Structured
 		if extdm==1:
+			# data, lons = add_cyclic_point(wdata[::sk,:,:][t,:,:], coord=lon)
+			# plt.contourf(lons,lat,data,levels,cmap=palette,extend="max", zorder=1,transform = ccrs.PlateCarree())
 			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette,extend="max", zorder=1)
 		else:
 			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette, zorder=1)
@@ -173,7 +182,7 @@ for t in range(wtime[::sk].shape[0]):
 	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
 	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
 	ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-	plt.title(wvar+' ('+units_wdata+')    '+pd.to_datetime(wtime[::sk][t]).strftime('%Y/%m/%d %H')+'Z') 
+	plt.title(wvar+' ('+units_wdata+')    '+pd.to_datetime(wtime[::sk][t]).strftime('%Y/%m/%d %H:%M')+'Z') 
 	plt.tight_layout()
 	ax = plt.gca()
 	pos = ax.get_position()
@@ -184,7 +193,7 @@ for t in range(wtime[::sk].shape[0]):
 	plt.axes(ax)  # make the original axes current again
 	plt.tight_layout()
 	# plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
-	plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',
+	plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	
 	# pickle.dump(ax, open('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
