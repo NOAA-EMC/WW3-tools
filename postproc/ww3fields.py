@@ -34,8 +34,8 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
- 04/27/2022: Ricardo M. Campos, Ali Abdolali, Matthew Masarik: new grids
-   added, including tripolar and unstructured grids. New global projection
+ 04/27/2022: Ricardo M. Campos, Ali Abdolali, Matthew Masarik, Saeideh Banihashemi:
+   new grids added, including tripolar and unstructured grids. New global projection
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
