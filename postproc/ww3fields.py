@@ -6,6 +6,7 @@ ww3fields.py
 
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
+ v1.1  04/27/2022
 
 PURPOSE:
  Wave Field Map plots of WAVEWATCHIII results using cartopy. 
@@ -33,6 +34,8 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
+ 04/27/2022: Ricardo M. Campos, Ali Abdolali, Matthew Masarik: new grids
+   added, including tripolar and unstructured grids. New global projection
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -51,8 +54,9 @@ from datetime import datetime, timezone
 import matplotlib.pyplot as plt
 import sys
 import pandas as pd
-import cartopy.crs as ccrs
 import cartopy
+import cartopy.crs as ccrs
+from cartopy.util import add_cyclic_point
 from matplotlib import ticker
 # import pickle
 import warnings
@@ -139,8 +143,16 @@ else:
 if size(wdata.shape)==3 and size(lat.shape)==2:
 	lon[lon>180]=lon[lon>180]-360.
 
-slat=np.array([np.nanmin(lat),np.nanmax(lat)])
-slon=np.array([np.nanmin(lon),np.nanmax(lon)])
+if np.any(slat):
+	slat=np.array(np.sort(slat))
+else:
+	slat=np.array([np.nanmin(lat),np.nanmax(lat)])
+
+if np.any(slon):
+	slon=np.array(np.sort(slon))
+else:
+	slon=np.array([np.nanmin(lon),np.nanmax(lon)])
+
 
 # cbar levels
 extdm=1
@@ -156,27 +168,39 @@ print("ww3fields.py maps, file: "+fname+",  field: "+wvar)
 # loop time
 for t in range(wtime[::sk].shape[0]):
 
-	# fig, ax = plt.subplots()
-	ax = plt.axes(projection=ccrs.PlateCarree()) 
-	ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
-	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
-	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+	if np.diff(slat)>150 and np.diff(slon)>350 and gstr==2:
+		ax=plt.axes(projection=ccrs.Robinson())
+		gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+		gl.ylocator = ticker.MultipleLocator(15)
+		gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+		data=wdata[::sk,:,:][t,:,:]
+		adata, alon = add_cyclic_point(data, coord=lon)
+		alat=lat
+
+	else:
+		ax = plt.axes(projection=ccrs.PlateCarree())
+		ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
+		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
+		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+		alon=lons
+		alat=lat
+		adata=wdata[::sk,:][t,:]
+
 	if gstr==1:
 		# Unstructured
 		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)
 		if extdm==1:	
-			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
+			cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
 		else:
-			plt.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
+			cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
 
 	else:
 		# Structured
 		if extdm==1:
-			# data, lons = add_cyclic_point(wdata[::sk,:,:][t,:,:], coord=lon)
-			# plt.contourf(lons,lat,data,levels,cmap=palette,extend="max", zorder=1,transform = ccrs.PlateCarree())
-			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette,extend="max", zorder=1)
+			cs=ax.contourf(alon,alat,adata,levels,cmap=palette,extend="max", zorder=1,transform = ccrs.PlateCarree())
 		else:
-			plt.contourf(lon,lat,wdata[::sk,:,:][t,:,:],levels,cmap=palette, zorder=1)
+			cs=ax.contourf(alon,alat,adata,levels,cmap=palette,zorder=1,transform = ccrs.PlateCarree())
 
 	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
 	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
@@ -187,8 +211,8 @@ for t in range(wtime[::sk].shape[0]):
 	ax = plt.gca()
 	pos = ax.get_position()
 	l, b, w, h = pos.bounds
-	cax = plt.axes([l+0.07, b-0.07, w-0.15, 0.025]) # setup colorbar axes.
-	cbar=plt.colorbar(cax=cax, orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
+	cax = plt.axes([l+0.07, b-0.07, w-0.12, 0.025]) # setup colorbar axes.
+	cbar=plt.colorbar(cs,cax=cax, orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
 	tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
 	plt.axes(ax)  # make the original axes current again
 	plt.tight_layout()
@@ -196,8 +220,12 @@ for t in range(wtime[::sk].shape[0]):
 	plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	
+	# The pickle line below allow users to save the figure and edit later, using pickle. 
+	#   to use this option, uncomment the line below and the initial import pickle
 	# pickle.dump(ax, open('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
 	plt.close('all'); del ax
+
+
 
 # For gif animation using .png figures:
 # convert -delay 15 -loop 0 wfields_*.png wfields.gif
