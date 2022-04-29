@@ -67,6 +67,9 @@ copernp="/data/buoys/Copernicus/wtimeseries"
 # import os; os.system("ls "+mpath+"/*tab.nc > ww3list.txt &")
 wlist=np.loadtxt('ww3list.txt',dtype=str)
 
+# make sure it is a list
+
+
 # Read Data
 # Model
 for t in range(0,size(wlist)):

@@ -178,7 +178,7 @@ for t in range(wtime[::sk].shape[0]):
 		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
 		data=wdata[::sk,:,:][t,:,:]
 		adata, alon = add_cyclic_point(data, coord=lon)
-		alat=lat
+		alat=lat 
 
 	elif slat.max()>87 and slat.min()>30:
 		ax=plt.axes(projection=ccrs.NorthPolarStereo())
