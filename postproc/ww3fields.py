@@ -168,7 +168,9 @@ print("ww3fields.py maps, file: "+fname+",  field: "+wvar)
 # loop time
 for t in range(wtime[::sk].shape[0]):
 
+	# Robinson projection if global grid
 	if np.diff(slat)>150 and np.diff(slon)>350 and gstr==2:
+		# ax=plt.axes(projection=ccrs.Mollweide())
 		ax=plt.axes(projection=ccrs.Robinson())
 		gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
 		gl.ylocator = ticker.MultipleLocator(15)
@@ -178,23 +180,37 @@ for t in range(wtime[::sk].shape[0]):
 		adata, alon = add_cyclic_point(data, coord=lon)
 		alat=lat
 
+	elif slat.max()>87 and slat.min()>30:
+		ax=plt.axes(projection=ccrs.NorthPolarStereo())
+		ax.set_extent([-180, 180, slat.min(), 90], crs=ccrs.PlateCarree())
+		# ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,transform=ccrs.PlateCarree())
+		gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+		gl.ylocator = ticker.MultipleLocator(10)
+		gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+		alon=lon; alat=lat
+		adata=wdata[::sk,:][t,:]
 	else:
 		ax = plt.axes(projection=ccrs.PlateCarree())
 		ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
 		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
 		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-		alon=lons
-		alat=lat
+		alon=lon; alat=lat
 		adata=wdata[::sk,:][t,:]
 
 	if gstr==1:
 		# Unstructured
 		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)
 		if extdm==1:	
-			cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
+			if slat.max()>87 and slat.min()>30:
+				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1,transform=ccrs.PlateCarree())
+			else:
+				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
 		else:
-			cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
-
+			if slat.max()>87 and slat.min()>30:
+				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1,transform=ccrs.PlateCarree())
+			else:
+				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
 	else:
 		# Structured
 		if extdm==1:
