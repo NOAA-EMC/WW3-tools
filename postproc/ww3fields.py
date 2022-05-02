@@ -35,7 +35,7 @@ DEPENDENCIES:
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
  04/27/2022: Ricardo M. Campos, Ali Abdolali, Matthew Masarik, Saeideh Banihashemi:
-   new grids added, including tripolar and unstructured grids. New global projection
+   new grids added, including tripolar and unstructured grids. New global and polar projections
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -180,6 +180,7 @@ for t in range(wtime[::sk].shape[0]):
 		adata, alon = add_cyclic_point(data, coord=lon)
 		alat=lat 
 
+	# Polar projection
 	elif slat.max()>87 and slat.min()>30:
 		ax=plt.axes(projection=ccrs.NorthPolarStereo())
 		ax.set_extent([-180, 180, slat.min(), 90], crs=ccrs.PlateCarree())
@@ -190,6 +191,8 @@ for t in range(wtime[::sk].shape[0]):
 		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
 		alon=lon; alat=lat
 		adata=wdata[::sk,:][t,:]
+
+	# Miller projection
 	else:
 		ax = plt.axes(projection=ccrs.PlateCarree())
 		ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
