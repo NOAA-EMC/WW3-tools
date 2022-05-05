@@ -92,7 +92,8 @@ os.system("ls "+mww3p+"/ > enslist.txt")
 members=np.loadtxt('enslist.txt',dtype=str)
 # WW3 files inside each dir
 os.system("ls -1 "+mww3p+"/"+members[0]+"/*_tab.nc | xargs -n 1 basename > ww3list.txt")
-wlist=np.loadtxt('ww3list.txt',dtype=str)
+wlist=list(np.loadtxt('ww3list.txt',dtype=str))
+
 
 # READ DATA
 # Model

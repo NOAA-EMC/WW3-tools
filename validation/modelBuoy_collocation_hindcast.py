@@ -57,15 +57,12 @@ import warnings; warnings.filterwarnings("ignore")
 fnetcdf="NETCDF4"
 
 # Paths
-# WW3 Model
-mpath="/ww3runs/c00"
 # NDBC buoys
 ndbcp="/data/buoys/NDBC/wparam"
 # Copernicus buoys
 copernp="/data/buoys/Copernicus/wtimeseries"
-# read list of ww3 files to be included in the collocation
-# import os; os.system("ls "+mpath+"/*tab.nc > ww3list.txt &")
-wlist=np.loadtxt('ww3list.txt',dtype=str)
+# import os; os.system("ls /modelpath/*tab.nc > ww3list.txt &")
+wlist=list(np.loadtxt('ww3list.txt',dtype=str))
 
 # Read Data
 # Model
