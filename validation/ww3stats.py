@@ -16,7 +16,7 @@ def ww3_pnt_stats(*args):
         PURPOSE: calculate summary statistics from buoy collocation input.
         USAGE:   ww3_pnt_stats <mod_buoy_colloc.nc> [ <ww3_param> [ <param_min> [ <param_max> ]]]
         '''
-        vmin=-np.inf; vmax=np.inf; parm='hs'
+        vmin=0; vmax=20; parm='hs'
         if   len(args) == 0:
                 sys.exit('ww3_pnt_stats <mod_buoy_colloc.nc> [ <ww3_param> [ <param_min> [ <param_max> ]]]')
         elif len(args) == 1:
