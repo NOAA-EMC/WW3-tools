@@ -85,7 +85,7 @@ print(" "); print(" GridInfo Ok.")
 fcy=nc.MFDataset(cyclonemap, aggdim='time')
 clat=np.array(fcy.variables['lat'][:]); clon=np.array(fcy.variables['lon'][:])
 cmap=fcy.variables['cmap']; ctime=fcy.variables['time'][:]
-cinfo=np.str(fcy.info)
+cinfo=np.str(fcy.info); cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
 
 if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True: 
 	print(" CycloneMap Ok.")
@@ -215,10 +215,9 @@ if size(ind)>0:
 
 	initime=repr(time.gmtime(ftime.min())[0])+str(time.gmtime(ftime.min())[1]).zfill(2)+str(time.gmtime(ftime.min())[2]).zfill(2)+str(time.gmtime(ftime.min())[3]).zfill(2)
 	fintime=repr(time.gmtime(ftime.max())[0])+str(time.gmtime(ftime.max())[1]).zfill(2)+str(time.gmtime(ftime.max())[2]).zfill(2)+str(time.gmtime(ftime.max())[3]).zfill(2)
-	cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
 	# Save netcdf output file
 	ncfile = nc.Dataset('WW3.Altimeter_'+initime+'to'+fintime+'.nc', "w", format=fnetcdf)
-	ncfile.history="Matchups of WAVEWATCHIII and AODN Altimeter data."
+	ncfile.history="Matchups of WAVEWATCHIII and AODN Altimeter data. Total of "+repr(size(ind))+" observations or pairs model/observation."
 	# create  dimensions. 2 Dimensions
 	ncfile.createDimension('time',ftime.shape[0])
 	ncfile.createDimension('satellite', sdname.shape[0] )
@@ -241,10 +240,10 @@ if size(ind)>0:
 	vsid = ncfile.createVariable('satelliteID',np.dtype('int16').char,('time'))
 	vsdname = ncfile.createVariable('names_satellite',dtype('a25'),('HighSeasMarineZones'))
 	# results
-	vwhs = ncfile.createVariable('hs_ww3',np.dtype('float32').char,('time'))
-	vwwnd = ncfile.createVariable('wnd_ww3',np.dtype('float32').char,('time'))
-	vshs = ncfile.createVariable('hs_sat',np.dtype('float32').char,('time'))
-	vswnd = ncfile.createVariable('wnd_sat',np.dtype('float32').char,('time'))
+	vwhs = ncfile.createVariable('hs_model',np.dtype('float32').char,('time'))
+	vwwnd = ncfile.createVariable('wnd_model',np.dtype('float32').char,('time'))
+	vshs = ncfile.createVariable('hs_obsv',np.dtype('float32').char,('time'))
+	vswnd = ncfile.createVariable('wnd_obsv',np.dtype('float32').char,('time'))
 	# Assign units
 	vlat.units = 'degrees_north' ; vlon.units = 'degrees_east'
 	vt.units = 'seconds since 1970-01-01T00:00:00+00:00'
