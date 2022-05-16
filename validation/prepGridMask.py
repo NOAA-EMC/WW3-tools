@@ -115,19 +115,19 @@ mindepth=80. # in meters
 # Minimum distance from the coast
 mindfc=50. # in Km
 # -----------------
-outpath='/home/rmc/EXWAV/aux/'
+outpath='/home/rmc/develop/'
 # -----------------
 if fainfo>=1:
 	# marineregions Global Ocean shapefile path
-	goshp="/home/rmc/EXWAV/aux/shapefiles/GlobalOceansSeas/"
+	goshp="/home/rmc/develop/shapefiles/GlobalOceansSeas/"
 	import salem
 	import regionmask
 if fainfo>=2:
 	# NOAA HighSeasMarineZones
-	hsshp="/home/rmc/EXWAV/aux/shapefiles/NOAA/HighSeasMarineZones/"
+	hsshp="/home/rmc/develop/shapefiles/NOAA/HighSeasMarineZones/"
 if fainfo>=3:
 	# NOAA OffshoreMarineZones
-	ofshp="/home/rmc/EXWAV/aux/shapefiles/NOAA/OffshoreMarineZones/"
+	ofshp="/home/rmc/develop/shapefiles/NOAA/OffshoreMarineZones/"
 
 # Sample file Model(reference) lat lon array
 ds=xr.open_dataset('ww3.gfs-v16.glo_10mxt.PR3.20210924_20211024.nc')
@@ -219,7 +219,6 @@ if fainfo>=1:
 
 # ======  Forecast Areas ==============
 if fainfo>=2:
-
 	# *** High Seas Marine Zones ***
 	# from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "High Seas Marine Zones"
 	# this does not include a projection file in the directory. So I had to artificially create a .prj file
@@ -319,7 +318,9 @@ if fainfo>=3:
 	# ====================
 
 print(' '); print(' Done! Final plots and netcdf output file ...')
+
 # ======== PLOTS =================
+
 # Bathymetry
 # Water depth is positive, by definition
 ib = np.array(ib*-1); ib[ib<0]=np.nan; ib[np.isnan(mask)==True]=np.nan
