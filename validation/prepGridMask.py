@@ -6,7 +6,7 @@ prepGridMask.py
 
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
- v1.1  04/03/2022
+ v1.1  05/03/2022
 
 PURPOSE:
  Create a grid mask to identify coastal points and open/deep water 
@@ -14,7 +14,7 @@ PURPOSE:
  This is useful for model validation against satellite data,
   where coastal areas should be excluded, as well as to run specific 
   assessments comparing deep water with coastal areas.
- prepGridMask.py has a extra option to identify Ocean Names and 
+ prepGridMask.py has an extra option to identify Ocean Names and 
   NWS forecast areas, when running the model passing one argument.
 
 USAGE:
@@ -27,7 +27,7 @@ USAGE:
   distFromCoast.nc and etopo1.nc must be in the same directory you are
   running this code (or symbolic link, ln -s).
  To include the Ocean Names and Forecast Areas identification, user must
-  to pass an argument where: 1 is for just the large ocean names (North
+  pass an argument where: 1 is for just the large ocean names (North
   Atlantic, South Atlantic etc); 2 is the NCEP/NWS High Seas Marine Zones;
   and 3 is the NCEP/NWS Offshore Marine Zones. The shapefile of such
   areas must be given (see links below with instructions to download it)
@@ -67,7 +67,7 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
- 04/03/2022: Ricardo M. Campos, allow users to choose if they want to
+ 05/03/2022: Ricardo M. Campos, allow users to choose if they want to
    process ocean names and forecast areas or not (as it take some time).
 
 PERSON OF CONTACT:
@@ -79,7 +79,7 @@ import numpy as np
 from matplotlib.mlab import *
 from pylab import *
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import xarray as xr
 import netCDF4 as nc
 from mpl_toolkits.basemap import shiftgrid
@@ -109,26 +109,28 @@ elif len(sys.argv) > 2:
 
 # -----------------
 # Grid Name
-gridn='GEFS'
+gridn='GFS10mxt'
 # Minimum water depth
 mindepth=80. # in meters
 # Minimum distance from the coast
 mindfc=50. # in Km
 # -----------------
+outpath='/home/rmc/develop/'
+# -----------------
 if fainfo>=1:
 	# marineregions Global Ocean shapefile path
-	goshp="/data/mask/shapefiles/GlobalOceansSeas/"
+	goshp="/home/rmc/develop/shapefiles/GlobalOceansSeas/"
 	import salem
 	import regionmask
 if fainfo>=2:
 	# NOAA HighSeasMarineZones
-	hsshp="/data/mask/shapefiles/NOAA/HighSeasMarineZones/"
+	hsshp="/home/rmc/develop/shapefiles/NOAA/HighSeasMarineZones/"
 if fainfo>=3:
 	# NOAA OffshoreMarineZones
-	ofshp="/data/mask/shapefiles/NOAA/OffshoreMarineZones/"
+	ofshp="/home/rmc/develop/shapefiles/NOAA/OffshoreMarineZones/"
 
 # Sample file Model(reference) lat lon array
-ds=xr.open_dataset('ww3gefs.20160921_field.nc')
+ds=xr.open_dataset('ww3.gfs-v16.glo_10mxt.PR3.20210924_20211024.nc')
 mapsta=ds["MAPSTA"].values[:,:]
 lat = ds['latitude'].values[:]; lon = ds['longitude'].values[:]
 ds.close(); del ds
@@ -155,10 +157,11 @@ print(' read distance to coast: OK')
 
 # Build Mask (nan = land excluded; 0 = ocean excluded; 1 = ocean valid)
 mask = np.zeros((lat.shape[0],lon.shape[0]),'f')
-# excluding continent or GEFS mask
+# excluding continent or model mask
 ind = np.where((ib>0)|(mapsta>100)|(mapsta==0)); mask[ind[0],ind[1]] = np.nan; del ind
 # excluding based on depth and dist-to-coast criteria
 ind = np.where( (ib<=(-1*mindepth)) & (idfc>=mindfc) & (np.isnan(mask)==False) ); mask[ind[0],ind[1]] = 1; del ind
+mask[:,0]=mask[:,-1]
 print(' grid mask: OK')
 
 if fainfo>=1:
@@ -214,9 +217,8 @@ if fainfo>=1:
 	foni,nnlon = shiftgrid(0.,oni,nlon,start=False)
 	del nnlon,oni,odata
 
+# ======  Forecast Areas ==============
 if fainfo>=2:
-	# ======  Forecast Areas ==============
-
 	# *** High Seas Marine Zones ***
 	# from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "High Seas Marine Zones"
 	# this does not include a projection file in the directory. So I had to artificially create a .prj file
@@ -229,8 +231,7 @@ if fainfo>=2:
 	# take Ocean Names
 	hsmznames=np.array(fdata['NAME'].values[:])
 	hsmznames=np.append(np.array(['Undefined']),hsmznames)
-	# indexes
-	ilon=np.arange(0,lon.shape[0]); ilat=np.arange(0,lat.shape[0])
+	# loop through the Areas
 	for i in range(1,size(hsmznames)):
 
 		basin = fdata.loc[fdata['NAME']==hsmznames[i]]
@@ -261,7 +262,7 @@ if fainfo>=2:
 		print(' '+hsmznames[i]+' : OK')
 
 	# Return to 0to360 lon standard
-	nmask[nmask>=0.]=1.; fcta=fcta*nmask
+	fcta=fcta*nmask
 	hsmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
 	del nnlon,fdata,fcta
 
@@ -280,8 +281,7 @@ if fainfo>=3:
 	ofmznames=np.append(np.array(['Undefined']),ofmznames)
 	ofmzids=np.array(fdata['ID'].values[:])
 	ofmzids=np.append(np.array(['Undefined']),ofmzids)
-	# indexes
-	ilon=np.arange(0,lon.shape[0]); ilat=np.arange(0,lat.shape[0])
+	# loop through the Areas
 	for i in range(1,size(ofmzids)):
 
 		basin = fdata.loc[fdata['ID']==ofmzids[i]]
@@ -312,18 +312,18 @@ if fainfo>=3:
 		print(' '+ofmznames[i]+' : OK')
 
 	# Return to 0to360 lon standard
-	nmask[nmask>=0.]=1.; fcta=fcta*nmask
+	fcta=fcta*nmask
 	ofmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
 	del nnlon,fdata,fcta
 	# ====================
 
 print(' '); print(' Done! Final plots and netcdf output file ...')
+
 # ======== PLOTS =================
+
 # Bathymetry
 # Water depth is positive, by definition
-ib = np.array(ib*-1); ib[ib<0]=np.nan
-#
-ib[ib<0.]=np.nan; ib[np.isnan(mask)==True]=np.nan
+ib = np.array(ib*-1); ib[ib<0]=np.nan; ib[np.isnan(mask)==True]=np.nan
 levels = np.linspace( ib[(np.isnan(ib)==False)].min(), np.percentile(ib[(np.isnan(ib)==False)],99.), 100)
 #
 fig, ax = plt.subplots(nrows=1,ncols=1,subplot_kw={'projection': ccrs.PlateCarree()},figsize=(7,4))
@@ -344,13 +344,15 @@ cbar=plt.colorbar(cax=cax, orientation='horizontal'); cbar.ax.tick_params(labels
 tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
 plt.axes(ax)  # make the original axes current again
 fig.tight_layout()
-# plt.savefig('bathymetry_'+gridn+'.eps', format='eps', dpi=200)
-plt.savefig('bathymetry_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# plt.savefig(outpath+'bathymetry_'+gridn+'.eps', format='eps', dpi=200)
+plt.savefig(outpath+'bathymetry_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# The pickle command below allows saving the figure for later editing (very convenient for publications etc). Similat to .mat in matlab.
 # pickle.dump(fig, open('bathymetry_'+gridn+'.pickle', 'wb'))
 plt.close('all'); del ax, fig
 
 # Distance from the coast 
-idfc[ib<0.]=np.nan; idfc[np.isnan(mask)==True]=np.nan
+# idfc[np.isnan(mask)==True]=np.nan
+idfc[np.isnan(ib)==True]=np.nan
 levels = np.linspace( idfc[(np.isnan(idfc)==False)].min(), np.percentile(idfc[(np.isnan(idfc)==False)],99.), 100)
 fig, ax = plt.subplots(nrows=1,ncols=1,subplot_kw={'projection': ccrs.PlateCarree()},figsize=(7,4))
 ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
@@ -370,13 +372,13 @@ cbar=plt.colorbar(cax=cax, orientation='horizontal'); cbar.ax.tick_params(labels
 tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
 plt.axes(ax)  # make the original axes current again
 fig.tight_layout()
-# plt.savefig('DistanceToCoast_'+gridn+'.eps', format='eps', dpi=200)
-plt.savefig('DistanceToCoast_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# plt.savefig(outpath+'DistanceToCoast_'+gridn+'.eps', format='eps', dpi=200)
+plt.savefig(outpath+'DistanceToCoast_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# The pickle command below allows saving the figure for later editing (very convenient for publications etc). Similat to .mat in matlab.
 # pickle.dump(fig, open('DistanceToCoast_'+gridn+'.pickle', 'wb'))
 plt.close('all'); del ax, fig
 
 # Final Mask
-mask[:,0]=mask[:,-1]
 levels = np.linspace(-2,3,10)
 # fig, ax = plt.subplots(figsize=(7,4))
 fig, ax = plt.subplots(nrows=1,ncols=1,subplot_kw={'projection': ccrs.PlateCarree()},figsize=(7,4))
@@ -393,8 +395,9 @@ ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alph
 norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
 im = ax.contourf(lon,lat,-mask,shading='flat',cmap=palette,norm=norm, zorder=2)
 fig.tight_layout()
-# plt.savefig('Mask_'+gridn+'.eps', format='eps', dpi=200)
-plt.savefig('Mask_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# plt.savefig(outpath+'Mask_'+gridn+'.eps', format='eps', dpi=200)
+plt.savefig(outpath+'Mask_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+# The pickle command below allows saving the figure for later editing (very convenient for publications etc). Similat to .mat in matlab.
 # pickle.dump(fig, open('Mask_'+gridn+'.pickle', 'wb'))
 plt.close('all'); del ax, fig
 
@@ -420,8 +423,8 @@ if fainfo>=1:
 	im = ax.pcolormesh(lon,lat,foni,shading='flat',cmap=palette,norm=norm, zorder=2)
 	im = ax.contour(lon,lat,foni,levels=levels,colors='black',linewidths=0.5,zorder=3)
 	fig.tight_layout()
-	# plt.savefig('OceanNames_'+gridn+'.eps', format='eps', dpi=200)
-	plt.savefig('OceanNames_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+	# plt.savefig(outpath+'OceanNames_'+gridn+'.eps', format='eps', dpi=200)
+	plt.savefig(outpath+'OceanNames_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	# pickle.dump(fig, open('OceanNames_'+gridn+'.pickle', 'wb'))
 	plt.close('all'); del ax, fig
 
@@ -445,8 +448,8 @@ if fainfo>=2:
 	im = ax.pcolormesh(lon,lat,ahsmz,zorder=2)
 	im = ax.contour(lon,lat,hsmz,levels=levels,colors='black',linewidths=0.5,zorder=3)
 	fig.tight_layout(); del ahsmz
-	# plt.savefig('HighSeasMarineZones_'+gridn+'.eps', format='eps', dpi=200)
-	plt.savefig('HighSeasMarineZones_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+	# plt.savefig(outpath+'HighSeasMarineZones_'+gridn+'.eps', format='eps', dpi=200)
+	plt.savefig(outpath+'HighSeasMarineZones_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	# pickle.dump(fig, open('HighSeasMarineZones_'+gridn+'.pickle', 'wb'))
 	plt.close('all'); del ax, fig
 
@@ -470,8 +473,8 @@ if fainfo>=3:
 	im = ax.pcolormesh(lon,lat,aofmz,zorder=2)
 	im = ax.contour(lon,lat,ofmz,levels=levels,colors='black',linewidths=0.5,zorder=3)
 	fig.tight_layout(); del aofmz
-	# plt.savefig('HighSeasMarineZones_'+gridn+'.eps', format='eps', dpi=200)
-	plt.savefig('OffshoreMarineZones_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+	# plt.savefig(outpath+'OffshoreMarineZones_'+gridn+'.eps', format='eps', dpi=200)
+	plt.savefig(outpath+'OffshoreMarineZones_'+gridn+'.png', dpi=300, facecolor='w', edgecolor='w',orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	# pickle.dump(fig, open('HighSeasMarineZones_'+gridn+'.pickle', 'wb'))
 	plt.close('all'); del ax, fig
 
@@ -479,7 +482,7 @@ print('plots ok')
 
 # ================== SAVE NETCDF FILE ==================
 # open a new netCDF file for writing.
-ncfile = nc.Dataset('gridInfo_'+gridn+'.nc', "w", format=fnetcdf) 
+ncfile = nc.Dataset(outpath+'gridInfo_'+gridn+'.nc', "w", format=fnetcdf) 
 ncfile.description='Bathymetry, Distance from the coast, Mask, and Areas (GlobalOceansSeas, NOAA HighSeasMarineZones, NOAA OffshoreMarineZones). Total of '+repr(mask[mask>=0].shape[0])+' Ocean grid points, and '+repr(mask[mask>0].shape[0])+' valid ocean grid points to use.'
 # dimensions.
 ncfile.createDimension( 'latitude' , lat.shape[0] ); ncfile.createDimension( 'longitude' , lon.shape[0] )
