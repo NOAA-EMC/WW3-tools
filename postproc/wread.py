@@ -354,6 +354,6 @@ def spec_ww3(*args):
 				d1sp[t,il]=np.float(aux)
 				del a,b,aux
 
-	return mdate,mtime,lat,lon,freq,freq1,freq2,dfreq,pwst,d1sp,dire,dspec
+	return mdate,mtime,lat,lon,freq,freq1,freq2,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
 
 

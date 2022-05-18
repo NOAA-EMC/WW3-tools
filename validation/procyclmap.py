@@ -70,7 +70,7 @@ tcr=500.; etr=1000.
 # READ mask
 f=nc.Dataset('gridInfo.nc')
 latm=f.variables['latitude'][:]; lonm=f.variables['longitude'][:]
-maskm=f.variables['mask'][:,:]; mdist=f.variables['distcoast'][:,:]
+maskm=f.variables['mask'][:,:];
 f.close(); del f
 # -------------
 

@@ -155,11 +155,11 @@ for t in range(0,size(dt)):
 	# WAVEWATCH III --------------------------
 	if it==0:
 		fname=wrun1+"/ww3gefs."+cdate+"_spec.nc"
-		spm_time,lixo,lixo,lixo,spm_freq,spm_freq1,spm_freq2,spm_dfreq,spm_pspec1,spm_dmspec1,spm_dire,spm_dspec1 = wread.spec_ww3(fname,stname)
+		spm_time,lixo,lixo,lixo,spm_freq,spm_freq1,spm_freq2,spm_dfreq,spm_pspec1,spm_dmspec1,spm_dire,spm_dspec1,lixo,lixo = wread.spec_ww3(fname,stname)
 		del fname
 	else:
 		fname=wrun1+"/ww3gefs."+cdate+"_spec.nc"
-		aspm_time,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec1,aspm_dmspec1,lixo,aspm_dspec1 = wread.spec_ww3(fname,stname)
+		aspm_time,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec1,aspm_dmspec1,lixo,aspm_dspec1,lixo,lixo = wread.spec_ww3(fname,stname)
 		del fname
 		spm_time = np.append(spm_time,aspm_time)
 		spm_pspec1 = np.append(spm_pspec1,aspm_pspec1,axis=0)
@@ -168,11 +168,11 @@ for t in range(0,size(dt)):
 
 	if it==0:
 		fname=wrun2+"/ww3gefs."+cdate+"_spec.nc"
-		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,spm_pspec2,spm_dmspec2,lixo,spm_dspec2 = wread.spec_ww3(fname,stname)
+		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,spm_pspec2,spm_dmspec2,lixo,spm_dspec2,lixo,lixo = wread.spec_ww3(fname,stname)
 		del fname
 	else:
 		fname=wrun2+"/ww3gefs."+cdate+"_spec.nc"
-		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec2,aspm_dmspec2,lixo,aspm_dspec2 = wread.spec_ww3(fname,stname)
+		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec2,aspm_dmspec2,lixo,aspm_dspec2,lixo,lixo = wread.spec_ww3(fname,stname)
 		del fname
 		spm_pspec2 = np.append(spm_pspec2,aspm_pspec2,axis=0)
 		spm_dmspec2 = np.append(spm_dmspec2,aspm_dmspec2,axis=0)
