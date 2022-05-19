@@ -24,7 +24,7 @@ fi
 echo -e "\nInput file: $ww3_tab"
 
 # existing buoy-model collocation file, ww3list.txt
-num_buoy_colloc=$(ls -1 ww3buoy_collocation*.nc 2> /dev/null | wc -l)
+num_buoy_colloc=$(ls -1 WW3.Buoy_*.nc 2> /dev/null | wc -l)
 if [ $num_buoy_colloc -ne 0 ]; then
     echo "Found ${num_buoy_colloc} model-buoy collocation file."
     echo "Remove all files before re-running."
@@ -42,7 +42,7 @@ if [ -f buoy_metrics*.txt     ]; then rm -f buoy_metrics*.txt;     fi
 python3 run_buoy.py $ww3_tab $@
 
 # data mgmt
-buoy_colloc=$(ls -1 ww3buoy_collocation*.nc 2> /dev/null)
+buoy_colloc=$(ls -1 WW3.Buoy_*.nc 2> /dev/null)
 if [ ! -f $buoy_colloc ]; then
     echo "Model-buoy collocation file not found. Exiting." 
     exit
