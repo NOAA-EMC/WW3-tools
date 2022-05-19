@@ -206,9 +206,9 @@ vlon = ncfile.createVariable('longitude',np.dtype('float32').char,('buoypoints')
 vmhs = ncfile.createVariable('model_hs',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
 vmtm = ncfile.createVariable('model_tm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
 vmdm = ncfile.createVariable('model_dm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
-vbhs = ncfile.createVariable('buoy_hs',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
-vbtm = ncfile.createVariable('buoy_tm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
-vbdm = ncfile.createVariable('buoy_dm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
+vbhs = ncfile.createVariable('obs_hs',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
+vbtm = ncfile.createVariable('obs_tm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
+vbdm = ncfile.createVariable('obs_dm',np.dtype('float32').char,('buoypoints','fcycletime','forecastleadtime'))
 # Assign units
 vlat.units = 'degrees_north' ; vlon.units = 'degrees_east'
 vt.units = 'seconds since 1970-01-01T00:00:00+00:00'
