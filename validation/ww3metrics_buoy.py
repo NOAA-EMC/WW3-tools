@@ -38,7 +38,7 @@ def ww3_metrics_buoy(*args):
         print('  Parameter Max: ' + str(vmax))
         print('  Calculating...')
         mod_parm  = 'model_' + parm
-        buoy_parm = 'buoy_'  + parm
+        buoy_parm = 'obs_'   + parm
 
         f       =nc.Dataset(dat)
         m_vals  =f.variables[mod_parm]
