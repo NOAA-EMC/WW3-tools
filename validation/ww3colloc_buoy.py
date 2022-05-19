@@ -29,15 +29,15 @@ def ww3_colloc_buoy(*args):
 
         listfile='./ww3list.txt'
         try:
-                with open(listfile, 'w') as f: f.write(ww3_tab + '\n' + ww3_tab + '\n')
+                with open(listfile, 'w') as f: f.write(ww3_tab + '\n')
         except:
                 sys.exit("unable to write list file: {}".format(listfile))
         try:
-                subprocess.call("./modelBuoy_collocation_hindcast.py", shell=True)
+                subprocess.call('./modelBuoy_collocation.py', shell=True)
         except:
-                sys.exit("problem calling: modelBuoy_collocation_hindcast.py")
+                sys.exit('problem calling: modelBuoy_collocation.py')
         try:
-                colloc_files=glob.glob('./ww3buoy_collocation*.nc')
+                colloc_files=glob.glob('WW3.Buoy_*.nc')
         except:
                 sys.exit("unable to locate model-buoy collocation file.")
         if len(colloc_files) > 1:
