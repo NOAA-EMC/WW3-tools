@@ -52,8 +52,7 @@ from matplotlib import ticker
 import matplotlib.colors as colors
 from matplotlib.colors import BoundaryNorm
 # import pickle
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 import wread
 palette = plt.cm.jet
 dpalette = plt.cm.RdBu_r

@@ -52,8 +52,7 @@ from mpl_toolkits.basemap import shiftgrid
 import time
 from calendar import timegm
 import sys
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 # netcdf format
 fnetcdf="NETCDF4"
 

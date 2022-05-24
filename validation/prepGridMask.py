@@ -90,8 +90,7 @@ import cartopy.crs as ccrs
 import cartopy
 from matplotlib import ticker
 # import pickle
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 # netcdf format
 fnetcdf="NETCDF4"
 

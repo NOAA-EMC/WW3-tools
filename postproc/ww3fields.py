@@ -59,8 +59,7 @@ import cartopy.crs as ccrs
 from cartopy.util import add_cyclic_point
 from matplotlib import ticker
 # import pickle
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 
 palette = plt.cm.jet
 
