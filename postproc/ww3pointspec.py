@@ -51,8 +51,7 @@ from time import strptime, strftime
 from calendar import timegm
 import matplotlib.colors as colors
 import matplotlib.gridspec as gridspec
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 # Palette and colors for plotting the figures
 palette = plt.cm.gist_stern_r
 

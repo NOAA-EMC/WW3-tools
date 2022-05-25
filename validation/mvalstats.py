@@ -2,37 +2,36 @@
 # -*- coding: utf-8 -*-
 
 """
-merrevalstats.py
+mvalstats.py
 
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
+ v1.1  05/22/2022
 
 PURPOSE:
  Group of python functions for statistical analyses and validation. 
  Users can import as a standard python function, and use it accordingly:
  For example:
-  import merrevalstats
-  merrevalstats.metrics(model,obs,0.01,20,15)
+  import mvalstats
+  mvalstats.metrics(model,obs,0.01,20,15)
  Users can help() each function to obtain information about inputs/outputs
-  help(merrevalstats.metrics)
+  help(mvalstats.metrics)
 
 USAGE:
  functions
    smrstat
    metrics
- Explanation for each function is contained in the headers
+ Explanation of each function is contained in the headers
 
 OUTPUT:
  summary statistics values; and error metrics 
 
 DEPENDENCIES:
  See dependencies.py and the imports below.
- lmoments3 is a library/module not included in anaconda by default.
-  It can be installed with
-  pip install git+https://github.com/OpenHydrology/lmoments3.git
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
+ 05/22/2022: Ricardo M. Campos, removed L-moments from smrstat.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -42,9 +41,8 @@ PERSON OF CONTACT:
 from pylab import *
 from matplotlib.mlab import *
 import numpy as np
-import copy
 import scipy.stats
-import lmoments3 as lm
+# import lmoments3 as lm
 # pip install git+https://github.com/OpenHydrology/lmoments3.git
 import sys
 import warnings; warnings.filterwarnings("ignore")
@@ -56,16 +54,18 @@ def smrstat(*args):
 	Input: one array of interest
 	Output: mean, variance, skewness, kurtosis, min, max, percentile80, percentile90, percentile95, percentile99, percentile99.9
 	Example:
-	  import merrevalstats
-	  sresult = merrevalstats.smrstat(hs,0,20)
+	  import mvalstats
+	  sresult = mvalstats.smrstat(hs)
+	  sresult = mvalstats.smrstat(hs,0,20)
 	'''
+	
 	vmin=-np.inf; vmax=np.inf
 	if len(args) == 1:
-		x=copy.copy(args[0])
+		x=np.array(args[0])
 	elif len(args) == 2:
-		x=copy.copy(args[0]); vmin=copy.copy(args[1])
+		x=np.array(args[0]); vmin=np.float(args[1])
 	elif len(args) == 3:
-		x=copy.copy(args[0]); vmin=copy.copy(args[1]); vmax=copy.copy(args[2])
+		x=np.array(args[0]); vmin=np.float(args[1]); vmax=np.float(args[2])
 	elif len(args) > 3:
 		sys.exit(' Too many inputs')
 
@@ -75,7 +75,8 @@ def smrstat(*args):
 	else:
 		sys.exit(' Array without valid numbers.')
 
-	ferr=np.zeros((14),'f')*np.nan
+	# ferr=np.zeros((14),'f')*np.nan
+	ferr=np.zeros((11),'f')*np.nan
 	ferr[0] = np.mean(x)
 	ferr[1] = np.var(x)
 	ferr[2] = scipy.stats.skew(x)
@@ -89,10 +90,10 @@ def smrstat(*args):
 	ferr[10] = np.percentile(x,99.9)
 	# Hosking & Wallis L-moment ratios
 	# pip install git+https://github.com/OpenHydrology/lmoments3.git
-	hwlm = lm.lmom_ratios(x, nmom=5)
-	ferr[11] = hwlm[1]/hwlm[0]
-	ferr[12] = hwlm[2]
-	ferr[13] = hwlm[3]
+	# hwlm = lm.lmom_ratios(x, nmom=5)
+	# ferr[11] = hwlm[1]/hwlm[0]
+	# ferr[12] = hwlm[2]
+	# ferr[13] = hwlm[3]
 
 	return ferr
 
@@ -107,22 +108,26 @@ def metrics(*args):
 		They must have the same size
 	Output: numpy array with shape equal to 8:
 		bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC
+	Example:
+	  import mvalstats
+	  mresult = mvalstats.metrics(model_hs,obs_hs)
+	  mresult = mvalstats.metrics(model_hs,obs_hs,0,20)
 	'''
 
 	vmin=-np.inf; vmax=np.inf; maxdiff=np.inf
 	if len(args) < 2:
 		sys.exit(' Need two arrays with model and observations.')
 	elif len(args) == 2:
-		model=copy.copy(args[0]); obs=copy.copy(args[1])
+		model=np.array(args[0]); obs=np.array(args[1])
 	elif len(args) == 3:
-		model=copy.copy(args[0]); obs=copy.copy(args[1])
-		vmin=copy.copy(args[2])
+		model=np.array(args[0]); obs=np.array(args[1])
+		vmin=np.float(args[2])
 	elif len(args) == 4:
-		model=copy.copy(args[0]); obs=copy.copy(args[1])
-		vmin=copy.copy(args[2]); vmax=copy.copy(args[3])
+		model=np.array(args[0]); obs=np.array(args[1])
+		vmin=np.float(args[2]); vmax=np.float(args[3])
 	elif len(args) == 5:
-		model=copy.copy(args[0]); obs=copy.copy(args[1])
-		vmin=copy.copy(args[2]); vmax=copy.copy(args[3]); maxdiff=copy.copy(args[4]);
+		model=np.array(args[0]); obs=np.array(args[1])
+		vmin=np.float(args[2]); vmax=np.float(args[3]); maxdiff=np.float(args[4])
 	elif len(args) > 5:
 		sys.exit(' Too many inputs')
 

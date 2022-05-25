@@ -38,6 +38,7 @@ from pylab import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import cm
 from netCDF4 import Dataset
+import warnings; warnings.filterwarnings("ignore")
 colormap = cm.GMT_polar
 palette = plt.cm.jet
 palette.set_bad('aqua', 10.0)

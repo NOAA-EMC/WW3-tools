@@ -43,8 +43,7 @@ from matplotlib.mlab import *
 import matplotlib.pyplot as plt
 import sys
 import pandas as pd
-import warnings
-warnings.filterwarnings("ignore")
+import warnings; warnings.filterwarnings("ignore")
 
 # Input arguments
 if len(sys.argv) < 3 :

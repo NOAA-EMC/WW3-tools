@@ -45,7 +45,7 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import time
 from time import strptime
 from calendar import timegm
@@ -225,11 +225,14 @@ def spec_ndbc(*args):
 	'''
 	Observations NDBC, wave spectrum, netcdf format
 	Input: file name (example: 46047w2016.nc)
-	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pspec,dmspec,dpspec,r1spec,r2spec
+	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pspec,dmspec,dpspec,dirspec
 	'''
-	if len(args) == 1:
+	deltatheta=np.int(10)
+	if len(args) >= 1:
 		fname=np.str(args[0])
-	elif len(args) > 1:
+	if len(args) >= 2:
+		deltatheta=np.int(args[1])
+	if len(args) > 2:
 		sys.exit(' Too many inputs')
 
 	try:
@@ -249,12 +252,19 @@ def spec_ndbc(*args):
 		r1spec = ds['wave_spectrum_r1'][:,:,0,0]
 		r2spec = ds['wave_spectrum_r2'][:,:,0,0]
 		ds.close(); del ds
-		# # DF in frequency (dfreq), https://www.ndbc.noaa.gov/wavespectra.shtml
+		# DF in frequency (dfreq), https://www.ndbc.noaa.gov/wavespectra.shtml
 		dfreq=np.zeros(47,'f')
 		dfreq[0]=0.010; dfreq[1:14]=0.005; dfreq[14:40]=0.010; dfreq[40::]=0.020
 		pspec=np.array(pspec*dfreq)
+		# Directional 2D Spectrum, https://www.ndbc.noaa.gov/measdes.shtml#swden , https://www.ndbc.noaa.gov/wavemeas.pdf
+		theta = np.array(np.arange(0,360+0.1,deltatheta))
+		# final directional wave spectrum (frequency X direction)
+		dirspec = np.zeros((btime.shape[0],freq.shape[0],theta.shape[0]),'f')
+		for t in range(0,btime.shape[0]):
+			dirspec[t,:,:] = np.array([pspec[t,:]]).T * (1/pi)*(0.5+  np.array([r1spec[t,:]]).T * cos(np.array( np.array([theta])-np.array([dmspec[t,:]]).T )*(pi/180)) 
+				+ np.array([r2spec[t,:]]).T*cos(2*np.array( np.array([theta]) - np.array([dpspec[t,:]]).T )*(pi/180)))
 
-	return bdate,btime,blat,blon,freq,dfreq,pspec,dmspec,dpspec,r1spec,r2spec
+	return bdate,btime,blat,blon,freq,dfreq,pspec,dmspec,dpspec,theta,dirspec
 
 
 # WAVEWATCH III spectra output, netcdf format
@@ -262,7 +272,7 @@ def spec_ww3(*args):
 	'''
 	WAVEWATCH III, wave spectrum, netcdf format
 	Input: file name (example: ww3gefs.20160928_spec.nc), and station name (example: 41002)
-	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec
+	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
 	'''
 	if len(args) == 2:
 		fname=np.str(args[0]); stname=np.str(args[1])
