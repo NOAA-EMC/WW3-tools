@@ -6,6 +6,7 @@ pvalstats.py
 
 VERSION AND LAST UPDATE:
  v1.0  05/24/2022
+ v1.1  06/30/2022
 
 PURPOSE:
  Group of python functions for visualization of model/observation data
@@ -36,6 +37,8 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  05/24/2022: Ricardo M. Campos, first version.
+ 06/30/2022: Ricardo M. Campos, TaylorDiagram and PDF plots corrected
+   for arrays containing NaN.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -84,7 +87,7 @@ def timeseries(*args):
 	  pvalstats.timeseries(model,buoydata,ftime)
 	  pvalstats.timeseries(np.c_[model1,model2].T,buoydata,ftime,'Hs (m)','/home/rmc/test/WW3ST4Bmax_',['WW3B133','WW3B137'])
 	'''
-	
+
 	yaxname=[]; ftag=''; ccol=np.array(np.atleast_1d(['navy','firebrick','darkgreen','fuchsia','gold'])).astype('str')
 	mmark=np.array(np.atleast_1d(['-','--','-.','-','--'])).astype('str'); mlabels=[]
 
@@ -118,12 +121,14 @@ def timeseries(*args):
 	if (obs.shape[0]>5) & (size(ccol)<=5):
 		from random import randint
 		for i in range(10):
-		   ccol.append('#%06X' % randint(0, 0xFFFFFF))
+		   # ccol.append('#%06X' % randint(0, 0xFFFFFF))
+		   ccol = np.append(ccol,np.array('#%06X' % randint(0, 0xFFFFFF)))
 
 	if (model.shape[1] != obs.shape[1]):
 		sys.exit(' Model and observation arrays must have the same index/time size.')
 
 	# plot
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
 	ax.plot(ftime,obs[0,:],color='dimgray',marker='.',linestyle='',linewidth=2.,zorder=2)
 	ax.fill_between(ftime, 0., obs[0,:], color='silver',alpha=0.5,zorder=1)
@@ -173,7 +178,7 @@ def qqplot(*args):
 	  pvalstats.qqplot(model,satdata)
 	  pvalstats.qqplot(np.c_[model1,model2].T,satdata,'/home/rmc/test/WW3PR_',['WW3PR3','WW3PR1'])
 	'''
-	
+
 	ftag=''; ccol=np.array(np.atleast_1d(['navy','firebrick','darkgreen','fuchsia','gold'])).astype('str')
 	mmark=np.array(np.atleast_1d(['.','.','.','.','.'])).astype('str'); mlabels=[]
 
@@ -203,7 +208,8 @@ def qqplot(*args):
 	if (obs.shape[0]>5) & (size(ccol)<=5):
 		from random import randint
 		for i in range(10):
-		   ccol.append('#%06X' % randint(0, 0xFFFFFF))
+			#ccol.append('#%06X' % randint(0, 0xFFFFFF))
+			ccol = np.append(ccol,np.array('#%06X' % randint(0, 0xFFFFFF)))
 
 	if (model.shape[1] != obs.shape[1]):
 		sys.exit(' Model and observation arrays must have the same index/time size.')
@@ -220,6 +226,7 @@ def qqplot(*args):
 	a=np.nanmin([qobs,qm]) ; b=np.nanmax([qobs,qm])
 	aux=np.linspace(a-0.5*a,b+0.5*a,p.shape[0])
 	# plot
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
 	ax.plot(aux,aux,'k', linewidth=2.,alpha=0.4,zorder=2)  # main diagonal
 	for i in range(0,model.shape[0]):
@@ -231,7 +238,7 @@ def qqplot(*args):
 	plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
 	for i in np.array([50,80,90,95,99]):
 		plt.axvline(x= np.nanpercentile(obs,np.int(i)),ls='--',color='grey',linewidth=1.,alpha=0.9,zorder=1)
-		plt.text(np.nanpercentile(obs,np.int(i)),(aux.max()-aux.min())/15 + aux.min(),np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-5)
+		plt.text(np.nanpercentile(obs,np.int(i)),(aux.max()-aux.min())/15 + aux.min(),np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7)
 
 	plt.ylim(ymax = aux.max(), ymin = aux.min())
 	plt.xlim(xmax = aux.max(), xmin = aux.min())
@@ -300,6 +307,7 @@ def scatterplot(*args):
 	if (model.shape[0]>1) & (size(mlabels)==0):
 		print(" Warning. You should use labels to differentiate model results.")
 
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
 	famax=[]; famin=[]
 	for i in range(0,model.shape[0]):
@@ -335,7 +343,7 @@ def scatterplot(*args):
 	plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
 	for i in np.array([50,80,90,95,99]):
 		plt.axvline(x= np.nanpercentile(obs,np.int(i)),ls='--',color='grey',linewidth=1.,alpha=0.7,zorder=1)
-		plt.text(np.nanpercentile(obs,np.int(i)),((famax.max()-famax.min())/7)+famin.min(),np.str(np.int(i))+'th',color='grey',fontsize=sl-6,zorder=4)
+		plt.text(np.nanpercentile(obs,np.int(i)),((famax.max()-famin.min())/15)+famin.min(),np.str(np.int(i))+'th',color='grey',fontsize=sl-7,zorder=4)
 
 	plt.gca().set_xlim(left=famin.min(), right=famax.max()); plt.gca().set_ylim(ymin=famin.min(),ymax=famax.max())
 
@@ -415,7 +423,15 @@ def taylordiagram(*args):
 		else:
 			label = np.array(['Obs','Model'])
 
+	# remove NaN
+	ind=np.where( (np.mean(model,axis=0)>-999.) & (np.mean(obs,axis=0)>-999.) )
+	if size(ind)>0:
+		model=np.copy(model[:,ind[0]]); obs=np.copy(obs[:,ind[0]]); del ind
+	else:
+		sys.exit(' No quality data available.')
+
 	# plot
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(7,6)); ax = fig1.add_subplot(111)
 	# initial statistics
 	ts = sm.taylor_statistics(model[0,:],obs[0,:])
@@ -516,6 +532,7 @@ def combinerrors(*args):
 		print(" Warning. You should use labels to differentiate model results.")
 
 	# plot
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
 	for i in range(0,model.shape[0]):
 		aux = mvalstats.metrics(model[i,:],obs[0,:])
@@ -597,9 +614,17 @@ def pdf(*args):
 	if (model.shape[0]>1) & (size(mlabels)==0):
 		print(" Warning. You should use labels to differentiate model results.")
 
-	# plot
-	px=np.linspace(np.nanmin([np.nanmin(obs),np.nanmin(model)]),np.nanmax([np.nanmax(obs),np.nanmax(model)])*0.95,100)
+	# remove NaN
+	ind=np.where( (np.mean(model,axis=0)>-999.) & (np.mean(obs,axis=0)>-999.) )
+	if size(ind)>0:
+		model=np.copy(model[:,ind[0]]); obs=np.copy(obs[:,ind[0]]); del ind
+	else:
+		sys.exit(' No quality data available.')
 
+	# plot
+	px=np.linspace(np.nanmin([np.nanmin(obs),np.nanmin(model)]),np.nanmax([np.nanmax(obs),np.nanmax(model)])*0.99,100)
+
+	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,5)); ax = fig1.add_subplot(111)
 	dx = gaussian_kde(obs[0,:])
 	ax.fill_between(px, 0., gaussian_filter(dx(px), 1.), color='grey', alpha=0.7,zorder=1)

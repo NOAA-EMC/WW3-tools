@@ -45,7 +45,7 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg') # for backend plots, not for rendering in a window
 import time
 from time import strptime
 from calendar import timegm
@@ -218,6 +218,55 @@ def tseriesnc_ww3(*args):
 
 	return mdate,mtime,mlat,mlon,mhs,mtm,mtp,mdm,mdp,spr,lm
 
+def tseriesnc_ww3b(*args):
+	'''
+	WAVEWATCH III, time series/table, netcdf format
+	Input:  file name (example: ww3gefs.20160928_tab.nc), and station name (example: 41002)
+		  point output file created with ww3_ounf last lines options:
+
+	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: hs, lm, tr, th1p, sth1p, tp, th1m, sth1m
+	'''
+	if len(args) == 2:
+		fname=np.str(args[0]); stname=np.str(args[1])
+	elif len(args) < 2 :
+		sys.exit(' Two inputs are required: file name and station name')
+	elif len(args) > 2:
+		sys.exit(' Too many inputs')
+
+	try:
+		ds = xr.open_dataset(fname); f=nc.Dataset(fname)
+	except:
+		sys.exit(" Cannot open "+fname)
+	else:
+		mtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+		f.close(); del f
+	
+		auxstationname=ds['station_name'].values[:,:]; stationname=[]
+		for i in range(0,auxstationname.shape[0]):
+			stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
+
+		inds=np.where(stationname[:]==stname)
+		if size(inds)>0:
+			inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
+		else:
+			sys.exit(' Station '+stname+' not included in the ww3 output file, or wrong station ID')
+
+		mdate = ds['time'].values[:]
+		mlat = np.nanmean(ds['latitude'].values[:,inds])
+		mlon = np.nanmean(ds['longitude'].values[:,inds])
+		mhs = ds['hs'].values[:,inds]
+		mlm = ds['lm'].values[:,inds]
+		mtr = ds['tr'].values[:,inds]
+		mth1p = ds['th1p'].values[:,inds]
+		msth1p = ds['sth1p'].values[:,inds]
+		mtp = np.zeros(mhs.shape[0],'f')*np.nan
+		mtp[ds['fp'].values[:,inds]>0.0] = 1./ds['fp'].values[:,inds][ds['fp'].values[:,inds]>0.0]
+		mth1m = ds['th1m'].values[:,inds]
+		msth1m = ds['sth1m'].values[:,inds]
+		ds.close(); del ds
+
+	return mdate,mtime,mlat,mlon,mhs,mlm,mtr,mth1p,msth1p,mtp,mth1m,msth1m
+
 # SPECTRA 
 
 # Observations NDBC, netcdf format
@@ -227,12 +276,14 @@ def spec_ndbc(*args):
 	Input: file name (example: 46047w2016.nc)
 	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pspec,dmspec,dpspec,dirspec
 	'''
-	deltatheta=np.int(10)
+	sk=1; deltatheta=np.int(10)
 	if len(args) >= 1:
 		fname=np.str(args[0])
 	if len(args) >= 2:
-		deltatheta=np.int(args[1])
-	if len(args) > 2:
+		sk=np.int(args[1])
+	if len(args) >= 3:
+		deltatheta=np.int(args[3])
+	if len(args) > 3:
 		sys.exit(' Too many inputs')
 
 	try:
@@ -240,17 +291,17 @@ def spec_ndbc(*args):
 	except:
 		sys.exit(" Cannot open "+fname)
 	else:
-		btime = np.array(f.variables['time'][:]).astype('double')
+		btime = np.array(f.variables['time'][::sk]).astype('double')
 		f.close(); del f
-		bdate = ds['time'].values[:]
+		bdate = ds['time'].values[::sk]
 		blat = ds['latitude'].values[:]
 		blon = ds['longitude'].values[:]
 		freq = ds['frequency'].values[:]
-		pspec = ds['spectral_wave_density'].values[:,:,0,0]
-		dmspec = ds['mean_wave_dir'][:,:,0,0]
-		dpspec = ds['principal_wave_dir'][:,:,0,0]	
-		r1spec = ds['wave_spectrum_r1'][:,:,0,0]
-		r2spec = ds['wave_spectrum_r2'][:,:,0,0]
+		pspec = ds['spectral_wave_density'].values[::sk,:,0,0]
+		dmspec = ds['mean_wave_dir'][::sk,:,0,0]
+		dpspec = ds['principal_wave_dir'][::sk,:,0,0]	
+		r1spec = ds['wave_spectrum_r1'][::sk,:,0,0]
+		r2spec = ds['wave_spectrum_r2'][::sk,:,0,0]
 		ds.close(); del ds
 		# DF in frequency (dfreq), https://www.ndbc.noaa.gov/wavespectra.shtml
 		dfreq=np.zeros(47,'f')
@@ -274,11 +325,14 @@ def spec_ww3(*args):
 	Input: file name (example: ww3gefs.20160928_spec.nc), and station name (example: 41002)
 	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
 	'''
-	if len(args) == 2:
-		fname=np.str(args[0]); stname=np.str(args[1])
-	elif len(args) < 2 :
+
+	if len(args) < 2 :
 		sys.exit(' Two inputs are required: file name and station name')
-	elif len(args) > 2:
+	if len(args) >= 2 :
+		fname=np.str(args[0]); stname=np.str(args[1])
+	if len(args) > 2 :
+		sk=np.int(args[2])
+	if len(args) > 3 :
 		sys.exit(' Too many inputs')
 
 	try:
@@ -287,15 +341,25 @@ def spec_ww3(*args):
 		sys.exit(" Cannot open "+fname)
 	else:
 
-		mtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+		mtime = np.array(f.variables['time'][::sk]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 		f.close(); del f
 
+		auxstationname=ds['station_name'].values[:,:]; stationname=[]
+		for i in range(0,auxstationname.shape[0]):
+			stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
+
+		inds=np.where(stationname[:]==stname)
+		if size(inds)>0:
+			inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
+		else:
+			sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
+
 		# Spectrum
-		dspec=np.array(ds['efth'].values[:,:,:,:])
+		dspec=np.array(ds['efth'][::sk,inds,:,:])
 		# number of directions
-		nd=dspec.shape[3]
+		nd=dspec.shape[2]
 		# number of frequencies
-		nf=dspec.shape[2]
+		nf=dspec.shape[1]
 		# directions
 		dire=np.array(ds['direction'].values[:])
 		# frequencies
@@ -305,29 +369,16 @@ def spec_ww3(*args):
 		# DF in frequency (dfreq)
 		dfreq=np.array(freq2 - freq1)
 		# wind intensity and wind direction
-		wnds=np.array(ds['wnd'].values[:,:])
-		wndd=np.array(ds['wnddir'].values[:,:])
+		wnds=np.array(ds['wnd'].values[::sk,inds])
+		wndd=np.array(ds['wnddir'].values[::sk,inds])
 		# Time datetime64 array
-		mdate=np.array(ds['time'].values[:])
+		mdate=np.array(ds['time'].values[::sk])
 		# water depth (constant in time)
-		depth=np.nanmean(ds['dpt'].values[:,:],axis=0)
-		auxstationname=ds['station_name'].values[:,:]; stationname=[]
-		for i in range(0,auxstationname.shape[0]):
-			stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
-
-		lon=np.array(np.nanmean(ds['longitude'].values[:,:],axis=0))
-		lat=np.array(np.nanmean(ds['latitude'].values[:,:],axis=0))	
-		ds.close(); del ds, auxstationname
-
-		inds=np.where(stationname[:]==stname)
-		if size(inds)>0:
-			inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
-		else:
-			sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
-
-		dspec=np.array(dspec[:,inds,:,:]); wnds=np.array(wnds[:,inds]); wndd=np.array(wndd[:,inds])
-		lat=np.array(lat[inds]); lon=np.array(lon[inds]); depth=np.array(depth[inds])
-		del inds, stationname
+		depth=np.nanmean(ds['dpt'].values[::sk,inds],axis=0)
+		lon=np.array(np.nanmean(ds['longitude'].values[::sk,inds],axis=0))
+		lat=np.array(np.nanmean(ds['latitude'].values[::sk,inds],axis=0))	
+		
+		ds.close(); del ds, auxstationname, inds, stationname
 		# ------------------
 		# 1D power spectrum
 		pwst=np.zeros((dspec.shape[0],nf),'f')

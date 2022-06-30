@@ -53,6 +53,7 @@ def smrstat(*args):
 	Summary Statistics
 	Input: one array of interest
 	Output: mean, variance, skewness, kurtosis, min, max, percentile80, percentile90, percentile95, percentile99, percentile99.9
+	In addition to the data array, users can enter minimum and maximum values, for a simple quality-control.
 	Example:
 	  import mvalstats
 	  sresult = mvalstats.smrstat(hs)
@@ -106,6 +107,8 @@ def metrics(*args):
 	 https://doi.org/10.1016/j.ocemod.2013.08.003
 	Input: two arrays of model and observation, respectively.
 		They must have the same size
+	In addition to the data arrays, users can enter minimum and maximum values, 
+		and maximum_difference, for a simple quality-control.
 	Output: numpy array with shape equal to 8:
 		bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC
 	Example:
