@@ -65,9 +65,9 @@ dlim=25000.
 # Maximum temporal distance (s) for pyresample weighted average
 maxti=1800.
 # Directory where AODN altimeter data is saved, downloaded using get_AODN_AltData.sh
-dirs='/work/noaa/marine/ricardo.campos/data/AODN/altimeter'
+dirs='/data/satellite/AODN_altm'
 # Date interval
-datemin='2021092300'; datemax='2021102500'
+datemin='2000010100'; datemax='2021123123'
 
 # Satellite missions available at AODN dataset, pick one as this code runs one satellite at a time!
 s=np.int(sys.argv[1]) # argument satellite ID for satellite mission selection. s=0 is JASON3, s=1 is JASON2 etc. See list below.
