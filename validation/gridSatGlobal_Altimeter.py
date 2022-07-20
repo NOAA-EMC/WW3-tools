@@ -26,13 +26,17 @@ USAGE:
   edited (see dirs below)
  Check the pre-selected parameters below for the altimeter collocation 
   and date interval (datemin and datemax)
- Example (from linux/terminal command line):
+ Example (from linux terminal command line):
   An example for JASON3 (first in the sdname list) is
    nohup python3 gridSatGlobal_Altimeter.py 0 >> nohup_sat0.out 2>&1 &
 
 OUTPUT:
  netcdf file AltimeterGridded_*.nc containing the collocated altimeter
   data into lat/lon grid points given by gridInfo.nc
+ hsk: significant wave height, Ku or Ka altimeter band.
+ hsc: significant wave height, C altimeter band.
+ wnd: 10-meter wind speed.
+ 'cal' means calibrated by IMOS-AODN.
 
 DEPENDENCIES:
  See dependencies.py and the imports below.

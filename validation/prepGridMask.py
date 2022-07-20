@@ -9,8 +9,8 @@ VERSION AND LAST UPDATE:
  v1.1  05/03/2022
 
 PURPOSE:
- Create a grid mask to identify coastal points and open/deep water 
-  points, based on water depth and distance to the coast.
+ This program creates a grid mask to identify coastal points and 
+  open/deep water points, based on water depth and distance to the coast.
  This is useful for model validation against satellite data,
   where coastal areas should be excluded, as well as to run specific 
   assessments comparing deep water with coastal areas.
@@ -39,6 +39,9 @@ USAGE:
  Fix values mindepth and mindfc can be edited below (see mindepth, and 
   mindfc), as well as the prefix name for the outputs (figures and netcdf),
   gridn
+
+ Example (from linux terminal command line):
+  nohup python3 prepGridMask.py 2 >> nohup_prepGridMask.out 2>&1 &
 
 OUTPUT:
  netcdf file gridInfo_*.nc containing:

@@ -27,7 +27,8 @@ USAGE:
    combinerrors
    pdf
 
- Explanation of each function is contained in the headers
+ Explanation of each function is contained in the headers, including
+  examples.
 
 OUTPUT:
  png figures saved in the local directory or in the path given through tag/prefix.
