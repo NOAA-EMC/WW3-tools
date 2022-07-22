@@ -4,12 +4,13 @@
 #
 # VERSION AND LAST UPDATE:
 # v1.0  04/04/2022
+# v1.1  07/11/2022
 #
 # PURPOSE:
 #  Script to download AODN altimeter data. See the available files at  
 #  http://thredds.aodn.org.au/thredds/catalog/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/catalog.html
 #  Altimeters:
-#  JASON-3 JASON-2 CRYOSAT-2 JASON-1 HY-2 SARAL SENTINEL-3A ENVISAT ERS-1 ERS-2 GEOSAT GFO TOPEX
+#  JASON-3 JASON-2 CRYOSAT-2 JASON-1 HY-2 SARAL SENTINEL-3A SENTINEL-3B ENVISAT ERS-1 ERS-2 GEOSAT GFO TOPEX
 #  Satellite data from Integrated Marine Observing System (IMOS), Australian Ocean Data Network (AODN)
 #  https://portal.aodn.org.au/
 #  Altimeter
@@ -36,6 +37,7 @@
 #
 # AUTHOR and DATE:
 #  04/04/2022: Ricardo M. Campos, first version.
+#  07/11/2022: Ricardo M. Campos, correct lat2 format for the Southern H.
 #
 # PERSON OF CONTACT:
 #  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -55,13 +57,13 @@ for lon in `seq -f "%03g" 0 20 340`; do
       fi
       for adlon in `seq -f "%03g" 0 19`; do
         lon2=(`expr $lon + $adlon`)
-        test -f $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" $lat2)"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+        test -f $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
         TE=$?
         if [ "$TE" -eq 1 ]; then
-          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" $lat2)"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" $lat2)"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
           wait $!
           sleep 1
-          echo IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" $lat2)"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
+          echo IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
           find $DIR -empty -type f -delete
         fi
       done

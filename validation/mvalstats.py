@@ -21,7 +21,8 @@ USAGE:
  functions
    smrstat
    metrics
- Explanation of each function is contained in the headers
+ Explanation of each function is contained in the headers, including
+  examples.
 
 OUTPUT:
  summary statistics values; and error metrics 
