@@ -323,7 +323,7 @@ if size(ind)>0:
 	vdistcoast[:] = fdistcoast[:]; vdepth[:] = fdepth[:]
 	voni[:] = foni[:]; vocnames[:] = ocnames[:]
 	vhsmz[:] = fhsmz[:]; vhsmznames[:] = hsmznames[:]
-	vcmap[:] = fcmap[:]; vcinfo[:] = cinfo[:]
+	vcmap[:] = fcmap[:]; vcinfo[:] = cinfo[:]; vsid[:] = fsid[:]
 	vwhs[:] = fwhs[:]; vshs[:] = fshs[:]
 	vwwnd[:] = fwwnd[:]; vswnd[:] = fswnd[:]
 	#

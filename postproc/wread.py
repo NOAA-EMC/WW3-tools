@@ -325,7 +325,7 @@ def spec_ww3(*args):
 	Input: file name (example: ww3gefs.20160928_spec.nc), and station name (example: 41002)
 	Output: Values: time(datetime64),time(seconds since 1970),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
 	'''
-
+	sk=1
 	if len(args) < 2 :
 		sys.exit(' Two inputs are required: file name and station name')
 	if len(args) >= 2 :

@@ -45,9 +45,9 @@ USAGE:
   output netcdf file.
  Example (from linux terminal command line):
   multiple forecast data files:
-  nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 2 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
+  nohup python3 modelBuoy_collocation.py ww3list_gfs-d36.GSE1.5.txt 2 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
   multiple hindcast data files:
-  nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 0 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
+  nohup python3 modelBuoy_collocation.py ww3list_gfs-d36.GSE1.5.txt 0 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
 
 OUTPUT:
  netcdf file WW3.Buoy*.nc containing matchups of buoy and ww3 data,
