@@ -45,9 +45,9 @@ USAGE:
   output netcdf file.
  Example (from linux terminal command line):
   multiple forecast data files:
-  nohup python3 modelBuoy_collocation.py ww3list_gfs-d36.GSE1.5.txt 2 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
+  nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 2 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
   multiple hindcast data files:
-  nohup python3 modelBuoy_collocation.py ww3list_gfs-d36.GSE1.5.txt 0 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
+  nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 0 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
 
 OUTPUT:
  netcdf file WW3.Buoy*.nc containing matchups of buoy and ww3 data,
@@ -90,12 +90,9 @@ import warnings; warnings.filterwarnings("ignore")
 fnetcdf="NETCDF4"
 
 # Paths
-# NDBC buoys
-# ndbcp="/data/buoys/NDBC/wparam"
-ndbcp="/work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam"
+ndbcp="/data/buoys/NDBC/wparam"
 # Copernicus buoys
-# copernp="/data/buoys/Copernicus/wtimeseries"
-copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
+copernp="/data/buoys/Copernicus/wtimeseries"
 
 # Options of including grid and cyclone information
 gridinfo=np.int(0); cyclonemap=np.int(0); wlist=[]; ftag=''; forecastds=0
@@ -155,7 +152,12 @@ for t in range(0,size(wlist)):
 		if t==0:
 			auxstationname=f.variables['station_name'][:,:]; stname=[]
 			for i in range(0,auxstationname.shape[0]):
-				stname=np.append(stname,"".join(np.array(auxstationname[i,:]).astype('str')))
+				astname="".join(np.array(auxstationname[i,:]).astype('str'))
+				if '\t' in astname:
+					astname=np.str(astname).replace("\t","")
+
+				stname=np.append(stname,astname); del astname
+
 
 		ahs = np.array(f.variables['hs'][:,:]).T
 		atm = np.array(f.variables['tr'][:,:]).T
