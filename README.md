@@ -42,10 +42,10 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; Having the arrays of model and observations for the same time and location is the basis for the last part of the process, which includes two scripts with functions for the validation statistics and plots. These functions can be included in the main script, designed by the user, to finally obtain the summary statistics comparisons, error metrics, and plots. There is a WW3-tools directory with examples.
 
 ![Screenshot](https://github.com/NOAA-EMC/WW3-tools/blob/documentation/docs/BuoyModel_scheme.png)
-**<div align="center">Figure 1 - Flowchart of the wave validation process using altimeter data.</div>**
+**<div align="center">Figure 1 - Flowchart of the wave validation process using buoy data.</div>**
 
 ![Screenshot](https://github.com/NOAA-EMC/WW3-tools/blob/documentation/docs/SatModel_scheme.png)
-**<div align="center">Figure 2 - Flowchart of the wave validation process using buoy data.</div>**
+**<div align="center">Figure 2 - Flowchart of the wave validation process using altimeter data.</div>**
 
 &emsp; The validation package was designed using the methodology described in the following papers, which can be of great support for users to improve and to better interpret the assessments.\
 &emsp; Mentaschi L, Besio G, Cassola F, Mazzino, A., 2013. Problems in RMSE- based wave model validations. Ocean Model 72:53–58. https://doi.org/10.1016/j.ocemod.2013.08.003 \
