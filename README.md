@@ -41,11 +41,11 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; The satellite collocation with gridSatGlobal_Altimeter.py involves some criteria for the weighted average using pyresample.kd_tree, associated with maximum distance and time to the centered grid point to select from the altimeter tracks. Default values, following the literature, are included; however, depending on the model domain and resolution, users should customize these criteria. The following step, with the model/observation collocation, generates an array with simple structure and dimension. For model/satellite, it is a two-dimensional array, where each column is one feature (model_hs, obs_hs, time, lat, lon, cycloneInfo etc) and the lines are the records of each matchup that has been reshaped. Therefore, if users want to subsample the validation for an specific time interval and location it can be easily done in python by selecting the indexes; for example ind=np.where(cyclone>2) to select model_hs[ind] and obs_hs[ind] for an analysis within the cyclones. The same is valid to select specific oceanic areas, marine/offshore zones, water depths intervals, latitude ranges etc. The main difference between buoy/ww3 matchups and altimeter/ww3 matchups, that must be considered at the final validation steps, is that the buoys/ww3 matchups have three dimensions instead of two, being this extra one associated with buoyID.\
 &emsp; Having the arrays of model and observations for the same time and location is the basis for the last part of the process, which includes two scripts with functions for the validation statistics and plots. These functions can be included in the main script, designed by the user, to finally obtain the summary statistics comparisons, error metrics, and plots. There is a WW3-tools directory with examples.
 
-![Screenshot](https://github.com/ricampos/WW3-tools/blob/documentation/docs/BuoyModel_scheme.png)
-**<div align="center">Figure 1 - Flowchart of the wave validation process using altimeter data.</div>**
+![Screenshot](https://github.com/NOAA-EMC/WW3-tools/blob/documentation/docs/BuoyModel_scheme.png)
+**<div align="center">Figure 1 - Flowchart of the wave validation process using buoy data.</div>**
 
-![Screenshot](https://github.com/ricampos/WW3-tools/blob/documentation/docs/SatModel_scheme.png)
-**<div align="center">Figure 2 - Flowchart of the wave validation process using buoy data.</div>**
+![Screenshot](https://github.com/NOAA-EMC/WW3-tools/blob/documentation/docs/SatModel_scheme.png)
+**<div align="center">Figure 2 - Flowchart of the wave validation process using altimeter data.</div>**
 
 &emsp; The validation package was designed using the methodology described in the following papers, which can be of great support for users to improve and to better interpret the assessments.\
 &emsp; Mentaschi L, Besio G, Cassola F, Mazzino, A., 2013. Problems in RMSE- based wave model validations. Ocean Model 72:53–58. https://doi.org/10.1016/j.ocemod.2013.08.003 \
