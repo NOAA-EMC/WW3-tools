@@ -1,0 +1,5 @@
+                                     Netcdf4 
+
+To install netcdf4, you have to includ the netcdf4 source-code tarball
+as well as the HDF5 source-code tarball.  See the makefile for the 
+versions needed.  You have to obtain the tarballs from the standard sources.

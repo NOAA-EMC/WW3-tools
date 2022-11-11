@@ -1,0 +1,87 @@
+			Using EUMETSAT grib2 fields
+
+
+Some of the EUMETSAT data is on a space view perspective grid.
+
+    -sh-3.00$ wgrib2 LMPEF_CLM_110328_0945.grib2 -grid
+    1:0:grid_template=90:winds(N/S):
+          Space view perspective or orographic grid (3712 x 3712) units 1e-06 
+	            input EW:SN output WE:SN res 0
+          sub-sat point: lat 0.000000 lon 0.000000 ix=1856.000000 iy=1856.000000
+          diameter of earth dx=3622 dy=3610 grid cells ori_angle 0.000000
+          sat. altitude=6.610700 (equatorial radii) grid_origin Xo=0 Yo=0
+
+wgrib2 v1.9.3 adds support for space view perspective grids with the restriction
+that orientation angle (ori_angle) is 0 and sub-sat point has a latitude of 0.
+
+The rest of the text assumes that you have a space view perspective file.
+
+
+			Displaying with GrADS
+
+My version of GrADS is not using the latest g2clib can couldn't handle product
+definition template 4.30.  So here is what I did.
+
+    * make a copy of the grib file product with def template 4.0
+    wgrib2 LMPEF_CLM_110328_0945.grib2 -set_pdt 0 -set_var CLOUDM -grib new.grb
+    1:0:d=2011032809:CLOUDM:no_level:-1 missing fcst:
+
+    * make a control file
+    g2ctl -raw new.grb >new.ctl
+
+    * make a index file
+    gribmap -i new.ctl
+
+Note that my grib file only had one field.  Some EUMETSAT grib files have
+mutiple fields on different grids.  g2ctl will get confused files that have
+more than one grid.  Your grib file must only have one grid.
+
+When you run GrADS on your file, you will see the raw satellite data.
+
+
+			Getting grid point information
+
+
+To get the value of the grid point nearest to a specified lat-lon.
+
+	-sh-3.00$ wgrib2 new.grb -lon 10 30
+	experimental space_view2ll scan=12
+	experimental space_view2ij
+	1:0:lon=10.009994,lat=30.005756,val=1
+
+To get the value of a grid point
+
+	-sh-3.00$ wgrib2 new.grb -ijlat 1 1
+	experimental space_view2ll scan=12
+	1:0:(1,1),lon=999.000000,lat=999.000000,val=3
+	-sh-3.00$ wgrib2 new.grb -ijlat 1000 1000
+	experimental space_view2ll scan=12
+	1:0:(1000,1000),lon=-27.386283,lat=-24.929402,val=0
+
+If the grid point is off the earth, a lat-lon of 999 is used.
+The convention of (i,j) is different that used by EUMETSAT.  (1,1) is 
+the bottom left corner which is consistent with wgrib2 convention.
+
+
+			Regridding the data
+
+
+To space view perspective is not as convenient as a latitude-longitude grid
+for many plotting programs.  You can use the -lola option to regrid the
+data to a lola grid.
+
+   * converting to lola grid by nearest neighbor
+    -sh-3.00$ wgrib2 new.grb -lola -60:1201:.1 -60:1201:.1 lola.grb grib
+    experimental space_view2ll scan=12
+    experimental space_view2ij
+    1:0:d=2011032809:CLOUDM:no_level:-1 missing fcst:
+
+    * the grid of lola.grb
+    -sh-3.00$ wgrib2 -V lola.grb
+    1:0:vt=2011032809:no_level:-1 missing fcst:CLOUDM Cloud Mask [-]:
+        ndata=1442401:undef=0:mean=1.53046:min=0:max=3
+        grid_template=0:winds(N/S):
+            lat-lon grid:(1201 x 1201) units 1e-06 input WE:SN output WE:SN res 48
+            lat -60.000000 to 60.000000 by 0.100000
+            lon 300.000000 to 60.000000 by 0.100000 #points=1442401
+
