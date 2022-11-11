@@ -37,27 +37,8 @@
 #  For most linux systems, wget and perl are already included. The
 #    program NCO can be downloaded via apt-get (debian/ubuntu):
 #    sudo apt-get install nco
-#    the program wgrib2 can be downloaded at
+#    the program wgrib2 can be obtained at
 #    https://www.ftp.cpc.ncep.noaa.gov/wd51we/wgrib2/
-#    or directly from the github repository where you obtained this code.
-#    you can copy and paste it to, for example, your /usr/local/ directory,
-#    ensure they can be run with 
-#      chmod -R +x *
-#    and finally add to your .bashrc the following lines:
-#      PATH=$PATH:/usr/local/grib2/wgrib2
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/include
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/lib
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/bin
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/libpng-1.2.50
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/g2clib-1.4.0
-#      export PATH
-#      PATH=$PATH:/usr/local/grib2/zlib-1.2.8
-#      export PATH
 #
 #  Finally, the two codes get_grib.pl and get_inv.pl must be included in 
 #    the same directory where you save this code get_gefsAtmos.sh
