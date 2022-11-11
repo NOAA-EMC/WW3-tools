@@ -59,7 +59,7 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; Similar to download_observations directory, this place contains programs and functions to download publicly available data, namely operational wave forecast data. Two options are included, for NOAA’s deterministic (GFS) and ensemble (GEFS) wave forecasts: \
 https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod \
 https://ftpprd.ncep.noaa.gov/data/nccf/com/gens/prod \
-&emsp; The operational forecast download and post-processing is restricted to linux environment and require the programs: wget, perl, CDO, NCO, and wgrib2. Inside lib/, users can edit the shell script util.sh to define minimum and maximum latitude and longitude to save the output netcdf files. Inside config/, users can edit compress.conf and renames.conf to customize the compression level/resolution and the final variable names saved in the netcdf. This part is very useful to avoid confusion, for example, of some centers calling significant wave height as swh while others use Hs. It ensures all the output netcdf files keep the same variable names.
+&emsp; The operational forecast download and post-processing is restricted to linux environment and require the programs: wget, perl, NCO, and wgrib2. Users can edit the shell scripts to select specific variables of interest and level o netcdf4 compression.
 
 # $\textcolor{darkblue}{examples}$
 &emsp; This final directory contains practical examples of visualization codes developed to evaluate and compare ww3 simulations. The wave panes included gathers many tools described above and can be used as a suggestion of visualization and model evaluation. The directory is under constant development, including small practical examples of ww3 simulations and validations.
