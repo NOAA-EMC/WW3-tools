@@ -1,3 +1,0 @@
-# m h  dom mon dow   command
-00 05 * * * WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gfsWaves.sh
-00 06 * * * WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gefsWaves.sh

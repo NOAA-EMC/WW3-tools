@@ -1,194 +1,193 @@
 #!/bin/bash
 
+########################################################################
 # get_gefsWaves.sh
 #
 # VERSION AND LAST UPDATE:
-#  v2.0  10/01/2020
-#  v1.1  07/01/2020
-#  v1.0  08/01/2017
+#   v1.0  11/09/2022
 #
 # PURPOSE:
-#  Script to download NOAA Global Ensemble Forecast System, Wave Forecast
-#   from WAVEWATCH III. Download from ftp, not nomads.
-#  By default the downloads are made into the ./data directory of the repository
-#   containing this script, and the logging is made into ./log/<date>/
-#  To speed up the download and processing, multiple jobs can be used,
-#   taking advantage of multiple cores, if they are available (see and 
-#   edit NJOBS below).
+#  Script to download NOAA Global Ensemble Forecast System (GEFS), Wave 
+#   Forecast from WAVEWATCH III operational. Download from ftp, not nomads.
 #
 # USAGE:
-#  It can be directly run with ./get_gefsWaves.sh
-#   or informing the programs/libraries location (e.g., which wgrib2):
-#   WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gefsWaves.sh
-#  It can also be added to crontab file, so the download is done automaticaly:
+#  There are two path variables to setup, one containing the scripts 
+#    and the other where the data will be placed. See DIRS and DIR below.
+#  The variable VARSGET has the GEFS variables to download. If you 
+#    change it, re-evaluate the variable TAM, associated with the 
+#    expected size of each grib2 file downloaded.
+#  An additional compression with ncks reads an argument definded as dp,
+#    which can be modified with caution (don't use very small values).
+#  By default it downloads the operational forecast of the day before,
+#    defined by pa=1. If you want data for the same day, uncomment the
+#    lines with YEAR, MONTH, DAY and comment the following lines with pa.
+#  To reduce even more the final size of the file, a min/max latitude 
+#    is defined. By default this is set from 79S to 90N. The latitudes 
+#    south of 79S are excluded because there is no ocean in the area.
+#  This program can be directly run with ./get_gefsWaves.sh
 #
-#   00 06 * * * WGRIB2=/usr/local/grib2/wgrib2 /home/user/forecast/get_gefsWaves.sh
-#
-#  Customizing the dowload, the variables defined in the next section 
-#   #CONTROLABLE ARGUMENTS can be passed to this script, such as
-#
-#    $ NJOBS=40 DATA_DIR=/my/preferred/directory/ forecast/get_cfs.sh
-#
-#   or LATMIN, LATMAX, LONMIN, LONMAX
-#  Besides the variables defined, it is also possible to define the used
-#   programs like wgrib2, cdo, wget, etc. 
-#  These programs are defined in the functions file forecast/lib/util.sh
-#   however it is still possible to control its values in the same way. 
-#   For example, if the script is not finding your installation for 
-#   wgrib2 the program path can be given with an uppercase variable with
-#   the same name. Ex:
-#
-#   $ WGRIB2=/usr/local/grib2/wgrib2/wgrib2 forecast/get_cfs.sh
-#
-#   This can be usefull for running these scripts in a crontab since the
-#   path might not contain some programs.
-# 
 # OUTPUT:
-#  One cycle of NOAA's GEFS Waves forecast, including all the 30 members
-#   plus the control member. Netcdf format.
-#  A directory is created with format YYYYMMDD00
+#  One cycle of NOAA's GEFS Waves operational forecast, including all 
+#   the 30 members plus the control member. Netcdf format.
+#  A directory gefsWave.$YEAR$MONTH$DAY$HOUR is generated containing the
+#    data, plus a log file logGEFS_$YEAR$MONTH$DAY$HOUR.
 #
 # DEPENDENCIES:
-#  wget, perl, CDO, NCO, wgrib2
+#  wget, perl, NCO, wgrib2
+#  For most linux systems, wget and perl are already included. The 
+#    program NCO can be downloaded via apt-get (debian/ubuntu):
+#    sudo apt-get install nco
+#    the program wgrib2 can be downloaded at
+#    https://www.ftp.cpc.ncep.noaa.gov/wd51we/wgrib2/
+#
+#  Finally, the two codes get_grib.pl and get_inv.pl must be included in 
+#    the same directory where you save this code get_gefsWaves.sh
 #
 # AUTHOR and DATE:
-#  08/01/2017: Ricardo M. Campos, for gwes first version adapted from 
-#    deterministic forecasts. Based on Ronaldo Palmeira's codes using
-#    perl scripts to select specific variables from NOAA .idx files.
-#  07/01/2020: Ricardo M. Campos, first version for GEFS Waves, including 
-#    region selection, variables, and post-processing (compression).
-#  10/01/2020: Fabio Almeida. New structure and great improvement using
-#    shell functions, better coding, new config and lib directory (see util.sh),
-#    and option to inform each programs/libraries full path.
+#  11/09/2022: Ricardo M. Campos, first simplified version 
 #
 # PERSON OF CONTACT:
-#  Ricardo M Campos: ricardo.campos@noaa.gov
+#  Ricardo M. Campos: ricardo.campos@noaa.gov
 #
+########################################################################
 
-set -u
+# Cluster module loads
+# module load wgrib2
+# module load nco
 
-# ==============================================================================
-# CONTROLABLE ARGUMENTS
-# These arguments can be given through the command line
+# path where this code and get_grib.pl and get_inv.pl are saved
+DIRS=/data/archives/scripts
+# path where directory will be created and downloaded files will be saved
+DIR=/data/archives/data
 
-# Name that is given to the data directory created and the log file
-PREFIX=${PREFIX:="gefsWaves"}
+# server address
+SERVER=https://ftpprd.ncep.noaa.gov/
+s1="global.0p25"
 
-# Date of the data to download
-DATE=${DATE:=$(date '+%Y%m%d')}
-HOUR=${HOUR:="00"}
+# convertion and compression
+WGRIB2=$(which wgrib2)
+NCKS=$(which ncks)
+NCATTED=$(which ncatted)
+NCRCAT=$(which ncrcat)
 
-# Number of parallel jobs to run
-NJOBS=${NJOBS:=30}
+# cutoff decimals to reduce file size
+dp=2
+# limits for domain selection
+latmin=-79.
+latmax=90.
+# variable names to be downloaded.
+VARSGET=":UGRD:surface:|:VGRD:surface:|:HTSGW:surface:|:PERPW:surface:|:MWSPER:surface:|:DIRPW:surface:"
 
-# ===== Specific download variables
-# Number of max retries for downloading a file
-MAX_RETRIES=${MAX_RETRIES:=60} # retrying ~4:30 hours later
-# Minimum size of a file download
-MIN_SIZE=${MIN_SIZE:=100000}
-# window size to cut the downloaded files
-LATMIN=${LATMIN:=-77.5}
-LATMAX=${LATMAX:=90.}
-LONMIN=${LONMIN:=-102.}
-LONMAX=${LONMAX:=30.}
+# Initial date cycle for the ftp
+#YEAR=`date +%Y`
+#MONTH=`date +%m`
+#DAY=`date +%d`
+pa=2 #  days into the past. pa=1 dowloades data from yesterday's cycle
+YEAR=`date --date=-$pa' day' '+%Y'`
+MONTH=`date --date=-$pa' day' '+%m'`
+DAY=`date --date=-$pa' day' '+%d'`
+HOUR="00" # first cycle 00Z
 
-# Data and log directories
-DATA_DIR=${DATA_DIR:=$(realpath $(dirname $BASH_SOURCE)/../data)}
-[[ ! -d "$(dirname $BASH_SOURCE)/../log" ]] && mkdir -p "$(dirname $BASH_SOURCE)/../log"
-LOG_DIR=${LOG_DIR:=$(realpath $(dirname $BASH_SOURCE)/../log/$(date '+%Y%m%d'))}
+cd $DIR
+# create directory
+mkdir -p $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR
+# all information about fetching and processing the grib2 files will be saved in the log file 
+echo "  " > $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
 
-# ==============================================================================
-# DEFINITIONS
+# hours of forecast lead time to be dowloaded
+h1="`seq -f "%03g" 0 3 240`"
+h2="`seq -f "%03g" 246 6 384`"
+fleads=${h1}' '${h2}
+# number of ensemble members
+ensblm="`seq -f "%02g" 0 1 30`"
+#
+for h in $fleads;do
+  for e in $ensblm;do
 
-SERVER="https://ftpprd.ncep.noaa.gov/data/nccf/com/gens/prod"
+    echo "  " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+    echo " ======== GEFS Forecast: $YEAR$MONTH$DAY$HOUR  $h ========" >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 
 
-VARIABLES=":UGRD:surface:|:VGRD:surface:|:HTSGW:surface:|:WVHGT:surface:|:SWELL:1 in sequence:|:SWELL:2 in sequence:|:MWSPER:surface:|:PERPW:surface:|:WVPER:surface:|:SWPER:1 in sequence:|:SWPER:2 in sequence:|:DIRPW:surface:|:WVDIR:surface:|:SWDIR:1 in sequence:|:SWDIR:2 in sequence:"
+    # size TAM and tries TRIES will control the process
+    TAM=0
+    TRIES=1
+    # while file has a lower size than expected or attemps are less than 130 (almos 11 hours trying) it does:
+    while [ $TAM -lt 1000000 ] && [ $TRIES -le 130 ]; do
+      # sleep 5 minutes between attemps
+      if [ ${TRIES} -gt 5 ]; then
+        sleep 300
+      fi
 
-LOG_FILE="$LOG_DIR/${PREFIX}_${DATE}_${HOUR}.log"
+      if [ ${TAM} -lt 1000000 ]; then
+          echo "  " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+          echo " attempt number: $TRIES" >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+          echo "  " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+          # main line where get_inv.pl and get_grib.pl are used to fech the grib2 file  
+          if [ ${e} == 00 ]; then  
+             $DIRS/get_inv.pl $SERVER/data/nccf/com/gens/prod/gefs.$YEAR$MONTH$DAY/$HOUR/wave/gridded/gefs.wave.t${HOUR}z.c${e}.${s1}.f"$(printf "%03.f" $h)".grib2.idx | egrep "($VARSGET)" | $DIRS/get_grib.pl $SERVER/data/nccf/com/gens/prod/gefs.$YEAR$MONTH$DAY/$HOUR/wave/gridded/gefs.wave.t${HOUR}z.c${e}.${s1}.f"$(printf "%03.f" $h)".grib2 $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f"$(printf "%03.f" $h)".grib2 >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
+          else         
+             $DIRS/get_inv.pl $SERVER/data/nccf/com/gens/prod/gefs.$YEAR$MONTH$DAY/$HOUR/wave/gridded/gefs.wave.t${HOUR}z.p${e}.${s1}.f"$(printf "%03.f" $h)".grib2.idx | egrep "($VARSGET)" | $DIRS/get_grib.pl $SERVER/data/nccf/com/gens/prod/gefs.$YEAR$MONTH$DAY/$HOUR/wave/gridded/gefs.wave.t${HOUR}z.p${e}.${s1}.f"$(printf "%03.f" $h)".grib2 $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f"$(printf "%03.f" $h)".grib2 >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
+          fi
+          # test if the downloaded file exists
+          test -f $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f"$(printf "%03.f" $h)".grib2 >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1
+          TE=$?
+          if [ ${TE} -eq 1 ]; then
+            TAM=0
+          else
+            # check size of each file
+            TAM=`du -sb $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f"$(printf "%03.f" $h)".grib2 | awk '{ print $1 }'` >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1
+          fi
+      fi
 
-# check for renaming/compress rules files
-_RENAME_CONF_FILE=''
-_COMPRESS_CONF_FILE=''
-_CONF_PATH="$(dirname $BASH_SOURCE)/config/${PREFIX}"
-if [[ -d ${_CONF_PATH} ]] ; then
-	if [[ -f "$(realpath ${_CONF_PATH}/renames.conf)" ]] ; then
-		_RENAME_CONF_FILE="$(realpath ${_CONF_PATH}/renames.conf)"
-	fi
-	if [[ -f "$(realpath ${_CONF_PATH}/compress.conf)" ]] ; then
-		_COMPRESS_CONF_FILE="$(realpath ${_CONF_PATH}/compress.conf)"
-	fi
-fi
+      TRIES=`expr $TRIES + 1`
+    done
+  done
+done
+sleep 2
 
-# =======================
-# CREATE DIRECTORIES
+cd $DIR
 
-[[ ! -d $DATA_DIR ]] && mkdir -p $DATA_DIR
-[[ ! -d ${DATA_DIR}/${PREFIX}/${DATE}${HOUR} ]] && mkdir -p ${DATA_DIR}/${PREFIX}/${DATE}${HOUR}
-[[ ! -d $LOG_DIR ]] && mkdir -p $LOG_DIR
-# Init log file
-echo 'vim: foldmethod=marker foldlevel=0' > $LOG_FILE
+# Cleaning 
+# --- Remove directories older than 5 days
+# find gefsWave.?????????? -ctime +4 -type d | xargs rm -rf >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
 
-# ======================
-# SOURCE FUNCTIONS
-source "$(dirname $BASH_SOURCE)/lib/logging.sh"
-source "$(dirname $BASH_SOURCE)/lib/util.sh"
+# Post-processing: select area, compress, and reduce decimals resolution, to save disk space. ------------------
+echo " " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+echo " Post-Processing. Netcdf4 compression " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
 
-# =====================
-# OUTPUT DIRECTORY
+for h in $fleads;do
+  for e in $ensblm;do
 
-_OUT_DIR="${DATA_DIR}/${PREFIX}/${DATE}${HOUR}/"
-[[ ! -d ${_OUT_DIR} ]] && mkdir -p ${_OUT_DIR}
+     arqn=$DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f"$(printf "%03.f" $h)"
+     test -f ${arqn}.grib2 >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1
+     TE=$?
+     if [ ${TE} -eq 1 ]; then
+       echo " File ${arqn}.grib2 does not exist. Download failed." >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+     else
+       $WGRIB2 ${arqn}.grib2 -netcdf ${arqn}.saux.nc
+       wait $!
+       $NCKS -4 -L 1 -d latitude,${latmin},${latmax} ${arqn}.saux.nc ${arqn}.saux2.nc >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
+       wait $!
+       $NCKS --ppc default=.$dp ${arqn}.saux2.nc ${arqn}.nc >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
+       wait $!
+       $NCATTED -a _FillValue,,o,f,NaN ${arqn}.nc >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1 
+       wait $!
+       rm -f ${arqn}.grib2
+       rm -f ${arqn}.saux*
+       echo " File ${arqn} converted to netcdf and compressed with success. " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+     fi
 
-# =====================
-# CACHE
-# create a cache dir in memory to make file processing faster
-# If there isn't enough space, intermediate files are stored in the output folder
-_shm_size=$(df --output=avail /dev/shm | tail -1)
-if [[ ${_shm_size} -gt  10000000 ]] ; then # bigger than ~10G
-	_DOWNCAST_CACHE_DIR="$(mktemp -d -p /dev/shm/ ${PREFIX}.XXXXX || echo ${_OUT_DIR})"
-else
-	_DOWNCAST_CACHE_DIR="${_OUT_DIR}"
-fi
-
-# ============================
-# MAIN
-
-_ensembles=$(echo c00 p{01..30})
-_forecast_hours="$(seq -f '%03g' 0 3 240) $(seq -f '%03g' 246 6 384)"
-
-station='global.0p25'
-
-for ensemble in $_ensembles ; do
-	nfiles=0
-	for forecast_hour in $_forecast_hours ; do
-		[[ $(jobs -p|wc -l) -gt $((${NJOBS}-1)) ]] && wait -n # manage running jobs
-		url="${SERVER}/gefs.${DATE}/${HOUR}/wave/gridded/gefs.wave.t${HOUR}z.${ensemble}.${station}.f${forecast_hour}.grib2"
-		dpath="${_DOWNCAST_CACHE_DIR}/gefs.${ensemble}.${DATE}${HOUR}.${station}.f${forecast_hour}"
-		download -get-perl "$url" "$dpath" "$VARIABLES" &&
-			post_process -wgrib "$dpath" &
-		nfiles=$((nfiles+1))
-	done
-
-	wait
-	file_list=${_DOWNCAST_CACHE_DIR}/gefs.${ensemble}.${DATE}${HOUR}.${station}.f*.nc
-	downloaded_files=$(echo $file_list | tr ' ' '\n' | wc -l)
-	filename="gefs.${ensemble}.${DATE}${HOUR}.${station}.nc"
-	# verify if all files were downloaded, if so concatenate them
-	if [[ $nfiles -eq $downloaded_files ]] ; then
-		concatenate_records ${_DOWNCAST_CACHE_DIR}/${filename} -- $file_list &&
-			rename_variables ${_DOWNCAST_CACHE_DIR}/${filename} ${_RENAME_CONF_FILE} &&
-			compress_variables ${_DOWNCAST_CACHE_DIR}/${filename} ${_OUT_DIR}/${filename} ${_COMPRESS_CONF_FILE} &
-	else
-		log_error "$LOG_FILE" "Failed to download/process some files from $ensemble"
-	fi
+  done
 done
 
-wait
+# Merge all netcdf files
+for e in $ensblm;do
+  $NCRCAT $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f*.nc -O $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave.$YEAR$MONTH$DAY$HOUR.m${e}.${s1}.nc >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR 2>&1
+  wait $!
+  sleep 2
+  rm -f $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/gefswave${e}.t${HOUR}z.pgrib2f*.nc
+  echo " All time steps of ensemble member ${e} have been merged. " >> $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR/logGEFS_$YEAR$MONTH$DAY$HOUR
+done
 
-# Cleanup
-if [[ $_DOWNCAST_CACHE_DIR != $_OUT_DIR ]] && [[ -d $_DOWNCAST_CACHE_DIR ]] ; then
-	rm -r $_DOWNCAST_CACHE_DIR
-fi
-
-log "$LOG_FILE" "Finished $(basename $BASH_SOURCE)"
+# permissions
+chmod -R 775 $DIR/gefsWave.$YEAR$MONTH$DAY$HOUR
 
