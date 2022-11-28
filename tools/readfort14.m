@@ -4,7 +4,11 @@ function [EToV,VX,B,opedat,boudat,title] = readfort14( finame, read_bou )
 % (longitude,latitude,depth), open bounday nodes            %
 % and element connections (triangles)                       %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%                                                           %                                     
+% Original author: Dam Wirasaet 2012                        %
+%                                                           %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Updates by:                                              %
 %      Ali Abdolali August 2018 ali.abdolali@noaa.gov       %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 disp('read adcirc fort.14') ;
