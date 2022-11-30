@@ -54,6 +54,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import *
+import math
 import pandas as pd
 from matplotlib.mlab import *
 from scipy.ndimage.filters import gaussian_filter
@@ -263,8 +264,8 @@ def qqplot(*args):
 			qobs[j,i] = np.nanpercentile(obs[:],p[i])
 			qm[j,i] = np.nanpercentile(model[j,:],p[i])
 
-	a=np.nanmin([qobs,qm]) ; b=np.nanmax([qobs,qm])
-	aux=np.linspace(a-0.5*a,b+0.5*a,p.shape[0])
+	a=math.floor(np.nanmin([qobs,qm])*100.)/100. ; b=math.ceil(np.nanmax([qobs,qm])*100.)/100.
+	aux=np.linspace(a-0.2*a,b+0.2*a,p.shape[0])
 	# plot
 	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
@@ -347,7 +348,9 @@ def scatterplot(*args):
 
 	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
-	famax=[]; famin=[]
+	a=math.floor(np.nanmin(np.append(obs,model))*100.)/100. ; b=math.ceil(np.nanmax(np.append(obs,model))*100.)/100.
+	famin=a-0.1*a; famax=b+0.1*a
+	faux=np.linspace(famin,famax,100); del a,b
 	for i in range(0,model.shape[0]):
 		b=np.array(obs[0,:]); a=np.array(model[i,:])
 		ind=np.where((a*b)>-999.)[0]; a=np.copy(a[ind]); b=np.copy(b[ind]); del ind
@@ -355,35 +358,34 @@ def scatterplot(*args):
 			sk=np.int(np.round(np.float(a.shape[0])/30000.,0))
 			a=np.copy(a[::sk]); b=np.copy(b[::sk])
 
-		amax=np.round(np.nanmax(np.array([a,b])))
-		amin=np.round(np.nanmin(np.array([a,b])))
-		aux=np.linspace(amin,amax,100)
+		#amax=math.ceil(np.nanmax(np.array([a,b]))*100.)/100.
+		#amin=math.floor(np.nanmin(np.array([a,b]))*100.)/100.
+		#aux=np.linspace(amin,amax,100)	
 
 		if (a.shape[0]<30) | (model.shape[0]>1):
-			ax.plot(aux,aux,'k--', linewidth=1.,alpha=0.9,zorder=3)  # main diagonal
 			if size(mlabels)>0:
 				ax.scatter(b,a,color=ccol[i],marker=mmark[i],label=mlabels[i],zorder=2) #, linestyle='--', linewidth=1.
 			else:
 				ax.scatter(b,a,color=ccol[i],marker=mmark[i],zorder=2)
 		else:
-			ax.plot(aux,aux,'k--', linewidth=1.,alpha=0.9,zorder=3)  # main diagonal
 			xy = np.vstack([a,b]); z = gaussian_kde(xy)(xy)
 			if size(mlabels)>0:
 				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,label=mlabels[i],zorder=2)
 			else:
 				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,zorder=2)
 
-		famax=np.append(famax,amax); famin=np.append(famin,amin)
+		# famax=np.append(famax,amax); famin=np.append(famin,amin)
 		del a,b
-
+	
+	ax.plot(faux,faux,'k--', linewidth=1.,alpha=0.9,zorder=3)  # main diagonal
 	plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7)
 	ax.set_xlabel("Observations"); ax.set_ylabel("Model")
 	plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
 	for i in np.array([50,80,90,95,99]):
 		plt.axvline(x= np.nanpercentile(obs,np.int(i)),ls='--',color='grey',linewidth=1.,alpha=0.7,zorder=1)
-		plt.text(np.nanpercentile(obs,np.int(i)),((famax.max()-famin.min())/15)+famin.min(),np.str(np.int(i))+'th',color='grey',fontsize=sl-7,zorder=4)
+		plt.text(np.nanpercentile(obs,np.int(i)),((famax-famin)/15)+famin,np.str(np.int(i))+'th',color='grey',fontsize=sl-7,zorder=4)
 
-	plt.gca().set_xlim(left=famin.min(), right=famax.max()); plt.gca().set_ylim(ymin=famin.min(),ymax=famax.max())
+	plt.gca().set_xlim(left=famin, right=famax); plt.gca().set_ylim(ymin=famin,ymax=famax)
 
 	if size(mlabels)>0:
 		plt.legend(loc="upper left",fontsize=sl-2)
