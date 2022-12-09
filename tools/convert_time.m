@@ -34,4 +34,3 @@ dates     = [];
      end
  end
 end
-Footer

@@ -300,3 +300,4 @@ ncwriteatt(ncfile,'curdir','valid_max', 360);
 ncwriteatt(ncfile,'curdir','_FillValue', int32(9.97e+36));
 ncwriteatt(ncfile,'station','_FillValue', int32(-2147483647));
 ncwriteatt(ncfile,'string16','_FillValue', int32(-2147483647));
+end
