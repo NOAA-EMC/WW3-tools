@@ -1,6 +1,6 @@
 function [dates]=convert_time(ncf,varid)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% This program cobverts the time variable in the netcdf file relative to  %
+% This program converts the time variable in the netcdf file relative to  %
 % unit origin (unit attrivute)to matlab time                              %
 % Ali Abdolali (EMC/NCEP/NOAA ali.abdolali@noaa.gov                       %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
