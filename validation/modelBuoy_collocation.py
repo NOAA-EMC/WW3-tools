@@ -9,6 +9,7 @@ VERSION AND LAST UPDATE:
  v1.1  05/18/2022
  v1.2  06/30/2022
  v1.3  11/17/2022
+ v1.4  12/08/2022
 
 PURPOSE:
  Collocation/pairing ww3 point output results with wave buoys.
@@ -79,6 +80,9 @@ AUTHOR and DATE:
  11/17/2022: Ricardo M. Campos, another point output ww3 format (bull)
   included. New variables, peak period (Tp) and peak direction (Dp)
   added.
+ 12/08/2022: Ricardo M. Campos, point output ww3 format (bull_tar) and .ts
+  included. Allow forecast array dimension (cycle-time and lead-time) for
+  bull_tar
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -94,6 +98,7 @@ import netCDF4 as nc
 import time
 from time import strptime
 from calendar import timegm
+import wread
 # netcdf format
 fnetcdf="NETCDF4"
 
@@ -134,114 +139,131 @@ if size(wlist)==1:
 # READ DATA
 print(" ")
 if gridinfo!=0:
-	f=nc.Dataset(gridinfo)
-	mlat=np.array(f.variables['latitude'][:]); mlon=np.array(f.variables['longitude'][:])
-	mask=f.variables['mask'][:,:]; distcoast=f.variables['distcoast'][:,:]; depth=f.variables['depth'][:,:]
-	oni=f.variables['GlobalOceansSeas'][:,:]; hsmz=f.variables['HighSeasMarineZones'][:,:]
-	ocnames=f.variables['names_GlobalOceansSeas'][:]; hsmznames=f.variables['names_HighSeasMarineZones'][:] 
-	f.close(); del f
+	# Grid Information
+	gridmask = wread.mask(gridinfo)
+	mlat=gridmask['latitude']; mlon=gridmask['longitude']
+	mask=gridmask['mask']; distcoast=gridmask['distcoast']; depth=gridmask['depth']
+	oni=gridmask['GlobalOceansSeas']; ocnames=gridmask['names_GlobalOceansSeas']
+	hsmz=gridmask['HighSeasMarineZones']; hsmznames=gridmask['names_HighSeasMarineZones']		
 	print("  GridInfo Ok. "+gridinfo)
 
+	# Cyclone Information
 	if cyclonemap!=0:
-		fcy=nc.MFDataset(cyclonemap, aggdim='time')
-		clat=np.array(fcy.variables['lat'][:]); clon=np.array(fcy.variables['lon'][:])
-		cmap=fcy.variables['cmap']; ctime=fcy.variables['time'][:]
-		cinfo=np.str(fcy.info); cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
+		cycloneinfo = wread.cyclonemap(cyclonemap)
+		clat=cycloneinfo['latitude']; clon=cycloneinfo['longitude']
+		cmap=cycloneinfo['cmap']; ctime=cycloneinfo['time']
+		cinfo=np.array(cycloneinfo['info'].split(':')[1].split(';'))
 		if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True: 
 			print("  CycloneMap Ok. "+cyclonemap)
 		else:
 			sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
-#   MODEL ------------------
-if np.str(wlist[0]).split('.')[-1]=='bull':
+#   MODEL Point output, search among possible formats ------------------
 
-	# gefs
-	# gfs
-
-	print(" Using ww3 bull point output format")
-	stname=[]; mhs=[]; mtp=[]; mdp=[]
-	iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
+if (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='station_tar'):
 	for i in range(0,size(wlist)):
-		if np.str(wlist[i]).split('.')[-1]=='bull':
-			stname=np.append(stname,np.str(wlist[i]).split('.')[-2])
+		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='bull_tar':
+			result = wread.bull_tar(wlist[i])
+		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
+			result = wread.bull_tar(wlist[i])
 
-			try:
-				tfile = open(wlist[i], 'r'); lines = tfile.readlines()
-			except:
-				print("   Cannot open "+wlist[i])
+		at=result['time']
+		fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
+		if i==0:
+			stname=result['station_name']
+			mtime=np.copy(at)
+			mfcycle=np.copy(fcycle)
+			mhs=np.copy(result['hs'])
+			mtp=np.copy(result['tp'])
+			if 'dp' in result.keys():
+				mdp=np.copy(result['dp'])
 			else:
-
-				if i==0:
-					# time ----
-					auxdate = np.str(lines[2]).split(':')[1].split('UTC')[0][1::]
-					auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
-					year = np.int(time.gmtime(auxt)[0]); month = np.int(time.gmtime(auxt)[1])
-					pday=0; mtime=[]
-					for j in range(7,size(lines)-8):
-						day=np.int(lines[j][3:5]); hour=np.int(lines[j][6:8])
-						if day<pday:
-							if month<12:
-								month=month+1
-							else:
-								month=month+1; year=year+1
-
-						mtime=np.append(mtime,np.double(timegm( strptime( repr(year)+np.str(month).zfill(2)+np.str(day).zfill(2)+' '+np.str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
-						pday=np.copy(day)
-
-					del hour,day,month,year
-					# --------
-					mhs=np.zeros((size(wlist),mtime.shape[0]),'f')*np.nan
-					mtp=np.zeros((size(wlist),mtime.shape[0]),'f')*np.nan
-					mdp=np.zeros((size(wlist),mtime.shape[0]),'f')*np.nan
-
-				ahs=[]; atp=[]; adp=[]
-				for j in range(7,size(lines)-8):
-					if len(lines[j][iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-						ahs=np.append(ahs,np.float(lines[j][10:15]))
-						auxhs=np.array([np.float(lines[j][iauxhs[0]:iauxhs[1]])])
-						for k in range(1,4):		
-							if len(np.str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-								auxhs=np.append(auxhs,np.float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
-
-						auxtp=np.array([np.float(lines[j][iauxtp[0]:iauxtp[1]])])
-						for k in range(1,4):		
-							if len(np.str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-								auxtp=np.append(auxtp,np.float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
-
-						auxdp=np.array([np.float(lines[j][iauxdp[0]:iauxdp[1]])])
-						for k in range(1,4):		
-							if len(np.str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-								auxdp=np.append(auxdp,np.float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
-
-						indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
-						atp=np.append(atp,np.float(auxtp[indaux]))
-						adp=np.append(adp,np.float(auxdp[indaux]))
-						del indaux,auxhs,auxtp,auxdp
-					else:
-						ahs=np.append(ahs,np.nan)
-						atp=np.append(atp,np.nan)
-						adp=np.append(adp,np.nan)
-
-				if (ahs.shape[0]==mtime.shape[0]):
-					mhs[i,:]=np.array(ahs)
-					mtp[i,:]=np.array(atp)
-					mdp[i,:]=np.array(adp)
-				else:
-					print("   Time duration "+wlist[i]+" do not match the other files")
-
-				del ahs,atp,adp
-				print("  WW3 file "+wlist[i]+" OK")
+				mdp=np.copy(mhs)*np.nan
 
 		else:
-			print(" Skipped file "+wlist[t]+" Not bull format. Keep consitency among formats.")
+			if (mhs.shape[0]==result['hs'].shape[0]) and (size(stname)==size(result['station_name'])):
+				if (stname==result['station_name']).all():
+					mtime=np.append(mtime,at)
+					mfcycle=np.append(mfcycle,fcycle)	
+					mhs=np.append(mhs,result['hs'],axis=1)
+					mtp=np.append(mtp,result['tp'],axis=1)
+					if 'dp' in result.keys():
+						mdp=np.append(mdp,result['dp'],axis=1)
+					else:
+						mdp=np.append(mdp,np.copy(result['hs'])*np.nan,axis=1)
 
-	# no dm and tm in this file format
-	print(" Model data of Hs, Tp and Dp allocated. No Dm and Tm provided in this file format (bull).")
-	mdm=np.copy(mhs)*np.nan
-	mtm=np.copy(mhs)*np.nan
-	print('  ')
+			else:
+				print("   Stations in "+wlist[i]+" do not match the other tar files. Skipped "+wlist[i])
 
-else:
+		del result,at,fcycle
+		mdm=np.copy(mhs)*np.nan; mtm=np.copy(mhs)*np.nan # not saved in this file format
+		print("    ww3 file "+wlist[i]+" OK")
+
+elif (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull') or (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='ts'):
+	if forecastds>0:
+		forecastds=0 # no 2D time array possible.
+		print("  Warning: no 2D time array possible. \
+		Use multiple tar files (one per forecast cycle), station_tar, containing .ts text files of each station.")
+
+	for i in range(0,size(wlist)):
+		# re-check each file in the list respects the same format
+		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='ts':
+			result = wread.ts(wlist[i])
+		elif np.str(wlist[i]).split('/')[-1].split('.')[-1]=='bull':
+			result = wread.bull(wlist[i])
+
+		at=result['time']
+		if i==0:
+			mfcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
+			stname=result['station_name']
+			mtime=np.copy(at)
+			mhs=np.copy([result['hs']])
+			mtp=np.copy([result['tp']])
+			if 'dp' in result.keys():
+				mdp=np.copy([result['dp']])
+			else:
+				mdp=np.copy(mhs)*np.nan
+
+			if 'dm' in result.keys():
+				mdm=np.copy([result['dm']])
+			else:
+				mdm=np.copy(mhs)*np.nan
+
+			if 'tm' in result.keys():
+				mtm=np.copy([result['tm']])
+			else:
+				mtm=np.copy(mhs)*np.nan
+
+		else:
+			if (mhs.shape[1]==result['hs'].shape[0]):
+				stname=np.append(stname,result['station_name'])
+				mtime=np.append(mtime,at)
+				mhs=np.append(mhs,[result['hs']],axis=0)
+				mtp=np.append(mtp,[result['tp']],axis=0)
+				if 'dp' in result.keys():
+					mdp=np.append(mdp,[result['dp']],axis=0)
+				else:
+					mdp=np.append(mdp,[np.copy(result['hs'])*np.nan],axis=0)
+
+				if 'dm' in result.keys():
+					mdm=np.append(mdp,[result['dm']],axis=0)
+				else:
+					mdm=np.append(mdm,[np.copy(result['hs'])*np.nan],axis=0)
+
+				if 'tm' in result.keys():
+					mtm=np.append(mtm,[result['tm']],axis=0)
+				else:
+					mtm=np.append(mtm,[np.copy(result['hs'])*np.nan],axis=0)
+
+			else:
+				print("   Stations in "+wlist[i]+" do not match the other tar files. Skipped "+wlist[i])
+
+		del result,at
+		print("    ww3 file "+wlist[i]+" OK")
+
+
+elif np.str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
+	print(" Using ww3 netcdf point output format")
 	# netcdf point output file 
 	for t in range(0,size(wlist)):
 		try:
@@ -258,7 +280,6 @@ else:
 						astname=np.str(astname).replace("\t","")
 
 					stname=np.append(stname,astname); del astname
-
 
 			ahs = np.array(f.variables['hs'][:,:]).T
 			adm = np.array(f.variables['th1m'][:,:]).T
@@ -293,10 +314,16 @@ else:
 				mtime=np.append(mtime,at)
 				mfcycle=np.append(mfcycle,fcycle)
 
-			del ahs,atm,atp,adm,adp,at
+			del ahs,atm,atp,adm,adp,at,fcycle
 
-print(" Read WW3 data OK. Start building the matchups model/buoy ...")
+	print(" Read WW3 data OK. Start building the matchups model/buoy ..."); print('  ')
 
+else:
+	sys.exit(' Point output file format not recognized: only bull, bull_tar, and .nc implemented.')
+	# include other text formats: tab50, .ts
+
+
+print(" Read WW3 data OK. Start building the matchups model/buoy ..."); print('  ')
 
 #   BUOYS ------------------
 bhs=np.zeros((size(stname),size(mtime)),'f')*np.nan
@@ -535,8 +562,9 @@ if forecastds>0:
 			nbtp=np.zeros((mhs.shape[0],unt.shape[0],size(ind)),'f')*np.nan
 			nbdm=np.zeros((mhs.shape[0],unt.shape[0],size(ind)),'f')*np.nan
 			nbdp=np.zeros((mhs.shape[0],unt.shape[0],size(ind)),'f')*np.nan
-			nfcmap=np.zeros((mhs.shape[0],unt.shape[0],size(ind)),'f')*np.nan
 			nmtime=np.zeros((unt.shape[0],size(ind)),'double')*np.nan
+			if cyclonemap!=0:
+				nfcmap=np.zeros((mhs.shape[0],unt.shape[0],size(ind)),'f')*np.nan
 		
 		nmtime[i,0:size(ind)]=np.array(mtime[ind]).astype('double')
 		nmhs[:,i,:][:,0:size(ind)]=np.array(mhs[:,ind])
@@ -548,8 +576,9 @@ if forecastds>0:
 		nbtm[:,i,:][:,0:size(ind)]=np.array(btm[:,ind])
 		nbtp[:,i,:][:,0:size(ind)]=np.array(btp[:,ind])
 		nbdm[:,i,:][:,0:size(ind)]=np.array(bdm[:,ind])
-		nbdp[:,i,:][:,0:size(ind)]=np.array(bdp[:,ind])					
-		nfcmap[:,i,:][:,0:size(ind)]=np.array(fcmap[:,ind])
+		nbdp[:,i,:][:,0:size(ind)]=np.array(bdp[:,ind])
+		if cyclonemap!=0:				
+			nfcmap[:,i,:][:,0:size(ind)]=np.array(fcmap[:,ind])
 
 	ind=np.where( (nmhs>0.0) & (nbhs>0.0) )
 
