@@ -6,6 +6,7 @@ wread.py
 
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
+ v1.1  01/06/2023
 
 PURPOSE:
  Group of python functions to Read Wave data: 
@@ -44,6 +45,7 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
+ 01/06/2023: Ricardo M. Campos, new file formats added.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
