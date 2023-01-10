@@ -190,21 +190,36 @@ else:
 	c=0
 	for i in range(0,size(wlist)):
 		try:
-			# sequence of ww3 files cannot have overlapped time periods, i.e.,
-			#  the last time step of previous file must come before the first time step of the next file.
-			f=nc.Dataset(np.str(wlist[i]))
+			if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
+				# netcdf format
+				fformat=1
+				f=nc.Dataset(np.str(wlist[i]))
+				wlon=np.array(f.variables['longitude'][:]); wlat=np.array(f.variables['latitude'][:])
+				wtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			
+			elif (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
+				# grib2 format
+				fformat=2
+				f = xr.open_dataset(np.str(wlist[i]), engine='cfgrib')
+				wlon=np.array(f['longitude'].values); wlat=np.array(f['latitude'].values)
+				auxtime = np.array(f.time.values + f.step.values )
+				wtime=np.zeros((auxtime.shape[0]),'d')*np.nan
+				for j in range(0,wtime.shape[0]):
+					wtime[j]=np.double(timegm(strptime(np.str(auxtime[j])[0:-10], '%Y-%m-%dT%H:%M:%S')))
+
+				del auxtime
+			
 		except:
 			print(" Error: Cannot open "+np.str(wlist[i]))
 		else:
 			print(" Ok "+np.str(wlist[i]))
-			wlon=np.array(f.variables['longitude'][:]); wlat=np.array(f.variables['latitude'][:])
+			
 			if size( np.where(wlon>180.) )>0:
 				wlon[wlon>180.] = wlon[wlon>180.]-360.
 
 			if np.array_equal(wlat,mlat)==False | np.array_equal(wlon,mlon)==False: 
 				sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
-			wtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 			# Coincident/Matching Time (model/satellite)
 			aux=np.intersect1d(wtime, stime, assume_unique=False, return_indices=True)
 			indtauxw=np.array(aux[1]).astype('int'); del aux
@@ -222,10 +237,15 @@ else:
 
 				inds=np.where(np.abs(stime-wtime[indtauxw[t]])<1800.)
 				if size(inds)>0:
-					# WW3 Significant Wave Height
-					whs = np.array(f.variables['hs'][indtauxw[t],:,:])
-					# WW3 Wind Speed
-					wwnd = np.array(np.sqrt( f.variables['uwnd'][indtauxw[t],:,:]**2 + f.variables['vwnd'][indtauxw[t],:,:]**2 ))
+					if fformat==1:
+						# WW3 Significant Wave Height and Wind Speed
+						whs = np.array(f.variables['hs'][indtauxw[t],:,:])
+						wwnd = np.array(np.sqrt( f.variables['uwnd'][indtauxw[t],:,:]**2 + f.variables['vwnd'][indtauxw[t],:,:]**2 ))
+					elif fformat==2:
+						# WW3 Significant Wave Height and Wind Speed
+						whs = np.array(f['swh'].values[indtauxw[t],:,:])
+						wwnd = np.array(np.sqrt( f['u'].values[indtauxw[t],:,:]**2 + f['v'].values[indtauxw[t],:,:]**2 ))
+
 					# 'fp', 'dp', 'phs0', 'phs1', 'phs2', 'ptp0', 'ptp1', 'ptp2', 'pdir0', 'pdir1', 'pdir2'
 					# loop through the gridded satellite data for that selected time matching WW3 time.
 					for j in range(0,size(inds)):
