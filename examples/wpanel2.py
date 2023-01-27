@@ -31,8 +31,8 @@ OUTPUT:
   power spectrum, and time-series of Wind Speed, Hs, and Tp.
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
- It uses function wread2.py
+ See setup.py and the imports below.
+ It uses function wread.py
 
 AUTHOR and DATE:
  06/03/2022: Ricardo M. Campos, first version.

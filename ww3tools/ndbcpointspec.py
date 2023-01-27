@@ -29,7 +29,7 @@ OUTPUT:
  If you want to change the resolution (for publications), edit savefig
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
  It requires the python function wread.py, at postproc of WW3-tools
 
 AUTHOR and DATE:

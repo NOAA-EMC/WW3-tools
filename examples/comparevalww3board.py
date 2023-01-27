@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-wpanel1.py
+comparevalww3board.py
 
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
@@ -41,7 +41,6 @@ matplotlib.use('Agg')  # uncomment this for backend plots, not for rendering in 
 import xarray as xr
 import numpy as np
 from pylab import *
-from matplotlib.mlab import *
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 import sys
@@ -67,9 +66,9 @@ slat=np.array([5,65]); slon=np.array([-90,-20])
 # variable for the field plots
 wvar="hs"
 # Paths
-wrun1="/data/ww3/c00"; trun1="PR3.UQ.WDTH1.5" # Title of run
-wrun2="/data/ww3/c00"; trun2="PR3.UQ.WDTH1.5_48D"
-pbuoys="/data/buoys"
+wrun1="/home/ricardo/cimas/analysis/3assessments/modelbuoys/evalGSE/data/stream10/c00"; trun1="PR3.UQ.WDTH1.5" # Title of run
+wrun2="/home/ricardo/cimas/analysis/3assessments/modelbuoys/evalGSE/data/stream21/c00"; trun2="PR3.UQ.WDTH1.5_48D"
+pbuoys="/home/ricardo/cimas/analysis/3assessments/modelbuoys/evalGSE/data/buoys"
 
 # READ DATA ********************
 dt = np.arange(datetime(2016,10,4), datetime(2016,11,3), timedelta(days=1)).astype(datetime) # initial/final date of hindcast (each file with 1 day)
@@ -106,7 +105,10 @@ for t in range(0,size(dt)):
 	# Observations NDBC ----------------
 	if it==0:
 		fname=np.str(pbuoys+"/"+stname+"h2016.nc")
-		tso_time,lixo,tso_lat,tso_lon,lixo,lixo,lixo,lixo,lixo,tso_wnd,lixo,tso_hs,tso_tm,lixo,tso_dm  = wread.tseriesnc_ndbc(fname)
+		result  = wread.tseriesnc_ndbc(fname)
+		tso_time=np.array(result['date']); tso_lat=np.array(result['latitude']); tso_lon=np.array(result['longitude'])
+		tso_wnd=np.array(result['wind_spd']); tso_hs=np.array(result['hs'])
+		tso_tm=np.array(result['tm']); tso_dm=np.array(result['dm']); del result	
 		# round to hour, remove repeated records, running_average of 3h
 		# tso_time = np.array(tso_time, dtype='datetime64[h]') # round to hour
 		del fname
@@ -115,25 +117,27 @@ for t in range(0,size(dt)):
 	# WAVEWATCH III ----------------
 	if it==0:
 		fname=np.str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
-		tsm_time,lixo,lixo,lixo,tsm_hs1,tsm_tm1,lixo,tsm_dm1,lixo,lixo,lixo = wread.tseriesnc_ww3(fname,stname)
-		del fname
+		result = wread.tseriesnc_ww3(fname,stname)
+		tsm_time=np.array(result['date']); tsm_hs1=np.array(result['hs'])
+		tsm_tm1=np.array(result['tm']); tsm_dm1=np.array(result['dm']); del result,fname
 	else:
 		fname=np.str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
-		atsm_time,lixo,lixo,lixo,atsm_hs1,atsm_tm1,lixo,atsm_dm1,lixo,lixo,lixo = wread.tseriesnc_ww3(fname,stname)
-		del fname
-		tsm_time = np.append(tsm_time,atsm_time)
-		tsm_hs1 = np.append(tsm_hs1,atsm_hs1)
-		tsm_tm1 = np.append(tsm_tm1,atsm_tm1)
-		tsm_dm1 = np.append(tsm_dm1,atsm_dm1)
+		result = wread.tseriesnc_ww3(fname,stname)
+		atsm_time=np.array(result['date']); atsm_hs1=np.array(result['hs'])
+		atsm_tm1=np.array(result['tm']); atsm_dm1=np.array(result['dm']); del result,fname
+		tsm_time = np.append(tsm_time,atsm_time); tsm_hs1 = np.append(tsm_hs1,atsm_hs1)
+		tsm_tm1 = np.append(tsm_tm1,atsm_tm1); tsm_dm1 = np.append(tsm_dm1,atsm_dm1)
 
 	if it==0:
 		fname=np.str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
-		lixo,lixo,lixo,lixo,tsm_hs2,tsm_tm2,lixo,tsm_dm2,lixo,lixo,lixo = wread.tseriesnc_ww3(fname,stname)
-		del fname
+		result = wread.tseriesnc_ww3(fname,stname)
+		tsm_hs2=np.array(result['hs']); tsm_tm2=np.array(result['tm'])
+		tsm_dm2=np.array(result['dm']); del result,fname
 	else:
 		fname=np.str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
-		lixo,lixo,lixo,lixo,atsm_hs2,atsm_tm2,lixo,atsm_dm2,lixo,lixo,lixo = wread.tseriesnc_ww3(fname,stname)
-		del fname
+		result = wread.tseriesnc_ww3(fname,stname)
+		atsm_hs2=np.array(result['hs']); atsm_tm2=np.array(result['tm'])
+		atsm_dm2=np.array(result['dm']); del result,fname
 		tsm_hs2 = np.append(tsm_hs2,atsm_hs2)
 		tsm_tm2 = np.append(tsm_tm2,atsm_tm2)
 		tsm_dm2 = np.append(tsm_dm2,atsm_dm2)
@@ -144,7 +148,10 @@ for t in range(0,size(dt)):
 	# Observations NDBC ----------------------
 	if it==0:
 		fname = pbuoys+"/"+stname+"w2016.nc"
-		spo_time,lixo,spo_lat,spo_lon,spo_freq,spo_dfreq,spo_pspec,spo_dmspec,lixo,lixo,lixo = wread.spec_ndbc(fname)
+		result = wread.spec_ndbc(fname)
+		spo_time=np.array(result['date']); spo_freq=np.array(result['freq'])
+		spo_dfreq=np.array(result['deltafreq']); spo_pspec=np.array(result['pspec'])
+		spo_dmspec=np.array(result['dmspec']); del result
 		spo_freq1=np.array(spo_freq-spo_dfreq/2); spo_freq2=np.array(spo_freq+spo_dfreq/2)
 		spo_time = np.array(spo_time, dtype='datetime64[h]') # round to hour
 		del fname
@@ -155,12 +162,17 @@ for t in range(0,size(dt)):
 	# WAVEWATCH III --------------------------
 	if it==0:
 		fname=wrun1+"/ww3gefs."+cdate+"_spec.nc"
-		spm_time,lixo,lixo,lixo,spm_freq,spm_freq1,spm_freq2,spm_dfreq,spm_pspec1,spm_dmspec1,spm_dire,spm_dspec1,lixo,lixo = wread.spec_ww3(fname,stname)
-		del fname
+		result = wread.spec_ww3(fname,stname)
+		spm_time=np.array(result['date']); spm_freq=np.array(result['freq'])
+		spm_freq1=np.array(result['freq1']); spm_freq2=np.array(result['freq2'])
+		spm_dfreq=np.array(result['deltafreq']); spm_pspec1=np.array(result['pspec'])
+		spm_dmspec1=np.array(result['dmspec']); spm_dire=np.array(result['theta'])
+		spm_dspec1=np.array(result['dirspec']); del result, fname
 	else:
 		fname=wrun1+"/ww3gefs."+cdate+"_spec.nc"
-		aspm_time,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec1,aspm_dmspec1,lixo,aspm_dspec1,lixo,lixo = wread.spec_ww3(fname,stname)
-		del fname
+		result = wread.spec_ww3(fname,stname)
+		aspm_time=np.array(result['date']); aspm_pspec1=np.array(result['pspec'])
+		aspm_dmspec1=np.array(result['dmspec']); aspm_dspec1=np.array(result['dirspec']); del result, fname
 		spm_time = np.append(spm_time,aspm_time)
 		spm_pspec1 = np.append(spm_pspec1,aspm_pspec1,axis=0)
 		spm_dmspec1 = np.append(spm_dmspec1,aspm_dmspec1,axis=0)
@@ -168,12 +180,14 @@ for t in range(0,size(dt)):
 
 	if it==0:
 		fname=wrun2+"/ww3gefs."+cdate+"_spec.nc"
-		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,spm_pspec2,spm_dmspec2,lixo,spm_dspec2,lixo,lixo = wread.spec_ww3(fname,stname)
-		del fname
+		result = wread.spec_ww3(fname,stname)
+		spm_pspec2=np.array(result['pspec']); spm_dmspec2=np.array(result['dmspec']);
+		spm_dspec2=np.array(result['dirspec']); del result, fname
 	else:
 		fname=wrun2+"/ww3gefs."+cdate+"_spec.nc"
-		lixo,lixo,lixo,lixo,lixo,lixo,lixo,lixo,aspm_pspec2,aspm_dmspec2,lixo,aspm_dspec2,lixo,lixo = wread.spec_ww3(fname,stname)
-		del fname
+		result = wread.spec_ww3(fname,stname)
+		aspm_pspec2=np.array(result['pspec']); aspm_dmspec2=np.array(result['dmspec']);
+		aspm_dspec2=np.array(result['dirspec']); del result, fname	
 		spm_pspec2 = np.append(spm_pspec2,aspm_pspec2,axis=0)
 		spm_dmspec2 = np.append(spm_dmspec2,aspm_dmspec2,axis=0)
 		spm_dspec2 = np.append(spm_dspec2,aspm_dspec2,axis=0)

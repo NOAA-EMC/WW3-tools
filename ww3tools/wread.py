@@ -37,11 +37,11 @@ USAGE:
  Explanation for each function is contained in the headers
 
 OUTPUT:
- numpy arrays. Description of variables is contained in the header 
-  of each function 
+ Dictionary containing arrays and info.
+ Description of variables is contained in the header of each function.
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
@@ -53,10 +53,11 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-matplotlib.use('Agg') # for backend plots, not for rendering in a window
+# matplotlib.use('Agg') # for backend plots, not for rendering in a window
 import time
 from time import strptime
 from calendar import timegm
+import pandas as pd
 import xarray as xr
 import netCDF4 as nc
 import numpy as np
@@ -191,6 +192,7 @@ def tseriesnc_ndbc(*args):
 
 			# convert wind speed to 10 meters (DNVGL C-205 Table 2-1, confirmed by https://onlinelibrary.wiley.com/doi/pdf/10.1002/er.6382)
 			bwsp =  np.copy(((10./anh)**(0.12)) * bwsp)
+			bgst =  np.copy(((10./anh)**(0.12)) * bgst)
 
 		bwdir = ds['wind_dir'].values[:]
 		bhs = ds['wave_height'].values[:,0,0]
@@ -219,6 +221,108 @@ def tseriesnc_ndbc(*args):
 		return result
 		ds.close()
 		del ds,btime,bsst,bmslp,bdwp,btmp,bgst,bwsp,bwdir,bhs,btm,btp,bdm
+
+# Observations NDBC, text format
+def tseriestxt_ndbc(*args):
+	'''
+	Observations NDBC, time series/table, stdmet format
+	Input: file name (example: NDBC_historical_stdmet_41004.txt)
+	Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+	  and arrays sst,mslp,dwp,tmp,gst,wsp,wdir,hs,tm,tp,dm
+	'''
+	if len(args) == 1:
+		fname=np.str(args[0])
+	elif len(args) > 1:
+		sys.exit(' Too many inputs')
+
+	try:
+		ds = pd.read_csv(fname,comment='#',delimiter=r"\s+")
+		btime=np.zeros(ds.shape[0],'d')
+		if 'mm' in ds.keys():
+			ds = pd.read_csv(fname,comment='#',delimiter=r"\s+",parse_dates= {"date" : ["YY","MM","DD","hh","mm"]})
+			ds['date']=pd.to_datetime(ds['date'],format='%Y %m %d %H %M')
+		else:
+			ds = pd.read_csv(fname,comment='#',delimiter=r"\s+",parse_dates= {"date" : ["YY","MM","DD","hh"]})
+			ds['date']=pd.to_datetime(ds['date'],format='%Y %m %d %H')
+
+		for i in range(0,btime.shape[0]):
+			btime[i]=double(ds['date'][i].timestamp())	
+
+	except:
+		sys.exit(" Cannot open "+fname)
+	else:
+
+		bwdir=np.array(ds['WDIR'].values[:]).astype('float')
+		bgst=np.array(ds['GST'].values[:]).astype('float')
+		bhs=np.array(ds['WVHT'].values[:]).astype('float')
+		btp=np.array(ds['DPD'].values[:]).astype('float')
+		btm=np.array(ds['APD'].values[:]).astype('float')
+		bdm=np.array(ds['MWD'].values[:]).astype('float')
+		bmslp=np.array(ds['PRES'].values[:]).astype('float')
+		btmp=np.array(ds['ATMP'].values[:]).astype('float')
+		bsst=np.array(ds['WTMP'].values[:]).astype('float')
+		bdwp=np.array(ds['DEWP'].values[:]).astype('float')
+
+		if 'WSPD' in ds.keys():
+			bwsp=np.array(ds['WSPD'].values[:]).astype('float')
+			try:
+				from urllib.request import urlopen
+				url = "https://www.ndbc.noaa.gov/station_page.php?station="+np.str(fname).split('/')[-1].split('h')[0].split('_')[-1]
+				page = urlopen(url)
+				html_bytes = page.read()
+				html = html_bytes.decode("utf-8")
+				auxlatlon=html.split('payload')[1][16:33]
+				if 'S' in auxlatlon:
+					blat=-np.float(auxlatlon[0:6])
+				else:
+					blat=np.float(auxlatlon[0:6])
+
+				if 'W' in auxlatlon:
+					blon=-np.float(auxlatlon[8:16])
+				else:
+					blon=np.float(auxlatlon[8:16])	
+
+			except:
+				anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
+				blat=np.nan; blon=np.nan
+				print('Information of Lat, Lon, and Anemometer height could not be obtained.')
+			else:
+
+				if "Anemometer height" in html:
+					anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+				else:
+					print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found.')
+					anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
+
+				del url,page,html_bytes,html
+
+			# convert wind speed to 10 meters (DNVGL C-205 Table 2-1, confirmed by https://onlinelibrary.wiley.com/doi/pdf/10.1002/er.6382)
+			bwsp =  np.copy(((10./anh)**(0.12)) * bwsp)
+			bgst =  np.copy(((10./anh)**(0.12)) * bgst)
+
+		# Automatic and basic Quality Control
+		bsst[np.abs(bsst)>70]=np.nan
+		bmslp[(bmslp<500)|(bmslp>1500)]=np.nan
+		bdwp[np.abs(bdwp)>80]=np.nan
+		btmp[np.abs(btmp)>80]=np.nan
+		bgst[(bgst<0)|(bgst>200)]=np.nan
+		bwsp[(bwsp<0)|(bwsp>150)]=np.nan
+		bwdir[(bwdir<-180)|(bwdir>360)]=np.nan
+		bhs[(bhs<0)|(bhs>30)]=np.nan
+		btm[(btm<0)|(btm>40)]=np.nan
+		btp[(btp<0)|(btp>40)]=np.nan
+		bdm[(bdm<-180)|(bdm>360)]=np.nan
+
+		result={'latitude':blat,'longitude':blon,
+		'time':btime,'date':ds['date'].values[:],
+		'sst':bsst, 'mslp':bmslp, 'dewpt_temp':bdwp,
+		'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,	
+		'wind_dir':bwdir, 'hs':bhs, 'tm':btm,	
+		'tp':btp, 'dm':bdm, 'tm':btm}
+
+		return result
+		del ds,btime,blat,blon,bsst,bmslp,bdwp,btmp,bgst,bwsp,bwdir,bhs,btm,btp,bdm
+
 
 # Observations Copernicus, netcdf format
 def tseriesnc_copernicus(*args):
