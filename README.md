@@ -22,39 +22,33 @@ $> python3 prep_ww3tools.py
 &emsp; During the installation the python dependencies required to run the python codes are verified. If you manage to successfully install ww3-tools and run prep_ww3tools.py, then no dependency problems are expected whilst you work with the python scripts.\
 &emsp; It is important to mention that all WW3 variables as well as NDBC and Copernicus data hold the metric standard, so wave heights are in meters, periods in seconds etc.
 
-
-
-
-
-
-
-# $\textcolor{darkblue}{postproc}$
-&emsp; This directory is for post-processing and visualization of WW3 simulations and buoy data.\
-wread.py is a key python script containing several functions to read WW3 data (field outputs, table of point outputs, and spectrum), NDBC and Copernicus buoy data (table of integrated parameters and spectrum). These functions are called by many codes in this repository so it is recommended that you make sure this is saved (or symbolic link, ln -s) in the directory you are running the visualization and validation scripts, or its path is exported. The header of wread.py shows all the details, inputs and outputs, and examples. More specific information can be found in the header of each function as well.\
-&emsp; The WW3 model provides three output types that are plotted by three python scripts, associated with: field outputs, time-series of point-output, and spectral point-output. These three python scripts are respectively ww3fields.py, ww3pointimeseries.py, ww3pointspec.py.\
-&emsp; The program ww3fields.py is designed to read both netcdf and grib2 formats, and there are options to customize the area and time steps to be plotted. The code is executed for a specific variable defined by the user as an input argument, so entering the file name and variable is mandatory. By using a structure with arguments, common to all the visualization codes, it is simple to embed it in another script, for example an operational shell script. The next codes, ww3pointimeseries.py and ww3pointspec.py are site-specific, associated with a point-output (single lat/lon). ww3pointimeseries.py plots time-series of integrated parameters for a specific point (input argument) while ww3pointspec.py reads the spectral output for a specific point (input argument) and plots the directional spectra, using a polar plot, and the power spectrum.\
-&emsp; The program ndbcpointspec.py is similar to ww3pointspec.py but applied to NDBC spectrum. It calls the function wread.spec_ndbc that reads and mounts the buoy’s directional wave spectrum, and then plot it. All polar spectra use a square-root based scale for the levels, colors, and colorbar.\
-&emsp; The results of the aforementioned programs are png figures, saved in the directory where the user is running the code. Since matplotlib.use('Agg') has been added to the scripts, no figure is expected to pop-up on the screen.
-
-# $\textcolor{darkblue}{download\ observations}$
-&emsp; This is a directory with codes to help users to download observations from different sources. As initially described, WW3-tools joins altimeter and buoy data. While the python codes are able to work with any kind of measurements, taking into account the format and quality control it is much easier to manage the following databases.
+# $\textcolor{darkblue}{ww3tools.downloadobs}$
+&emsp; This is a directory with codes to help users to download observations from different sources. Besides ww3 outputs, WW3-tools works with altimeter and buoy data. \
+&emsp; The main module wfetchbuoy.py downloades integrated wave parameters and wave spectra from NDBC and Copernicus. \
+&emsp; The shell scripts wfetchsatellite_AODN_Altimeter.sh and wfetchsatellite_AODN_Scatterometer.sh download AODN satellite data.
 
 NOAA’s National Data Buoy Center:\
 https://www.ndbc.noaa.gov/rsa.shtml \
 https://www.ndbc.noaa.gov/measdes.shtml \
 https://www.ndbc.noaa.gov/stndesc.shtml \
-Copernicus buoy data: \
+Copernicus buoy data (require registration and username/password): \
 https://marine.copernicus.eu/ \
 Integrated Marine Observing System (IMOS) Australian Ocean Data Network (AODN): \
 https://portal.aodn.org.au/ \
 http://thredds.aodn.org.au/thredds/catalog/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/catalog.html \
 https://doi.org/10.1038/s41597-019-0083-9
 
-&emsp; The NDBC database has multiple options and formats of data, which can be easily downloaded with python scripts. The program get_ndbc_stdmet.py fetches the stdmet format and save the results in ascii. The program retrieve_ndbc_nc.py obtains the data and save it in netcdf format, which is more conveniently used during the validation steps. Both codes require a list of buoy stations to download; a suggestion list is included in the repository with name allbstations.dat. The NDBC spectral data can only be obtained using retrieve_ndbc_nc.py. \
-&emsp; For the Copernicus database, a small shell script was developed, get_buoydata_copernicus.sh, which downloads all the time-series of integrated wave parameters, GL_TS_ , as well as the spectral data, GL_WS_ . Users must register and obtain a user/password that needs to be added in the script.\
-&emsp; The AODN altimeter database is downloaded with get_AODN_AltData.sh, which fetches the data per satellite mission, being separated by hemisphere (N, S). These are input arguments to the code, the exact name of satellites can be found in the header of the code. Due to the large size of the whole data, this structure facilitates the download and data organization. Users will notice buoy data provides a lot of different parameters whereas altimeters only provide significant wave height (Hs) and wind speed (U10). Slightly out of scope, there is an additional program, get_AODN_ScatData.sh, for scatterometer satellite data if users want more wind information.
+&emsp; The wind speed data measured by the buoys have multiple anemometer heights. However, when loading and reading buoy data (both NDBC and Copernicus) with wread.py, it converts the wind speeds to 10-meter height. \
+&emsp; Therefore, wind speed from ww3 outputs, satellite, and buoy data are consistent and fixed to 10 meters.
 
-# $\textcolor{darkblue}{validation}$
+# $\textcolor{darkblue}{ww3tools}$
+&emsp; This directory is the main location where modules and functions are saved. \
+&emsp; wread.py is a key python module containing several functions to read WW3 data (field outputs, table of point outputs, and spectrum), NDBC and Copernicus buoy data (table of integrated parameters and spectrum). The header of wread.py shows all the details, inputs and outputs, and examples. More specific information can be found in the header of each function as well.\
+&emsp; The WW3 model provides three output types that are plotted by three python scripts, associated with: field outputs, time-series of point-output, and spectral point-output. These three python scripts are respectively ww3fields.py, ww3pointimeseries.py, ww3pointspec.py.\
+&emsp; The program ww3fields.py is designed to read both netcdf and grib2 formats, and there are options to customize the area and time steps to be plotted. The code is executed for a specific variable defined by the user as an input argument, so entering the file name and variable is mandatory. By using a structure with arguments, common to all the visualization codes, it is simple to embed it in another script, for example an operational shell script. The next codes, ww3pointimeseries.py and ww3pointspec.py are site-specific, associated with a point-output (single lat/lon). ww3pointimeseries.py plots time-series of integrated parameters for a specific point (input argument) while ww3pointspec.py reads the spectral output for a specific point (input argument) and plots the directional spectra, using a polar plot, and the power spectrum.\
+&emsp; The program ndbcpointspec.py is similar to ww3pointspec.py but applied to NDBC spectrum. It calls the function wread.spec_ndbc that reads and mounts the buoy’s directional wave spectrum, and then plot it. All polar spectra use a square-root based scale for the levels, colors, and colorbar.\
+&emsp; The results of the aforementioned programs are png figures, saved in the directory where the user is running the code. Since matplotlib.use('Agg') has been added to the scripts, no figure is expected to pop-up on the screen. \
+
 &emsp; Although the general validation principle looks intuitively simple, there are important scientific questions hidden in this process as well as critical complex steps. Above all, the validation must allow analysts to deeply investigate the model’s performance and its deficiencies, without being restricted to oversimplified results, such as for example associated with the RMSE of Hs alone. The challenge of having a complete validation package while preserving the practicability has been obtained through the structure shown in the next figures. The two figures present the validation steps using altimeter and buoy data, which are very similar. The validation scheme using altimeters has one more step in the process, related to the satellite collocation into a given regular grid, i.e, first the satellite data is collocated and then the matchups ww3/satellite are built. Whereas, for the buoy data, fixed in the same position (moored buoys), the matchups ww3/buoy is straightforward.\
 &emsp; The process starts with the download of observations, using the given codes described in the figure, or users can adapt to enter their own measurements. The second step is very important because it builds the foundation of where and how the evaluation will occur, through the lat/lon arrays, water depth, and distance to coast. Including marine zone and offshore zone names are optional. This information is carried through the whole validation process, being very useful at the last steps when users want to determine the errors at coastal zones, or, inversely, to ensure the validation is not affected by the continental shelf or islands, or even to specify the model performance at each ocean and offshore/marine areas. Step (3), associated with the cyclones, is also optional, but it is a great tool that allow users to separate the validation considering cyclonic and non-cyclonic conditions – which used to be a time demanding task that is now simple by using procyclmap.py and IBtracks data.\
 &emsp; The satellite collocation with gridSatGlobal_Altimeter.py involves some criteria for the weighted average using pyresample.kd_tree, associated with maximum distance and time to the centered grid point to select from the altimeter tracks. Default values, following the literature, are included; however, depending on the model domain and resolution, users should customize these criteria. The following step, with the model/observation collocation, generates an array with simple structure and dimension. For model/satellite, it is a two-dimensional array, where each column is one feature (model_hs, obs_hs, time, lat, lon, cycloneInfo etc) and the lines are the records of each matchup that has been reshaped. Therefore, if users want to subsample the validation for an specific time interval and location it can be easily done in python by selecting the indexes; for example ind=np.where(cyclone>2) to select model_hs[ind] and obs_hs[ind] for an analysis within the cyclones. The same is valid to select specific oceanic areas, marine/offshore zones, water depths intervals, latitude ranges etc. The main difference between buoy/ww3 matchups and altimeter/ww3 matchups, that must be considered at the final validation steps, is that the buoys/ww3 matchups have three dimensions instead of two, being this extra one associated with buoyID.\
@@ -74,7 +68,7 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; Willmott C, Matsuura, K., 2005. Advantages of the mean absolute error (MAE) over the root mean square error (RMSE) in assessing average model performance. Clim Res 30(79–82). \
 &emsp; Hanna, S., Heinold, D. 1985. Development and application of a simple method for evaluating air quality. In: API Pub. No. 4409, Washington, DC, Washington, USA.
 
-# $\textcolor{darkblue}{operational\ forecast}$
+# $\textcolor{darkblue}{ww3tools.opforecast}$
 &emsp; Similar to download_observations directory, this place contains programs and functions to download publicly available data, namely operational wave forecast data. Two options are included, for NOAA’s deterministic (GFS) and ensemble (GEFS) wave forecasts: \
 https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod \
 https://ftpprd.ncep.noaa.gov/data/nccf/com/gens/prod \
@@ -83,6 +77,7 @@ https://ftpprd.ncep.noaa.gov/data/nccf/com/gens/prod \
 # $\textcolor{darkblue}{examples}$
 &emsp; This final directory contains practical examples of visualization codes developed to evaluate and compare ww3 simulations. The wave panels included gather many tools described above and can be used as a suggestion of visualization and model evaluation. The directory is under constant development, including small practical examples of ww3 simulations and validations.
 
-This is an Open Science initiative. See the webinar \
-"Small Steps, Big Impact: Supporting Open Science Through Open Access & Data Initiatives": \
-https://www.youtube.com/watch?v=JC1CCpuhlqw&ab_channel=NOAACentralLibrary
+# $\textcolor{darkblue}{Final Remarks}$
+&emsp; This is an Open Science initiative. See the webinar \
+&emsp; "Small Steps, Big Impact: Supporting Open Science Through Open Access & Data Initiatives": \
+&emsp; https://www.youtube.com/watch?v=JC1CCpuhlqw&ab_channel=NOAACentralLibrary

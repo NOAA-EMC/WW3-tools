@@ -444,6 +444,70 @@ def tseriesnc_copernicus(*args):
 
 
 # WAVEWATCH III point output, netcdf format
+
+def tseriestxt_ww3(*args):
+	'''
+	WAVEWATCH III, time series/table, text tab format
+	This file format has all point outputs (results) in the same file (not divided by point/buoy).
+	Input:  file name (example: tab50.ww3), and number of point ouputs (example: 4)
+	Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+	  and arrays with the wave variables available. Inside the dictionary, the arrays of wave variables
+	  have dimension (point_outputs, time).
+	'''
+	if len(args) == 2:
+		fname=np.str(args[0]); tnb=np.int(args[1])
+	elif len(args) < 2 :
+		sys.exit(' Two inputs are required: file name and station name')
+	elif len(args) > 2:
+		sys.exit(' Too many inputs')
+
+	try:
+		mcontent = open(fname).readlines()
+	except:
+		sys.exit(" Cannot open "+fname)
+	else:
+
+		tt = np.int(np.size(mcontent)/(7+tnb)+1)
+		myear = []; mmonth = [] ; mday = [] ; mhour = []; mmin = []
+		mlon = np.zeros((tnb,tt),'f'); mlat = np.zeros((tnb,tt),'f'); mhs = np.zeros((tnb,tt),'f'); mL = np.zeros((tnb,tt),'f') 
+		mtm = np.zeros((tnb,tt),'f'); mdm = np.zeros((tnb,tt),'f'); mspr = np.zeros((tnb,tt),'f')
+		atp = np.zeros((tnb,tt),'f'); mdp = np.zeros((tnb,tt),'f'); mpspr = np.zeros((tnb,tt),'f')
+		for i in range(0,tt):
+			j = i*(7+tnb)
+			myear = np.append(myear, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[0]) )
+			mmonth = np.append(mmonth, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[1]) )
+			mday = np.append(mday, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[2]) )
+			mhour = np.append(mhour, np.int(mcontent[j].split(':')[1].split(' ')[2]) )
+			mmin = np.append(mmin, np.int(mcontent[j].split(':')[2]) )
+			for k in range(0,tnb):
+				mlon[k,i]  = mcontent[j+tnb+1+k].strip().split()[0]
+				mlat[k,i]  =  mcontent[j+tnb+1+k].strip().split()[1]
+				mhs[k,i] =  mcontent[j+tnb+1+k].strip().split()[2]
+				mL[k,i] =  mcontent[j+tnb+1+k].strip().split()[3]
+				mtm[k,i] =  mcontent[j+tnb+1+k].strip().split()[4]
+				mdm[k,i] =  mcontent[j+tnb+1+k].strip().split()[5]
+				mspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[6]
+				atp[k,i] =  mcontent[j+tnb+1+k].strip().split()[7]
+				mdp[k,i] =  mcontent[j+tnb+1+k].strip().split()[8]
+				mpspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[9]
+
+		mtp = np.zeros((atp.shape[0],atp.shape[1]),'f')*np.nan
+		for i in range(0,mtp.shape[0]):
+			mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
+
+		mdate = pd.to_datetime(dict(year=myear,month=mmonth,day=mday,hour=mhour,minute=mmin))
+		mtime=np.zeros(mdate.shape[0],'d')
+		for i in range(0,mtime.shape[0]):
+			mtime[i]=double(mdate[i].timestamp())
+
+		result={'latitude':mlat,'longitude':mlon,
+		'time':mtime,'date':mdate,
+		'hs':mhs,'lm':mL,'tm':mtm,'dm':mdm,
+		'spr':mspr,'tp':mtp,'dp':mdp,'spr_dp':mpspr}
+
+		return result
+		del mdate,mtime,mlon,mlat,mhs,mL,mtm,mdm,mspr,atp,mtp,mdp,mpspr
+
 def tseriesnc_ww3(*args):
 	'''
 	WAVEWATCH III, time series/table, netcdf format
