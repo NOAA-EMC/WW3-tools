@@ -65,8 +65,8 @@ OUTPUT:
 DEPENDENCIES:
  See setup.py and the imports below.
  ww3 point output results (list of files ww3list.txt)
- NDBC buoy data (see get_ndbc_nc.py)
- Copernicus buoy data (see get_buoydata_copernicus.sh)
+ NDBC buoy data (see wfetchbuoy.py)
+ Copernicus buoy data (see wfetchbuoy.py)
 
 AUTHOR and DATE:
  05/11/2022: Ricardo M. Campos, first version.
