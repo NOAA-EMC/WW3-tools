@@ -1,28 +1,28 @@
-# ww3tools
+# WW3-tools
 Python tools and utilities for WAVEWATCHIII post-processing and validation.
 
-### Installation
+## Installation
 ```sh
-$> git clone https://github.com/NOAA-EMC/WW3-tools
-$> cd WW3-tools
-$> pip install .
-$> python3 prep_ww3tools.py
+git clone https://github.com/NOAA-EMC/WW3-tools
+cd WW3-tools
+pip install .
+python3 prep_ww3tools.py
 ```
 
-### Documentation
+## Documentation
 
-# Introduction
+### Introduction
 &emsp; The third-generation spectral wave model which is actively used for operational wave forecasts, WAVEWATCH III (WW3), is a five-dimensional numerical model covering: space (latitude, longitude), time, and spectrum (direction and frequency). Therefore, the quality of simulations can be evaluated through these dimensions as well as the error signal that can be tracked and sourced based on the model architecture. Additionally, when the model is integrated covering a sufficiently long period of time, and reliable observations are available, a proper validation is possible using error metrics, which can be expanded to analyze the performance in time-domain, probability-domain, and spectral-domain. By considering the dimensional structure of WW3 as well as the characteristics of the outputs through signal processing covering the domains aforementioned, the quality of wave simulations can be assessed. Note that spectral wave models’ extra dimensions require a different type of validation and visualization tools compared to other modeling systems. The existing tools employ conventional methods for statistical analysis, some lack proper skill to quantify spectral wave models. This is an opportunity to deeply investigate the skill and limitations of WW3 simulations using simple visualization, validation, and statistical tools.\
 &emsp; In this context, the repository presented here provide a variety of tools to download observations, visualize the wave data (ww3 results and buoys), perform a model validation, and plot statistical results. The descriptions in the header of each program and function as well as the examples provide practical guidance through the aforementioned steps.
 
-# Package structure
+### Package structure
 &emsp; This repository contains the WW3-tools python package, designed to facilitate the visualization and validation of WW3 results with easy-to-handle modules and functions. The first part is dedicated to the visualization, where codes to plot wave fields and point-outputs (time-series and spectrum) are included. Examples of “wave panels” were also developed, and users can directly visualize in one figure the five dimensions of WW3 results and compare it with buoys – ideal for case studies. Among the wave panels, there are examples to compare two WW3 simulations, side-by-side, accompanied by buoy data – for a straightforward visual comparison.\
 &emsp; The second and most important part of the package is the validation, which is ready to read buoy data (NDBC and Copernicus) and satellite altimeter data for WW3 comparisons. The four steps for this task are: (1) pre-processing a grid mask generated with the grid characteristics of WW3 as well as water depth, distance to coast, and information of ocean names and NWS marine zones; (2) cyclone map, generated using IBTracks cyclone information, inserted into the lat/lon grid mask, which allows the option of evaluating the model for cyclonic and non-cyclonic conditions; (3) collocation of WW3 with observations, creating matchups model/buoy or model/satellite data, while also inserting the grid-mask and cyclone information. Step (3) creates a netcdf file with model and observations for the exact time and location, with a suitable data structure that makes easy to sub-sample the later assessments based on water depth (and/or distance to coast), ocean basin, forecast area of interest, and inside/outside the cyclones. The final step (4) contains a function to calculate summary statistics and percentiles of model and observations, another function to calculate error metrics, and several functions for validation plots, such as: QQ-plots, scatter plots, time-series of model and buoy, Taylor diagrams etc.\
 &emsp; Scripts to download publicly available observations (altimeters and buoys) and wave forecasts (NOAA GFS and GEFS) are also available so users can, for example, plot and validate the NOAA’s deterministic and ensemble forecasts for any location of interest, using reliable quality-controlled observations.\
 &emsp; During the installation the python dependencies required to run the python codes are verified. If you manage to successfully install ww3-tools and run prep_ww3tools.py, then no dependency problems are expected whilst you work with the python scripts.\
 &emsp; It is important to mention that all WW3 variables as well as NDBC and Copernicus data hold the metric standard, so wave heights are in meters, periods in seconds etc.
 
-# $\textcolor{darkblue}{ww3tools.downloadobs}$
+### $\textcolor{darkblue}{ww3tools.downloadobs}$
 &emsp; This is a directory with codes to help users to download observations from different sources. Besides ww3 outputs, WW3-tools works with altimeter and buoy data. \
 &emsp; The main module wfetchbuoy.py downloades integrated wave parameters and wave spectra from NDBC and Copernicus. \
 &emsp; The shell scripts wfetchsatellite_AODN_Altimeter.sh and wfetchsatellite_AODN_Scatterometer.sh download AODN satellite data.
@@ -41,7 +41,7 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; The wind speed data measured by the buoys have multiple anemometer heights. However, when loading and reading buoy data (both NDBC and Copernicus) with wread.py, it converts the wind speeds to 10-meter height. \
 &emsp; Therefore, wind speed from ww3 outputs, satellite, and buoy data are consistent and fixed to 10 meters.
 
-# $\textcolor{darkblue}{ww3tools}$
+### $\textcolor{darkblue}{ww3tools}$
 &emsp; This directory is the main location where modules and functions are saved. \
 &emsp; wread.py is a key python module containing several functions to read WW3 data (field outputs, table of point outputs, and spectrum), NDBC and Copernicus buoy data (table of integrated parameters and spectrum). The header of wread.py shows all the details, inputs and outputs, and examples. More specific information can be found in the header of each function as well.\
 &emsp; The WW3 model provides three output types that are plotted by three python scripts, associated with: field outputs, time-series of point-output, and spectral point-output. These three python scripts are respectively ww3fields.py, ww3pointimeseries.py, ww3pointspec.py.\
@@ -68,16 +68,16 @@ https://doi.org/10.1038/s41597-019-0083-9
 &emsp; Willmott C, Matsuura, K., 2005. Advantages of the mean absolute error (MAE) over the root mean square error (RMSE) in assessing average model performance. Clim Res 30(79–82). \
 &emsp; Hanna, S., Heinold, D. 1985. Development and application of a simple method for evaluating air quality. In: API Pub. No. 4409, Washington, DC, Washington, USA.
 
-# $\textcolor{darkblue}{ww3tools.opforecast}$
+### $\textcolor{darkblue}{ww3tools.opforecast}$
 &emsp; Similar to download_observations directory, this place contains programs and functions to download publicly available data, namely operational wave forecast data. Two options are included, for NOAA’s deterministic (GFS) and ensemble (GEFS) wave forecasts: \
 https://www.ftp.ncep.noaa.gov/data/nccf/com/gfs/prod \
 https://ftpprd.ncep.noaa.gov/data/nccf/com/gens/prod \
 &emsp; The operational forecast download and post-processing is restricted to linux environment and require the programs: wget, perl, NCO, and wgrib2. Users can edit the shell scripts to select specific variables of interest and level of netcdf4 compression.
 
-# $\textcolor{darkblue}{examples}$
+### $\textcolor{darkblue}{examples}$
 &emsp; This final directory contains practical examples of visualization codes developed to evaluate and compare ww3 simulations. The wave panels included gather many tools described above and can be used as a suggestion of visualization and model evaluation. The directory is under constant development, including small practical examples of ww3 simulations and validations.
 
-# $\textcolor{darkblue}{Final Remarks}$
+## Final Remarks
 &emsp; This is an Open Science initiative. See the webinar \
 &emsp; "Small Steps, Big Impact: Supporting Open Science Through Open Access & Data Initiatives": \
 &emsp; https://www.youtube.com/watch?v=JC1CCpuhlqw&ab_channel=NOAACentralLibrary

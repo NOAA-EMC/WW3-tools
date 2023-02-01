@@ -194,7 +194,7 @@ def tseriesnc_ndbc(*args):
 			bwsp =  np.copy(((10./anh)**(0.12)) * bwsp)
 			bgst =  np.copy(((10./anh)**(0.12)) * bgst)
 
-		bwdir = ds['wind_dir'].values[:]
+		bwdir = ds['wind_dir'].values[:,0,0]
 		bhs = ds['wave_height'].values[:,0,0]
 		bdm = ds['mean_wave_dir'].values[:,0,0]
 
@@ -492,8 +492,12 @@ def tseriestxt_ww3(*args):
 				mpspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[9]
 
 		mtp = np.zeros((atp.shape[0],atp.shape[1]),'f')*np.nan
-		for i in range(0,mtp.shape[0]):
-			mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
+		for i in range(0,mtp.shape[0]):	
+			#mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
+			indtp=np.where(atp[i,:]>0.0)
+			if size(indtp)>0:
+				mtp[i,indtp] = np.copy(1./atp[i,indtp])
+				del indtp
 
 		mdate = pd.to_datetime(dict(year=myear,month=mmonth,day=mday,hour=mhour,minute=mmin))
 		mtime=np.zeros(mdate.shape[0],'d')
@@ -550,10 +554,19 @@ def tseriesnc_ww3(*args):
 			mhs = ds['hs'].values[:,inds]
 			mhs[(mhs<0)|(mhs>30)]=np.nan
 			result['hs']=np.array(mhs)
+		elif 'swh' in ds.keys():
+			mhs = ds['swh'].values[:,inds]
+			mhs[(mhs<0)|(mhs>30)]=np.nan
+			result['hs']=np.array(mhs)
+
 		if 'fp' in ds.keys():
 			mtp = np.zeros(mhs.shape[0],'f')*np.nan
-			mtp[ds['fp'].values[:,inds]>0.0] = 1./ds['fp'].values[:,inds][ds['fp'].values[:,inds]>0.0]
-			mtp[(mtp<0)|(mtp>40)]=np.nan
+			indtp=np.where(ds['fp'].values[:,inds]>0.0)
+			if size(indtp)>0:
+				mtp[indtp] = np.copy(1./ds['fp'].values[indtp,inds])
+				del indtp
+				mtp[(mtp<0)|(mtp>40)]=np.nan
+
 			result['tp']=np.array(mtp)
 		if 'tr' in ds.keys():
 			mtm = ds['tr'].values[:,inds]
