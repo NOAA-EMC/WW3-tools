@@ -1,4 +1,4 @@
-function [filename] = write_directional_spectra_nc(filename,testcase,...
+function [ncfile] = write_directional_spectra_nc(ncfile,testcase,...
     pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,freq,dir,EFTH)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -27,9 +27,9 @@ function [filename] = write_directional_spectra_nc(filename,testcase,...
 % curspd: current speed (m/s) [pointnumber, ntime]
 % curdir: current direction (degrees) [pointnumber, ntime]
 % EFTH: directional spectral density [nDir x nfreq  x pointnumber x ntime]
-% filename: name of output file 
+% ncfile: name of output file 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%example: [filename] = write_directional_spectra_nc('B42001.nc',...
+%example: [ncfile] = write_directional_spectra_nc('B42001.nc',...
 %'inlet','B42001',42,221.1,1521,30,270,0.5,36,time,freq,dir,EFTH)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -199,7 +199,8 @@ netcdf.endDef(nc);
 netcdf.putVar(nc, time_varid,0,2, time-datenum('01011990 000000','ddmmyyyy HHMMSS'));
 netcdf.putVar(nc, station_varid, 84);
 netcdf.putVar(nc, station16_varid, nan*(ones(16,1)));
-netcdf.putVar(nc, station_name_varid,pointID);
+%netcdf.putVar(nc, station_name_varid,pointID);
+netcdf.putVar(nc, station_name_varid,'wavemaker       ');
 netcdf.putVar(nc, lon_varid, Lon);
 netcdf.putVar(nc, lat_varid, Lat);
 netcdf.putVar(nc, f_varid, freq);
