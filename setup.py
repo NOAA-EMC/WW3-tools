@@ -9,7 +9,7 @@ setup(
     author_website='https://www.aoml.noaa.gov/people/ricardo-campos/',
     credits='National Oceanic and Atmospheric Administration (NOAA) and Cooperative Institute For Marine And Atmospheric Studies (CIMAS)',
     url='https://github.com/NOAA-EMC/WW3-tools',
-    license='MIT',
+    license='LGPLv3',
     packages=["ww3tools",
         "ww3tools.downloadobs"],
     install_requires=[
