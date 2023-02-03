@@ -1,5 +1,5 @@
 function [ncfile] = write_directional_spectra_nc(ncfile,testcase,...
-    pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,freq,dir,EFTH)
+    pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,freq,dir,EFTH,coordinate)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This function writes Directional Spectral density file in %
@@ -27,6 +27,7 @@ function [ncfile] = write_directional_spectra_nc(ncfile,testcase,...
 % curspd: current speed (m/s) [pointnumber, ntime]
 % curdir: current direction (degrees) [pointnumber, ntime]
 % EFTH: directional spectral density [nDir x nfreq  x pointnumber x ntime]
+% coordinate: options: 'spherical', 'cartesian'
 % ncfile: name of output file 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %example: [ncfile] = write_directional_spectra_nc('B42001.nc',...
@@ -89,7 +90,28 @@ station_name_varid = netcdf.defVar(nc, 'station_name', 'NC_CHAR', [STAT, STRING]
 netcdf.putAtt(nc, station_varid, 'long_name', 'station name');
 netcdf.putAtt(nc, station_varid, 'axis', 'XW');
 
-                 
+tf=strcmp(coordinate,'spherical');                 
+
+if tf==1
+lon_varid=netcdf.defVar(nc, 'longitude' ,'NC_FLOAT',[STAT,unlim_id]);
+netcdf.putAtt(nc, lon_varid, 'long_name', 'longitude');
+netcdf.putAtt(nc, lon_varid, 'standard_name', 'longitude');
+netcdf.putAtt(nc, lon_varid, 'globwave_name', 'longitude');
+netcdf.putAtt(nc, lon_varid, 'content', 'TX');
+netcdf.putAtt(nc, lon_varid, 'associates', 'time station');
+netcdf.putAtt(nc, lon_varid, 'units', 'degree_east');
+
+lat_varid=netcdf.defVar(nc, 'latitude' ,'NC_FLOAT',[STAT,unlim_id]);
+netcdf.putAtt(nc, lat_varid, 'long_name', 'latitude');
+netcdf.putAtt(nc, lat_varid, 'standard_name', 'latitude');
+netcdf.putAtt(nc, lat_varid, 'globwave_name', 'latitude');
+netcdf.putAtt(nc, lat_varid, 'content', 'TX');
+netcdf.putAtt(nc, lat_varid, 'associates', 'time station');
+netcdf.putAtt(nc, lat_varid, 'units', 'degree_north');
+end
+
+tf=strcmp(coordinate,'cartesian');                 
+if tf==1
 lon_varid=netcdf.defVar(nc, 'x' ,'NC_FLOAT',[STAT,unlim_id]);
 netcdf.putAtt(nc, lon_varid, 'long_name', 'x');
 netcdf.putAtt(nc, lon_varid, 'standard_name', 'x');
@@ -105,6 +127,7 @@ netcdf.putAtt(nc, lat_varid, 'globwave_name', 'y');
 netcdf.putAtt(nc, lat_varid, 'content', 'TX');
 netcdf.putAtt(nc, lat_varid, 'associates', 'time station');
 netcdf.putAtt(nc, lat_varid, 'units', 'm');
+end
 
 
 f_varid=netcdf.defVar(nc, 'frequency' ,'NC_FLOAT',[FREQ]);
@@ -196,11 +219,10 @@ netcdf.putAtt(nc, curdir_varid, 'associates', 'time station');
 
 netcdf.endDef(nc);
 
-netcdf.putVar(nc, time_varid,0,2, time-datenum('01011990 000000','ddmmyyyy HHMMSS'));
+netcdf.putVar(nc, time_varid,0,length(time), time-datenum('01011990 000000','ddmmyyyy HHMMSS'));
 netcdf.putVar(nc, station_varid, 84);
-netcdf.putVar(nc, station16_varid, nan*(ones(16,1)));
-%netcdf.putVar(nc, station_name_varid,pointID);
-netcdf.putVar(nc, station_name_varid,'wavemaker       ');
+netcdf.putVar(nc, station16_varid, nan*(ones(length(pointID),1)));
+netcdf.putVar(nc, station_name_varid,pointID);
 netcdf.putVar(nc, lon_varid, Lon);
 netcdf.putVar(nc, lat_varid, Lat);
 netcdf.putVar(nc, f_varid, freq);
@@ -235,6 +257,23 @@ ncwriteatt(ncfile,'dpt','valid_min', -100);
 ncwriteatt(ncfile,'dpt','valid_max', 1e+04);
 ncwriteatt(ncfile,'dpt','_FillValue', int32(9.97e+36));
 
+tf=strcmp(coordinate,'spherical');              
+if tf==1
+ncwriteatt(ncfile,'latitude','scale_factor', 1);
+ncwriteatt(ncfile,'latitude','add_offset', 0);
+ncwriteatt(ncfile,'latitude','valid_min', -90);
+ncwriteatt(ncfile,'latitude','valid_max', 180);
+ncwriteatt(ncfile,'latitude','_FillValue', int32(9.97e+36));
+
+ncwriteatt(ncfile,'longitude','scale_factor', 1);
+ncwriteatt(ncfile,'longitude','add_offset', 0);
+ncwriteatt(ncfile,'longitude','valid_min', -180);
+ncwriteatt(ncfile,'longitude','valid_max', 360);
+ncwriteatt(ncfile,'longitude','_FillValue', int32(9.97e+36));
+end
+
+tf=strcmp(coordinate,'cartesian');
+if tf==1
 ncwriteatt(ncfile,'y','scale_factor', 1);
 ncwriteatt(ncfile,'y','add_offset', 0);
 ncwriteatt(ncfile,'y','valid_min', -90);
@@ -246,6 +285,8 @@ ncwriteatt(ncfile,'x','add_offset', 0);
 ncwriteatt(ncfile,'x','valid_min', -180);
 ncwriteatt(ncfile,'x','valid_max', 360);
 ncwriteatt(ncfile,'x','_FillValue', int32(9.97e+36));
+end
+
 
 ncwriteatt(ncfile,'direction','scale_factor', 1);
 ncwriteatt(ncfile,'direction','add_offset', 0);
