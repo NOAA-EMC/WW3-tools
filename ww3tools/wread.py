@@ -37,11 +37,11 @@ USAGE:
  Explanation for each function is contained in the headers
 
 OUTPUT:
- numpy arrays. Description of variables is contained in the header 
-  of each function 
+ Dictionary containing arrays and info.
+ Description of variables is contained in the header of each function.
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
@@ -53,10 +53,11 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-matplotlib.use('Agg') # for backend plots, not for rendering in a window
+# matplotlib.use('Agg') # for backend plots, not for rendering in a window
 import time
 from time import strptime
 from calendar import timegm
+import pandas as pd
 import xarray as xr
 import netCDF4 as nc
 import numpy as np
@@ -173,7 +174,7 @@ def tseriesnc_ndbc(*args):
 			bwsp = ds['wind_spd'].values[:,0,0]
 			try:
 				from urllib.request import urlopen
-				url = "https://www.ndbc.noaa.gov/station_page.php?station="+fname.split('h')[0]
+				url = "https://www.ndbc.noaa.gov/station_page.php?station="+np.str(fname).split('/')[-1].split('h')[0]
 				page = urlopen(url)
 				html_bytes = page.read()
 				html = html_bytes.decode("utf-8")
@@ -189,10 +190,11 @@ def tseriesnc_ndbc(*args):
 
 				del url,page,html_bytes,html
 
-			# convert wind speed to 10 meters (DNVGL C-205, confirmed by https://onlinelibrary.wiley.com/doi/pdf/10.1002/er.6382)
-			bwsp =  np.copy(((10./anh)**(0.1)) * bwsp)
+			# convert wind speed to 10 meters (DNVGL C-205 Table 2-1, confirmed by https://onlinelibrary.wiley.com/doi/pdf/10.1002/er.6382)
+			bwsp =  np.copy(((10./anh)**(0.12)) * bwsp)
+			bgst =  np.copy(((10./anh)**(0.12)) * bgst)
 
-		bwdir = ds['wind_dir'].values[:]
+		bwdir = ds['wind_dir'].values[:,0,0]
 		bhs = ds['wave_height'].values[:,0,0]
 		bdm = ds['mean_wave_dir'].values[:,0,0]
 
@@ -219,6 +221,108 @@ def tseriesnc_ndbc(*args):
 		return result
 		ds.close()
 		del ds,btime,bsst,bmslp,bdwp,btmp,bgst,bwsp,bwdir,bhs,btm,btp,bdm
+
+# Observations NDBC, text format
+def tseriestxt_ndbc(*args):
+	'''
+	Observations NDBC, time series/table, stdmet format
+	Input: file name (example: NDBC_historical_stdmet_41004.txt)
+	Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+	  and arrays sst,mslp,dwp,tmp,gst,wsp,wdir,hs,tm,tp,dm
+	'''
+	if len(args) == 1:
+		fname=np.str(args[0])
+	elif len(args) > 1:
+		sys.exit(' Too many inputs')
+
+	try:
+		ds = pd.read_csv(fname,comment='#',delimiter=r"\s+")
+		btime=np.zeros(ds.shape[0],'d')
+		if 'mm' in ds.keys():
+			ds = pd.read_csv(fname,comment='#',delimiter=r"\s+",parse_dates= {"date" : ["YY","MM","DD","hh","mm"]})
+			ds['date']=pd.to_datetime(ds['date'],format='%Y %m %d %H %M')
+		else:
+			ds = pd.read_csv(fname,comment='#',delimiter=r"\s+",parse_dates= {"date" : ["YY","MM","DD","hh"]})
+			ds['date']=pd.to_datetime(ds['date'],format='%Y %m %d %H')
+
+		for i in range(0,btime.shape[0]):
+			btime[i]=double(ds['date'][i].timestamp())	
+
+	except:
+		sys.exit(" Cannot open "+fname)
+	else:
+
+		bwdir=np.array(ds['WDIR'].values[:]).astype('float')
+		bgst=np.array(ds['GST'].values[:]).astype('float')
+		bhs=np.array(ds['WVHT'].values[:]).astype('float')
+		btp=np.array(ds['DPD'].values[:]).astype('float')
+		btm=np.array(ds['APD'].values[:]).astype('float')
+		bdm=np.array(ds['MWD'].values[:]).astype('float')
+		bmslp=np.array(ds['PRES'].values[:]).astype('float')
+		btmp=np.array(ds['ATMP'].values[:]).astype('float')
+		bsst=np.array(ds['WTMP'].values[:]).astype('float')
+		bdwp=np.array(ds['DEWP'].values[:]).astype('float')
+
+		if 'WSPD' in ds.keys():
+			bwsp=np.array(ds['WSPD'].values[:]).astype('float')
+			try:
+				from urllib.request import urlopen
+				url = "https://www.ndbc.noaa.gov/station_page.php?station="+np.str(fname).split('/')[-1].split('h')[0].split('_')[-1]
+				page = urlopen(url)
+				html_bytes = page.read()
+				html = html_bytes.decode("utf-8")
+				auxlatlon=html.split('payload')[1][16:33]
+				if 'S' in auxlatlon:
+					blat=-np.float(auxlatlon[0:6])
+				else:
+					blat=np.float(auxlatlon[0:6])
+
+				if 'W' in auxlatlon:
+					blon=-np.float(auxlatlon[8:16])
+				else:
+					blon=np.float(auxlatlon[8:16])	
+
+			except:
+				anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
+				blat=np.nan; blon=np.nan
+				print('Information of Lat, Lon, and Anemometer height could not be obtained.')
+			else:
+
+				if "Anemometer height" in html:
+					anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+				else:
+					print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found.')
+					anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
+
+				del url,page,html_bytes,html
+
+			# convert wind speed to 10 meters (DNVGL C-205 Table 2-1, confirmed by https://onlinelibrary.wiley.com/doi/pdf/10.1002/er.6382)
+			bwsp =  np.copy(((10./anh)**(0.12)) * bwsp)
+			bgst =  np.copy(((10./anh)**(0.12)) * bgst)
+
+		# Automatic and basic Quality Control
+		bsst[np.abs(bsst)>70]=np.nan
+		bmslp[(bmslp<500)|(bmslp>1500)]=np.nan
+		bdwp[np.abs(bdwp)>80]=np.nan
+		btmp[np.abs(btmp)>80]=np.nan
+		bgst[(bgst<0)|(bgst>200)]=np.nan
+		bwsp[(bwsp<0)|(bwsp>150)]=np.nan
+		bwdir[(bwdir<-180)|(bwdir>360)]=np.nan
+		bhs[(bhs<0)|(bhs>30)]=np.nan
+		btm[(btm<0)|(btm>40)]=np.nan
+		btp[(btp<0)|(btp>40)]=np.nan
+		bdm[(bdm<-180)|(bdm>360)]=np.nan
+
+		result={'latitude':blat,'longitude':blon,
+		'time':btime,'date':ds['date'].values[:],
+		'sst':bsst, 'mslp':bmslp, 'dewpt_temp':bdwp,
+		'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,	
+		'wind_dir':bwdir, 'hs':bhs, 'tm':btm,	
+		'tp':btp, 'dm':bdm, 'tm':btm}
+
+		return result
+		del ds,btime,blat,blon,bsst,bmslp,bdwp,btmp,bgst,bwsp,bwdir,bhs,btm,btp,bdm
+
 
 # Observations Copernicus, netcdf format
 def tseriesnc_copernicus(*args):
@@ -305,13 +409,13 @@ def tseriesnc_copernicus(*args):
 
 		if 'GSPD' in ds.keys():
 			bgst = np.nanmean(ds['GSPD'].values[:,:],axis=1) # gust
-			bgst=np.copy(((10./4.0)**(0.1))*bgst) # conversion to 10m, approximation
+			bgst=np.copy(((10./4.0)**(0.12))*bgst) # conversion to 10m, approximation DNVGL C-205 Table 2-1
 			bgst[(bgst<0)|(bgst>200)]=np.nan
 			result['gust']=np.array(bgst)
 
 		if 'WSPD' in ds.keys():
 			bwsp = np.nanmean(ds['WSPD'].values[:,:],axis=1) # wind speed		
-			bwsp=np.copy(((10./4.0)**(0.1))*bwsp) # conversion to 10m, approximation
+			bwsp=np.copy(((10./4.0)**(0.12))*bwsp) # conversion to 10m, approximation DNVGL C-205 Table 2-1
 			bwsp[(bwsp<0)|(bwsp>150)]=np.nan
 			result['wind_spd']=np.array(bwsp)
 
@@ -340,6 +444,74 @@ def tseriesnc_copernicus(*args):
 
 
 # WAVEWATCH III point output, netcdf format
+
+def tseriestxt_ww3(*args):
+	'''
+	WAVEWATCH III, time series/table, text tab format
+	This file format has all point outputs (results) in the same file (not divided by point/buoy).
+	Input:  file name (example: tab50.ww3), and number of point ouputs (example: 4)
+	Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+	  and arrays with the wave variables available. Inside the dictionary, the arrays of wave variables
+	  have dimension (point_outputs, time).
+	'''
+	if len(args) == 2:
+		fname=np.str(args[0]); tnb=np.int(args[1])
+	elif len(args) < 2 :
+		sys.exit(' Two inputs are required: file name and station name')
+	elif len(args) > 2:
+		sys.exit(' Too many inputs')
+
+	try:
+		mcontent = open(fname).readlines()
+	except:
+		sys.exit(" Cannot open "+fname)
+	else:
+
+		tt = np.int(np.size(mcontent)/(7+tnb)+1)
+		myear = []; mmonth = [] ; mday = [] ; mhour = []; mmin = []
+		mlon = np.zeros((tnb,tt),'f'); mlat = np.zeros((tnb,tt),'f'); mhs = np.zeros((tnb,tt),'f'); mL = np.zeros((tnb,tt),'f') 
+		mtm = np.zeros((tnb,tt),'f'); mdm = np.zeros((tnb,tt),'f'); mspr = np.zeros((tnb,tt),'f')
+		atp = np.zeros((tnb,tt),'f'); mdp = np.zeros((tnb,tt),'f'); mpspr = np.zeros((tnb,tt),'f')
+		for i in range(0,tt):
+			j = i*(7+tnb)
+			myear = np.append(myear, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[0]) )
+			mmonth = np.append(mmonth, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[1]) )
+			mday = np.append(mday, np.int(mcontent[j].split(':')[1].split(' ')[1].split('/')[2]) )
+			mhour = np.append(mhour, np.int(mcontent[j].split(':')[1].split(' ')[2]) )
+			mmin = np.append(mmin, np.int(mcontent[j].split(':')[2]) )
+			for k in range(0,tnb):
+				mlon[k,i]  = mcontent[j+tnb+1+k].strip().split()[0]
+				mlat[k,i]  =  mcontent[j+tnb+1+k].strip().split()[1]
+				mhs[k,i] =  mcontent[j+tnb+1+k].strip().split()[2]
+				mL[k,i] =  mcontent[j+tnb+1+k].strip().split()[3]
+				mtm[k,i] =  mcontent[j+tnb+1+k].strip().split()[4]
+				mdm[k,i] =  mcontent[j+tnb+1+k].strip().split()[5]
+				mspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[6]
+				atp[k,i] =  mcontent[j+tnb+1+k].strip().split()[7]
+				mdp[k,i] =  mcontent[j+tnb+1+k].strip().split()[8]
+				mpspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[9]
+
+		mtp = np.zeros((atp.shape[0],atp.shape[1]),'f')*np.nan
+		for i in range(0,mtp.shape[0]):	
+			#mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
+			indtp=np.where(atp[i,:]>0.0)
+			if size(indtp)>0:
+				mtp[i,indtp] = np.copy(1./atp[i,indtp])
+				del indtp
+
+		mdate = pd.to_datetime(dict(year=myear,month=mmonth,day=mday,hour=mhour,minute=mmin))
+		mtime=np.zeros(mdate.shape[0],'d')
+		for i in range(0,mtime.shape[0]):
+			mtime[i]=double(mdate[i].timestamp())
+
+		result={'latitude':mlat,'longitude':mlon,
+		'time':mtime,'date':mdate,
+		'hs':mhs,'lm':mL,'tm':mtm,'dm':mdm,
+		'spr':mspr,'tp':mtp,'dp':mdp,'spr_dp':mpspr}
+
+		return result
+		del mdate,mtime,mlon,mlat,mhs,mL,mtm,mdm,mspr,atp,mtp,mdp,mpspr
+
 def tseriesnc_ww3(*args):
 	'''
 	WAVEWATCH III, time series/table, netcdf format
@@ -382,10 +554,19 @@ def tseriesnc_ww3(*args):
 			mhs = ds['hs'].values[:,inds]
 			mhs[(mhs<0)|(mhs>30)]=np.nan
 			result['hs']=np.array(mhs)
+		elif 'swh' in ds.keys():
+			mhs = ds['swh'].values[:,inds]
+			mhs[(mhs<0)|(mhs>30)]=np.nan
+			result['hs']=np.array(mhs)
+
 		if 'fp' in ds.keys():
 			mtp = np.zeros(mhs.shape[0],'f')*np.nan
-			mtp[ds['fp'].values[:,inds]>0.0] = 1./ds['fp'].values[:,inds][ds['fp'].values[:,inds]>0.0]
-			mtp[(mtp<0)|(mtp>40)]=np.nan
+			indtp=np.where(ds['fp'].values[:,inds]>0.0)
+			if size(indtp)>0:
+				mtp[indtp] = np.copy(1./ds['fp'].values[indtp,inds])
+				del indtp
+				mtp[(mtp<0)|(mtp>40)]=np.nan
+
 			result['tp']=np.array(mtp)
 		if 'tr' in ds.keys():
 			mtm = ds['tr'].values[:,inds]
@@ -959,8 +1140,12 @@ def spec_ndbc(*args):
 		r2spec = ds['wave_spectrum_r2'][::sk,:,0,0]
 		ds.close(); del ds
 		# DF in frequency (dfreq), https://www.ndbc.noaa.gov/wavespectra.shtml
-		dfreq=np.zeros(47,'f')
-		dfreq[0]=0.010; dfreq[1:14]=0.005; dfreq[14:40]=0.010; dfreq[40::]=0.020
+		if np.int(freq.shape[0])==47:
+			dfreq=np.zeros(47,'f')
+			dfreq[0]=0.010; dfreq[1:14]=0.005; dfreq[14:40]=0.010; dfreq[40::]=0.020
+		else:
+			dfreq=np.zeros(freq.shape[0],'f')+0.01
+
 		pspec=np.array(pspec*dfreq)
 		# Directional 2D Spectrum, https://www.ndbc.noaa.gov/measdes.shtml#swden , https://www.ndbc.noaa.gov/wavemeas.pdf
 		theta = np.array(np.arange(0,360+0.1,deltatheta))

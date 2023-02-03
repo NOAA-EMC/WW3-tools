@@ -1,15 +1,16 @@
 #!/bin/bash
 
-# get_AODN_ScatData.sh
+# wfetchsatellite_AODN_Altimeter.sh
 #
 # VERSION AND LAST UPDATE:
 # v1.0  04/04/2022
+# v1.1  07/11/2022
 #
 # PURPOSE:
-#  Script to download AODN scatterometer data. See the available files at  
-#  http://thredds.aodn.org.au/thredds/catalog/IMOS/SRS/Surface-Waves/Wind-Scatterometry-DM00/catalog.html
-#  Scatterometers:
-#  OCEANSAT-2 ERS-1 ERS-2 METOP-A METOP-B QUIKSCAT RAPIDSCAT
+#  Script to download AODN altimeter data. See the available files at  
+#  http://thredds.aodn.org.au/thredds/catalog/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/catalog.html
+#  Altimeters:
+#  JASON-3 JASON-2 CRYOSAT-2 JASON-1 HY-2 SARAL SENTINEL-3A SENTINEL-3B ENVISAT ERS-1 ERS-2 GEOSAT GFO TOPEX
 #  Satellite data from Integrated Marine Observing System (IMOS), Australian Ocean Data Network (AODN)
 #  https://portal.aodn.org.au/
 #  Altimeter
@@ -19,13 +20,13 @@
 #
 # USAGE:
 #  Three arguments are read:
-#   (1) scatterometer name (exact names, see above)
+#   (1) altimeter name (exact names, see above)
 #   (2) destination path
 #   (3) Hemisphere, N or S
 #  So if you want to download the whole database, you have to run
 #   this code for each satellite and hemisphere.
 #  Examples (from linux/terminal command line):
-#   nohup ./get_AODN_ScatData.sh RAPIDSCAT /media/data/observations/satellite/scatterometer/AODN_scat/RAPIDSCAT S >> nohup_RAPIDSCAT_HS.out 2>&1 &
+#   nohup ./wfetchsatellite_AODN_Altimeter.sh TOPEX /media/data/observations/satellite/altimeter/AODN_altm/TOPEX S >> nohup_TOPEX_HS.out 2>&1 &
 #
 # OUTPUT:
 #  multiple AODN satellite data (netcdf format) saved in the given 
@@ -36,12 +37,14 @@
 #
 # AUTHOR and DATE:
 #  04/04/2022: Ricardo M. Campos, first version.
+#  07/11/2022: Ricardo M. Campos, correct lat2 format for the Southern H.
+#  01/25/2023: Ricardo M. Campos, get_AODN_AltData.sh renamed to wfetchsatellite_AODN_Altimeter.sh
 #
 # PERSON OF CONTACT:
 #  Ricardo M Campos: ricardo.campos@noaa.gov
 #
 
-fname=http://thredds.aodn.org.au/thredds/fileServer/IMOS/SRS/Surface-Waves/Wind-Scatterometry-DM00
+fname=http://thredds.aodn.org.au/thredds/fileServer/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00
 DIR="$2"
 
 s="$1"; h="$3"
@@ -55,13 +58,13 @@ for lon in `seq -f "%03g" 0 20 340`; do
       fi
       for adlon in `seq -f "%03g" 0 19`; do
         lon2=(`expr $lon + $adlon`)
-        test -f $DIR/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+        test -f $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
         TE=$?
         if [ "$TE" -eq 1 ]; then
-          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
           wait $!
           sleep 1
-          echo IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
+          echo IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
           find $DIR -empty -type f -delete
         fi
       done
