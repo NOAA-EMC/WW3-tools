@@ -28,7 +28,7 @@ OUTPUT:
  summary statistics values; and error metrics 
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
 
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.

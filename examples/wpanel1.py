@@ -25,7 +25,7 @@ OUTPUT:
   power spectrum, and time-series of Hs, Tm, and Dm.
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
  It uses function wread.py
 
 AUTHOR and DATE:

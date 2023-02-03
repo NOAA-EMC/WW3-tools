@@ -29,7 +29,7 @@ OUTPUT:
  If you want to change the resolution (for publications), edit savefig
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
  It requires the python function wread.py, at postproc of WW3-tools
 
 AUTHOR and DATE:
@@ -74,9 +74,13 @@ stname=np.str(bspec).split('.nc')[0][-10:-5]
 figname="NDBCspectrum_"+np.str(bspec).split('.nc')[0][-10::]+"_"
 
 # READ NDBC data
-spo_time,ignore,spo_lat,spo_lon,spo_freq,spo_dfreq,spo_pspec,spo_dmspec,ignore,spo_dire,spo_dspec = wread.spec_ndbc(bspec,sk)
+# spo_time,ignore,spo_lat,spo_lon,spo_freq,spo_dfreq,spo_pspec,spo_dmspec,ignore,spo_dire,spo_dspec = wread.spec_ndbc(bspec,sk)
+result = wread.spec_ndbc(bspec,sk)
+spo_time=np.array(result['date']); spo_freq=np.array(result['freq']); spo_dfreq=np.array(result['deltafreq'])
+spo_pspec=np.array(result['pspec']); spo_dire=np.array(result['theta']); spo_dspec=np.array(result['dirspec']); del result
 
 # Organize directions and frequencies
+# indlf=np.where(spo_freq<(1/27))[0] # uncomment this line and line if size(indlf) below if too much energy on frequencies above 27s are found.
 ndire=np.zeros((spo_dire.shape[0]+2),'f'); ndire[1:-1]=spo_dire[:]; ndire[0]=0; ndire[-1]=360
 angle = np.radians(ndire)
 indfb=int(np.where(abs(spo_freq-(1/lper))==min(abs(spo_freq-(1/lper))))[0][0])
@@ -90,12 +94,15 @@ for t in range(0,spo_time.shape[0]):
 	if np.any(np.isnan(spo_dspec[t,:,:])==False):
 	
 		ndspec=np.zeros((spo_freq.shape[0],ndire.shape[0]),'f')
+		#if size(indlf)>0: # uncomment this block and line indlf above if too much energy on frequencies above 27s are found.
+		#	spo_dspec[t,indlf,:]=0.0
+		#	spo_pspec[t,indlf]=0.0
 		ndspec[:,1:-1]=spo_dspec[t,:,:]
 		for i in range(0,spo_freq.shape[0]):
 			ndspec[i,-1]=float((ndspec[i,-2]+ndspec[i,1])/2.)
 			ndspec[i,0]=float((ndspec[i,-2]+ndspec[i,1])/2.)
 	
-		nslevels = np.linspace(0.001,np.nanpercentile(spo_dspec[t,:,:],99.99),201)	
+		nslevels = np.sort(np.linspace(0.001,np.nanpercentile(spo_dspec[t,:,:],99.99),201))
 		fig, axs = plt.subplots(nrows=1,ncols=2,subplot_kw={'projection': ccrs.PlateCarree()},figsize=(12,5))
 		axs[0].remove()
 		axs[0] = fig.add_subplot(1, 2, 1, projection='polar')

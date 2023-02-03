@@ -35,7 +35,7 @@ OUTPUT:
  png figures saved in the local directory or in the path given through tag/prefix.
 
 DEPENDENCIES:
- See dependencies.py and the imports below.
+ See setup.py and the imports below.
 
 AUTHOR and DATE:
  05/24/2022: Ricardo M. Campos, first version.
