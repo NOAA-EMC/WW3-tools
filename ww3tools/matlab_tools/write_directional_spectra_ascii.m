@@ -33,7 +33,7 @@ function [filename] = write_directional_spectra_ascii(filename,testcase,...
 %'inlet','B42001',42,221.1,1521,30,270,0.5,36,time,freq,dir,EF)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 [nDir,nfreq,pointnumber,ntime]=size(EF);
-
+formatOut='yyyymmdd HHMMSS';
 
 fileID = fopen([filename,'.spc'],'w');
 fprintf(fileID,'%s     %d    %d     %d %s\n', 'WAVEWATCH III SPECTRA',...

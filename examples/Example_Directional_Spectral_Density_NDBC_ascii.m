@@ -2,7 +2,7 @@ clear all;
 clc;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This script is an example convenrt ndbc spectral file into%
-% WW3 netcdf format                                         %
+% WW3 .spec format                                          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %      Ali Abdolali Feb 2023 ali.abdolali@noaa.gov          %
@@ -15,9 +15,9 @@ nDir=36;                   % number of Directions
 Dir0=5;                    % first direction (deg)
 inc=1.1;                   % frequency increment
 f0=0.038; 
-filename='bnd_ndbc_ww3.nc';% name of netcdf file (boundary)
+filename='bnd_ndbc';  % name of netcdf file (boundary)
 testcase='DUCK';           % test vase
-pointID='44100';           % id (length should be 16)
+pointID='b44100';           % id (length should be 16)
 Lat=34.71;                 % latitude of BC (deg)
 Lon=-72.248;               % longitude of BC (deg)
 dpt=26;                    % Depth of BC (m)
@@ -29,6 +29,8 @@ coordinate='spherical';    % coordinate : Spherical, cartesian
 ncf='44100w9999.nc';       % input netcdf file from https://dods.ndbc.noaa.gov/
 visualize='true';          % options:true, false- this requires polarPcolor function and can be obtained from ...
                            % https://www.mathworks.com/matlabcentral/fileexchange/49040-pcolor-in-polar-coordinates
+deltatheta=10;             % DeltaDir
+theta0=0;                  % first Dir
 %----------------------------------------------------------%
 % if visualize='true', user can define the time frame to visualize
 t1=(datenum('20221201 000000','yyyymmdd HHMMSS')); % first timestep 
@@ -44,28 +46,38 @@ freq=Omega/2/pi;
 %----------------------------------------------------------%
 display (['Reading ', ncf,' ...'])
 % read input netcdf file (directional spectral density file)
-[SWDEN] = swden_ndbc_read(ncf,10,freq);
+[SWDENread] = swden_ndbc_read(ncf,deltatheta,theta0,freq);
+%extract time series between t1 and t2
+it1=find(abs(SWDENread.Int.time-t1)==nanmin(abs(SWDENread.Int.time-t1)));
+it2=find(abs(SWDENread.Int.time-t2)==nanmin(abs(SWDENread.Int.time-t2)));
+
+SWDEN.time=SWDENread.Int.time(it1:it2);
+SWDEN.f=SWDENread.Int.f;
+SWDEN.Dir=SWDENread.Int.Dir;
+SWDEN.Hs=SWDENread.Int.Hs(it1:it2);
+SWDEN.Fp=SWDENread.Int.Fp(it1:it2);
+SWDEN.SPEC=SWDENread.Int.SPEC(:,it1:it2);
+SWDEN.DENS=SWDENread.Int.DENS(:,:,it1:it2);
 %----------------------------------------------------------%
 % The boundary requres coordinates (lat, lon) depth, wind speed
 % wind direction, current speed, current direction for each time step.
 % Here wind and current are 0.
-pointID = [pointID,repmat(' ', [1, 16-strlength(pointID)])];
-Lon=Lon*ones(1,length(SWDEN.Int.time));
-Lat=Lat*ones(1,length(SWDEN.Int.time));
-curspd=curspd*ones(1,length(SWDEN.Int.time));
-curdir=curdir*ones(1,length(SWDEN.Int.time));
-wndspd=wndspd*ones(1,length(SWDEN.Int.time));
-wnddir=wnddir*ones(1,length(SWDEN.Int.time));
-dpt=dpt*ones(1,length(SWDEN.Int.time));
-time(1,:)=SWDEN.Int.time;
-dir=pi*SWDEN.Int.Dir/180; %radian
-EFTH(:,:,1,:)=SWDEN.Int.DENS; %directional spectral density time series
+Lon=Lon*ones(1,length(SWDEN.time));
+Lat=Lat*ones(1,length(SWDEN.time));
+curspd=curspd*ones(1,length(SWDEN.time));
+curdir=curdir*ones(1,length(SWDEN.time));
+wndspd=wndspd*ones(1,length(SWDEN.time));
+wnddir=wnddir*ones(1,length(SWDEN.time));
+dpt=dpt*ones(1,length(SWDEN.time));
+time(1,:)=SWDEN.time;
+dir=pi*SWDEN.Dir/180; %radian
+EFTH(:,:,1,:)=SWDEN.DENS; %directional spectral density time series
 %----------------------------------------------------------%
 display (['Generating ', filename,' ...'])
-%dump into netcdf
-[filename] = write_directional_spectra_nc(filename,testcase,...
+%dump into *.spec
+[filename] = write_directional_spectra_ascii(filename,testcase,...
             pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,...
-            SWDEN.Int.f,dir,EFTH,coordinate);
+            SWDEN.f,dir,EFTH);
         
  
 %%
@@ -78,8 +90,8 @@ height=500;  % Height of figure of movie [pixels]
 left=200;     % Left margin between figure and screen edge [pixels]
 bottom=200;  % Bottom margin between figure and screen edge [pixels]
 
-DENSOrig(:,:,:)=SWDEN.Orig.DENS(:,:,:);
-DENSInt(:,:,:)=SWDEN.Int.DENS(:,:,:);
+DENSOrig(:,:,:)=SWDENread.Orig.DENS(:,:,:);
+DENSInt(:,:,:)=SWDENread.Int.DENS(:,:,:);
 t=t1:dt:t2;
 h=figure;
 set(gcf,'Position', [left bottom width height])
@@ -88,21 +100,21 @@ for k=1:1:length(t)
     clf
  subplot(1,2,1)
  
- [it]=find(abs(SWDEN.Orig.time-t(k))==min((abs(SWDEN.Orig.time-t(k)))));
+ [it]=find(abs(SWDENread.Orig.time-t(k))==min((abs(SWDENread.Orig.time-t(k)))));
  clear DENSS
  DENSS(:,:)=DENSOrig(:,:,it(1),:);
  DENSStmp=[DENSS;DENSS(1,:)];
- [~,cc] = polarPcolor(SWDEN.Orig.f,[SWDEN.Orig.Dir SWDEN.Orig.Dir(1)],...
-     DENSStmp,'Nspokes',36,'ncolor',10,'labelR','f (Hz)');
- ylabel(cc,['Obs (Original); Date = ',datestr(SWDEN.Orig.time(it(1)))],'FontSize',14);
+ [~,cc] = polarPcolor(SWDENread.Orig.f,[SWDENread.Orig.Dir SWDENread.Orig.Dir(1)],...
+     DENSStmp,'Nspokes',36,'ncolor',10,'labelR','f (Hz)','Rscale','log');
+ ylabel(cc,['Obs (Original); Date = ',datestr(SWDENread.Orig.time(it(1)))],'FontSize',14);
 caxis([0 nanmax(DENSS(:))])
  subplot(1,2,2)
  clear DENSS
  DENSS(:,:)=DENSInt(:,:,it(1),:);
  DENSStmp=[DENSS;DENSS(1,:)];
- [~,cc] = polarPcolor(SWDEN.Int.f,[SWDEN.Int.Dir SWDEN.Int.Dir(1)],...
-     DENSStmp,'Nspokes',36,'ncolor',10,'labelR','f (Hz)');
- ylabel(cc,['Obs (Interpolated); Date = ',datestr(SWDEN.Orig.time(it(1)))],'FontSize',14);
+ [~,cc] = polarPcolor(SWDENread.Int.f,[SWDENread.Int.Dir SWDENread.Int.Dir(1)],...
+     DENSStmp,'Nspokes',36,'ncolor',10,'labelR','f (Hz)','Rscale','log');
+ ylabel(cc,['Obs (Interpolated); Date = ',datestr(SWDENread.Orig.time(it(1)))],'FontSize',14);
 caxis([0 nanmax(DENSS(:))])
 
   frame = getframe(h);

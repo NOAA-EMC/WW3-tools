@@ -10,8 +10,8 @@ clc;
 % add path
 addpath ../ww3tools/matlab_tools
 %% input data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Hs=1;                      % significant wave height (m)                                                                         significant wave height (m)
-Tp=13;                     % peak period (s)                                                                       zero-crossing period (s)
+Hs=1;                      % significant wave height (m)                  
+Tp=13;                     % peak period (s)                              
 MeanDir=100;                % Mean Wave direction
 nfreq=35;                  % number of frequencies
 nDir=36;                   % number of Directions
@@ -145,7 +145,7 @@ xlim([freq(1) freq(end)])
 sss2=subplot(2,1,2);
 SPECC=EFTH(:,:,1,k);
 [~,cc] = polarPcolor(freq,[180*dir/pi 180*dir(1)/pi],...
-     [SPECC; SPECC(1,:)],'Nspokes',36,'ncolor',10,'labelR','f (Hz)');
+     [SPECC; SPECC(1,:)],'Nspokes',36,'ncolor',10,'labelR','f (Hz)','Rscale','log');
  ylabel(cc,['Date = ',datestr(time(k))],'FontSize',14);
 
 set(sss1, 'Position', [.08 .55 .88 .4]);
