@@ -61,13 +61,14 @@ wnddir=wnddir*ones(1,length(SWDEN.Int.time));
 dpt=dpt*ones(1,length(SWDEN.Int.time));
 time(1,:)=SWDEN.Int.time;
 dir=pi*SWDEN.Int.Dir/180; %radian
+dir0=SWDEN.Int.Dir;%degree
 EFTH(:,:,1,:)=SWDEN.Int.DENS; %directional spectral density time series
 %----------------------------------------------------------%
 display (['Generating ', filename,' ...'])
 %dump into netcdf
 [filename] = write_directional_spectra_nc(filename,testcase,...
             pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,...
-            SWDEN.Int.f,dir,EFTH,coordinate);
+            SWDEN.Int.f,dir0,EFTH,coordinate);
         
  
 %%

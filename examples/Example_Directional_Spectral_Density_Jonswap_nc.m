@@ -112,7 +112,7 @@ dpt=dpt*ones(1,length(time));
 display (['Generating ', filename,' ...'])
 %dump into netcdf
 [filename] = write_directional_spectra_nc(filename,testcase,...
-    pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,freq,dir,EFTH,coordinate);
+    pointID,Lat,Lon,dpt,wndspd,wnddir,curspd,curdir,time,freq,dir0,EFTH,coordinate);
 %----------------------------------------------------------%         
 tf=strcmp(visualize,'true');                 
 if tf==1
