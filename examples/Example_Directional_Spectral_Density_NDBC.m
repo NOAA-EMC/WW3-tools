@@ -8,7 +8,7 @@ clc;
 %      Ali Abdolali Feb 2023 ali.abdolali@noaa.gov          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % add path
-addpath ../ww3tools/matlab_tools
+addpath ../matlab_tools
 %% input data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 nfreq=35;                  % number of frequencies
 nDir=36;                   % number of Directions

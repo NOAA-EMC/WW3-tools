@@ -8,7 +8,7 @@ clc;
 %      Ali Abdolali Feb 2023 ali.abdolali@noaa.gov          %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % add path
-addpath ../ww3tools/matlab_tools
+addpath ../matlab_tools
 %% input data %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Hs=1;                      % significant wave height (m)                                                                         significant wave height (m)
 Tp=13;                     % peak period (s)                                                                       zero-crossing period (s)
