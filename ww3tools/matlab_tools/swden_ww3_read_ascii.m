@@ -19,6 +19,7 @@ function [SWDEN] = swden_ww3_read_ascii(specfile)
 % SPEC: Spectral Density [freq,stations,time]
 % Hs: Significant Wave Heigth (m)
 % Fp: Peak Freq (Hz)
+% mwvdir: mean wave direction (degrees)
 % cur: current speed (m/s)
 % curdir: current direction (deg)
 % wnd: wind speed (m/s)
@@ -106,16 +107,25 @@ DeltaDir=abs(SWDEN.Dir(2)-SWDEN.Dir(1));
 DENS=SWDEN.DENS;
 DENS=[DENS; DENS(1,:,:,:)];
 [DD,FF,KK,TT]=size(SWDEN.DENS);
+
+DENSCOS=cosd([SWDEN.Dir;SWDEN.Dir(1)]).*DENS;
+DENSSIN=sind([SWDEN.Dir;SWDEN.Dir(1)]).*DENS;
+
 for k=1:KK
 for ii=1:FF
 SPEC(ii,k,:) = abs(trapz(0:pi*DeltaDir/180:2*pi,DENS(:,ii,k,:)));
+SPECA(ii,k,:) = (trapz(0:pi*DeltaDir/180:2*pi,DENSCOS(:,ii,k,:)));
+SPECB(ii,k,:) = (trapz(0:pi*DeltaDir/180:2*pi,DENSSIN(:,ii,k,:)));
 end
 end
 SWDEN.SPEC=SPEC;
 for k=1:KK
  Hs(k,:)=4.004*sqrt(abs(trapz(2*pi*SWDEN.f,SPEC(:,k,:))))/sqrt(2*pi);
+ AA(k,:)=((trapz(2*pi*SWDEN.f,SPECA(:,k,:))));
+ BB(k,:)=((trapz(2*pi*SWDEN.f,SPECB(:,k,:))));
 end
  SWDEN.Hs=Hs;
+ SWDEN.mwvdir=(180*atan2(BB,AA)/pi)+180;
 
 for k=1:KK
     clear SPECmax
