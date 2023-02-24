@@ -87,7 +87,7 @@ end
 for i=1:length(freq)
     Q(1,i) = abs(trapz(0:pi*DeltaDir/180:2*pi-pi*DeltaDir/180,SPEC(:,i)));
 end
-coef=mean(Q.\S);
+coef=nanmean(Q.\S);
 Q=coef*Q;
 HScheck2=4.004*sqrt(trapz(2*pi*freq,Q))/sqrt(2*pi);
 SPEC=coef*SPEC;
