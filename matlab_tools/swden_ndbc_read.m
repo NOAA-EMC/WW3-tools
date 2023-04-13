@@ -1,4 +1,4 @@
-function [SWDEN] = swden_ndbc_read(ncf,deltatheta,freq)
+function [SWDEN] = swden_ndbc_read(ncf,deltatheta,theta0,freq)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % This function reads NDBC directional spectral density file%
 % netcdf format from https://dods.ndbc.noaa.gov/            %
@@ -9,6 +9,7 @@ function [SWDEN] = swden_ndbc_read(ncf,deltatheta,freq)
 %  input data %--------------------------------------------%
 % ncf: name of netcdf file
 % deltatheta: direction resolution (degree)
+% theta0: first dir (degree)
 % freq: Frequency for interpolation (Hz)
 %  output data %--------------------------------------------%
 %There are two outputs: 
@@ -35,7 +36,7 @@ alpha1=ncread(ncf,'mean_wave_dir');
 a1(:,:)=alpha1(1,1,:,:);
 alpha2=ncread(ncf,'principal_wave_dir');
 a2(:,:)=alpha2(1,1,:,:);
-theta(1,:)=[90:-deltatheta:0 360-deltatheta:-deltatheta:90+deltatheta];
+theta(1,:)=[90-theta0:-deltatheta:0+theta0 360+theta0-deltatheta:-deltatheta:90+deltatheta-theta0];
 Hs(:,1)=4.004*sqrt(abs(trapz(2*pi*f,SPEC(:,:))))/sqrt(2*pi);
 
 SPECmax=nanmax(SPEC);
