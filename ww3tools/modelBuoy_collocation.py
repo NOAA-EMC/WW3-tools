@@ -337,14 +337,14 @@ elif np.str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 
 			del ahs,atm,atp,adm,adp,at,fcycle
 
-	print(" Read WW3 data OK. Start building the matchups model/buoy ..."); print('  ')
+	print(" Read WW3 data OK."); print('  ')
 
 else:
 	sys.exit(' Point output file format not recognized: only bull, bull_tar, and .nc implemented.')
 	# include other text formats: tab50, .ts
 
 
-print(" Read WW3 data OK. Start building the matchups model/buoy ..."); print('  ')
+print(" Start building the matchups model/buoy ..."); print('  ')
 
 #   BUOYS ------------------
 bhs=np.zeros((size(stname),size(mtime)),'f')*np.nan
@@ -414,6 +414,8 @@ for b in range(0,size(stname)):
 				ahs = np.nanmean(f.variables['VHM0'][:,:],axis=1)
 			elif 'VAVH' in f.variables.keys():
 				ahs = np.nanmean(f.variables['VAVH'][:,:],axis=1)
+			elif 'VGHS' in f.variables.keys():				
+				ahs = np.nanmean(f.variables['VGHS'][:,:],axis=1)						
 			elif 'significant_swell_wave_height' in f.variables.keys():
 				ahs = np.nanmean(f.variables['significant_swell_wave_height'][:,:],axis=1)
 			elif 'sea_surface_significant_wave_height' in f.variables.keys():
@@ -427,8 +429,10 @@ for b in range(0,size(stname)):
 
 			if 'VTM02' in f.variables.keys():
 				atm = np.nanmean(f.variables['VTM02'][:,:],axis=1)
+			elif 'VGTA' in f.variables.keys():
+				atm = np.nanmean(f.variables['VGTA'][:,:],axis=1)
 			else:
-				atm = np.array(np.copy(ahs*nan))
+				atm = ahs*nan
 
 			if 'VTPK' in f.variables.keys():
 				atp = np.nanmean(f.variables['VTPK'][:,:],axis=1)
@@ -437,12 +441,12 @@ for b in range(0,size(stname)):
 			elif 'sea_surface_wave_period_at_spectral_density_maximum' in f.variables.keys():
 				atp = np.nanmean(f.variables['sea_surface_wave_period_at_spectral_density_maximum'][:,:],axis=1)
 			else:
-				atp = np.array(np.copy(ahs*nan))
+				atp = ahs*nan
 
 			if 'VMDR' in f.variables.keys():	
 				adm = np.nanmean(f.variables['VMDR'][:,:],axis=1)
 			else:
-				adm = np.array(np.copy(ahs*nan))
+				adm = ahs*nan
 
 			if 'LATITUDE' in f.variables.keys():
 				lat[b] = np.nanmean(f.variables['LATITUDE'][:])
@@ -470,60 +474,60 @@ for b in range(0,size(stname)):
 			else:
 				lon[b] = nan
 
-			adp = adm*np.nan # no peak direction available in this format
+			adp = ahs*nan # no peak direction available in this format
 
 			if 'TIME' in f.variables.keys():
 				atime = np.array(f.variables['TIME'][:]*24*3600 + timegm( strptime('195001010000', '%Y%m%d%H%M') )).astype('double')
 			elif 'time' in f.variables.keys():			
 				atime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime('195001010000', '%Y%m%d%H%M') )).astype('double')
-			
+
 			f.close(); del f
 		except:
 			ahs=[]
 
-	else:
-		if size(ahs>0):
+	
+	if size(ahs)>0:
 
-			# First layer of simple quality-control
-			indq=np.where((ahs>30.)|(ahs<0.0))
-			if size(indq)>0:
-				ahs[indq]=np.nan; del indq
+		# First layer of simple quality-control
+		indq=np.where((ahs>30.)|(ahs<0.0))
+		if size(indq)>0:
+			ahs[indq]=np.nan; del indq
 
-			indq=np.where((atm>40.)|(atm<0.0))
-			if size(indq)>0:
-				atm[indq]=np.nan; del indq
+		indq=np.where((atm>40.)|(atm<0.0))
+		if size(indq)>0:
+			atm[indq]=np.nan; del indq
 
-			indq=np.where((atp>40.)|(atp<0.0))
-			if size(indq)>0:
-				atp[indq]=np.nan; del indq
+		indq=np.where((atp>40.)|(atp<0.0))
+		if size(indq)>0:
+			atp[indq]=np.nan; del indq
 
-			indq=np.where((adm>360.)|(adm<-180.))
-			if size(indq)>0:
-				adm[indq]=np.nan; del indq
+		indq=np.where((adm>360.)|(adm<-180.))
+		if size(indq)>0:
+			adm[indq]=np.nan; del indq
 
-			indq=np.where((adp>360.)|(adp<-180.))
-			if size(indq)>0:
-				adp[indq]=np.nan; del indq
+		indq=np.where((adp>360.)|(adp<-180.))
+		if size(indq)>0:
+			adp[indq]=np.nan; del indq
 
-			c=0
-			for t in range(0,size(mtime)):
-				indt=np.where(np.abs(atime-mtime[t])<1800.)
-				if size(indt)>0:
-					if np.any(ahs[indt[0]].mask==False):
-						bhs[b,t] = np.nanmean(ahs[indt[0]][ahs[indt[0]].mask==False])
-						c=c+1
-					if np.any(atm[indt[0]].mask==False):
-						btm[b,t] = np.nanmean(atm[indt[0]][atm[indt[0]].mask==False])
-					if np.any(atp[indt[0]].mask==False):
-						btp[b,t] = np.nanmean(atp[indt[0]][atp[indt[0]].mask==False])
-					if np.any(adm[indt[0]].mask==False):
-						bdm[b,t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask==False])
-					if np.any(adp[indt[0]].mask==False):
-						bdp[b,t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask==False])
+		c=0
+		for t in range(0,size(mtime)):
+			indt=np.where(np.abs(atime-mtime[t])<1800.)
+			if size(indt)>0:
+				if np.any(ahs[indt[0]].mask==False):
+					bhs[b,t] = np.nanmean(ahs[indt[0]][ahs[indt[0]].mask==False])
+					c=c+1
+				if np.any(atm[indt[0]].mask==False):
+					btm[b,t] = np.nanmean(atm[indt[0]][atm[indt[0]].mask==False])
+				if np.any(atp[indt[0]].mask==False):
+					btp[b,t] = np.nanmean(atp[indt[0]][atp[indt[0]].mask==False])
+				if np.any(adm[indt[0]].mask==False):
+					bdm[b,t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask==False])
+				if np.any(adp[indt[0]].mask==False):
+					bdp[b,t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask==False])
 
-					del indt
+				del indt
 
-			# print("counted "+repr(c)+" at "+stname[b])
+		# print("counted "+repr(c)+" at "+stname[b])
 
 	print("   station "+stname[b]+"  ok")
 	del ahs
@@ -570,7 +574,7 @@ ind=np.where((mdp>360.)|(mdp<-180.))
 if size(ind)>0:
 	mdp[ind]=np.nan; del ind
 
-# Clean data excluding stations without data. Select matchups only when both model and buoy are available.
+# Clean data excluding some stations. Select matchups only when model and buoy are available.
 ind=np.where( (np.isnan(lat)==False) & (np.isnan(lon)==False) & (np.isnan(np.nanmean(mhs,axis=1))==False) & (np.isnan(np.nanmean(bhs,axis=1))==False) )
 if size(ind)>0:
 	stname=np.array(stname[ind[0]])

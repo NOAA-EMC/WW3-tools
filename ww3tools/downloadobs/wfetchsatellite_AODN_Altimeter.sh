@@ -10,7 +10,7 @@
 #  Script to download AODN altimeter data. See the available files at  
 #  http://thredds.aodn.org.au/thredds/catalog/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/catalog.html
 #  Altimeters:
-#  JASON-3 JASON-2 CRYOSAT-2 JASON-1 HY-2 SARAL SENTINEL-3A SENTINEL-3B ENVISAT ERS-1 ERS-2 GEOSAT GFO TOPEX
+#  JASON-3 JASON-2 CRYOSAT-2 JASON-1 HY-2 SARAL SENTINEL-3A SENTINEL-3B ENVISAT ERS-1 ERS-2 GEOSAT GFO TOPEX CFOSAT
 #  Satellite data from Integrated Marine Observing System (IMOS), Australian Ocean Data Network (AODN)
 #  https://portal.aodn.org.au/
 #  Altimeter

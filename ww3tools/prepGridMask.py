@@ -133,8 +133,13 @@ if fainfo>=3:
 
 # Sample file Model(reference) lat lon array
 ds=xr.open_dataset('ww3.gfs-v16.glo_10mxt.PR3.20210924_20211024.nc')
-mapsta=ds["MAPSTA"].values[:,:]
 lat = ds['latitude'].values[:]; lon = ds['longitude'].values[:]
+if "MAPSTA" in ds.keys():
+	mapsta=ds["MAPSTA"].values[:,:]
+	nmapsta=1
+else:
+	nmapsta=0
+
 ds.close(); del ds
 print(' read model sample to get lat/lon: OK')
 
@@ -160,7 +165,11 @@ print(' read distance to coast: OK')
 # Build Mask (nan = land excluded; 0 = ocean excluded; 1 = ocean valid)
 mask = np.zeros((lat.shape[0],lon.shape[0]),'f')
 # excluding continent or model mask
-ind = np.where((ib>0)|(mapsta>100)|(mapsta==0)); mask[ind[0],ind[1]] = np.nan; del ind
+if nmapsta==1:
+	ind = np.where((ib>0)|(mapsta>100)|(mapsta==0)); mask[ind[0],ind[1]] = np.nan; del ind
+else:
+	ind = np.where(ib>0); mask[ind[0],ind[1]] = np.nan; del ind
+	
 # excluding based on depth and dist-to-coast criteria
 ind = np.where( (ib<=(-1*mindepth)) & (idfc>=mindfc) & (np.isnan(mask)==False) ); mask[ind[0],ind[1]] = 1; del ind
 mask[:,0]=mask[:,-1]

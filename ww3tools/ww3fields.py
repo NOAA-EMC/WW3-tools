@@ -85,26 +85,38 @@ elif len(sys.argv) > 6:
 if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'grb2': 
 	# grib2 format
 	ds = xr.open_dataset(fname, engine='cfgrib')
-	wtime = np.array(ds.time.values + ds.step.values )
+	wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
 	if wvar=='hs':
 		wvar=np.str('swh')
 
 	if (wvar in list(ds.keys()))==False:
 		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
 
-	if size(ds[wvar].shape)==3:
-		# Structured
-		gstr=2
-		wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
-	elif size(ds[wvar].shape)==2:
-		# Unstructured
-		gstr=1
-		wdata = np.array(ds[wvar].values)
+	lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
+	
+	if wtime.shape[0]==1:
+		if (size(ds[wvar].shape)==2) and (ds[wvar].shape[0]==lat.shape[0]) and (ds[wvar].shape[1]==lon.shape[0]):
+			# Structured
+			gstr=2
+			wdata = np.array([np.flip(ds[wvar].values[:,:],0)])
+		else:
+			# Unstructured
+			gstr=1
+			wdata = np.array(ds[wvar].values)
 	else:
-		sys.exit(' Unexpected file shape.')
+		if size(ds[wvar].shape)==3:
+			# Structured
+			gstr=2
+			wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
+		elif size(ds[wvar].shape)==2:
+			# Unstructured
+			gstr=1
+			wdata = np.array(ds[wvar].values)
+		else:
+			sys.exit(' Unexpected file shape.')
 
 	units_wdata = np.str(ds[wvar].units)
-	lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
+
 	if gstr==2 and size(lat.shape)==1:
 		lat = np.sort(lat)
 
@@ -120,17 +132,25 @@ else:
 	wdata = np.array(f.variables[wvar])
 	units_wdata = np.str(f.variables[wvar].units)
 	lat = np.array(f.variables['latitude']); lon = np.array(f.variables['longitude'])
-	if size(wdata.shape)==3 and size(lat.shape)==1:
-		# Structured
-		gstr=2
-	elif size(wdata.shape)==2 or size(lat.shape)==2:
-		# Unstructured
-		gstr=1
+
+	if f.variables['time'].shape[0]==1:
+		if (size(wdata.shape)==2) and (wdata.shape[0]==lat.shape[0]) and (wdata.shape[1]==lon.shape[0]):
+			gstr=2 # Structured
+			wdata = np.array([f.variables[wvar][:,:]])
+		else:
+			gstr=1 # Unstructured
+	else:
+		if size(wdata.shape)==3 and size(lat.shape)==1:
+			# Structured
+			gstr=2
+		elif size(wdata.shape)==2 or size(lat.shape)==2:
+			# Unstructured
+			gstr=1
 
 	# time
 	auxt = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 	f.close(); del f
-	
+
 	wtime=[]
 	for i in range(0,auxt.shape[0]):
 		wtime = np.append(wtime,datetime.fromtimestamp(auxt[i], timezone.utc))
