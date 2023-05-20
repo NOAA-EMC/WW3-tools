@@ -109,12 +109,13 @@ if len(sys.argv) < 5 :
 	sys.exit(' At least 4 arguments (list of ww3 files; list of satellite [gridded] files; gridInfo; and cyclone map) must be entered.')
 if len(sys.argv) >= 5 :
 	# list of WAVEWATCHIII files
-	# import os; os.system("ls /modelpath/*tab.nc > ww3list.txt &")
+	# import os; os.system("ls -d $PWD/*.nc > ww3list.txt &")
 	wlist=np.loadtxt(np.str(sys.argv[1]),dtype=str)
 	ftag=np.str(sys.argv[1]).split('list')[1].split('.txt')[0]
 	print(' Reading ww3 list '+np.str(sys.argv[1]))
 	print(' Tag '+ftag)
 	# list of gridded satellite files
+	# ls -d $PWD/AltimeterGridded_*.nc > satlist.txt
 	slist=np.loadtxt(np.str(sys.argv[2]),dtype=str)
 	# grid information
 	gridinfo=np.str(sys.argv[3])
@@ -161,7 +162,6 @@ else:
 	sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
 # -------------
-
 # Select initial and final model times (to speed up satellite data reading)
 auxmtime=[];c=0
 for i in [0,1,-1]:
@@ -169,14 +169,21 @@ for i in [0,1,-1]:
 		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
 			f = nc.Dataset(np.str(wlist[i]))
 			if c==0:
-				wtime = np.array(f.variables['time'][0]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
-				wtimef = np.array(f.variables['time'][-1]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')		
+				if np.str(f.variables['time'].units).split(' ')[0] == 'seconds':
+					tincr=1
+				elif np.str(f.variables['time'].units).split(' ')[0] == 'hours':
+					tincr=3600
+				elif np.str(f.variables['time'].units).split(' ')[0] == 'days':
+					tincr=24*3600
+
+				wtime = np.array(f.variables['time'][0]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+				wtimef = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')		
 				nrt=np.abs(wtimef-wtime)
 				del wtimef
 			elif c==2:
-				wtime = np.array(f.variables['time'][-1]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+				wtime = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 			else:
-				wtime = np.array(f.variables['time'][0]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+				wtime = np.array(f.variables['time'][0]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 
 			f.close(); del f
 
@@ -220,6 +227,7 @@ for i in range(0,size(slist)):
 	except:
 		print(" Error: Cannot open "+np.str(slist[i]))
 	else:
+		print('ok')
 		if (np.nanmin(astime)>=auxmtime.max()) or (np.nanmax(astime)<auxmtime.min()):
 			print('  -   satellite '+slist[i]+' time range outside the model time interval.')
 		else:
@@ -337,8 +345,13 @@ for i in range(0,size(wlist)):
 			if size(inds)>0:
 				if fformat==1:
 					# WW3 Significant Wave Height and Wind Speed
-					whs = np.array(f.variables['hs'][indtauxw[t],:,:])
-					wwnd = np.array(np.sqrt( f.variables['uwnd'][indtauxw[t],:,:]**2 + f.variables['vwnd'][indtauxw[t],:,:]**2 ))
+					try:
+						whs = np.array(f.variables['hs'][indtauxw[t],:,:])
+						wwnd = np.array(np.sqrt( f.variables['uwnd'][indtauxw[t],:,:]**2 + f.variables['vwnd'][indtauxw[t],:,:]**2 ))
+					except:
+						whs = np.array(f.variables['HTSGW_surface'][indtauxw[t],:,:])
+						wwnd = np.array(np.sqrt( f.variables['UGRD_surface'][indtauxw[t],:,:]**2 + f.variables['VGRD_surface'][indtauxw[t],:,:]**2 ))		
+
 				elif fformat==2:
 					# WW3 Significant Wave Height and Wind Speed
 					if iwlat==1:
