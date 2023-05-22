@@ -82,8 +82,8 @@ AUTHOR and DATE:
  07/20/2022: Ricardo M. Campos, fix longitude standards among data.
  02/13/2023: Ricardo M. Campos, new management of array sizes to speed 
   up the process (1 month of GEFS reduced from 8+ hours to 2 hours).
- 05/21/2023: Ricardo M. Campos, fix netcdf variable name when converted
-  from .grib2 to netcdf; and CFSR added.
+ 05/21/2023: Ricardo M. Campos, fix netcdf variable name and time array 
+  when converted from .grib2 to netcdf; and CFSR added.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -164,7 +164,11 @@ if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True:
 else:
 	sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
-# -------------
+# -------------------
+# READ list WW3 files
+if size(wlist)==1:
+	wlist=[wlist]
+
 # Select initial and final model times (to speed up satellite data reading)
 auxmtime=[];c=0
 for i in [0,1,-1]:
