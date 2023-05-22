@@ -254,7 +254,7 @@ for i in range(0,size(slist)):
 				sys.exit(' Error: No Hs data in: '+slist[i])
 
 			stime=np.append(stime,astime)
-			if np.str(slist[i]).split('_')[1].split('.')[0] in sdname:
+			if np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
 				sid=np.append(sid,np.zeros(stime.shape[0],'int')+np.int(np.where(np.str(slist[i]).split('_')[1].split('.')[0] == sdname)[0][0]))
 			else:
 				sys.exit(' Error: Problem identifying satellite mission from file name: '+slist[i])
