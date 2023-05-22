@@ -9,6 +9,7 @@ VERSION AND LAST UPDATE:
  v1.1  06/30/2022
  v1.2  07/20/2022
  v1.3  02/13/2023
+ v1.4  05/21/2023
 
 PURPOSE:
  Collocation/pairing ww3 field output results with altimeters.
@@ -81,6 +82,8 @@ AUTHOR and DATE:
  07/20/2022: Ricardo M. Campos, fix longitude standards among data.
  02/13/2023: Ricardo M. Campos, new management of array sizes to speed 
   up the process (1 month of GEFS reduced from 8+ hours to 2 hours).
+ 05/21/2023: Ricardo M. Campos, fix netcdf variable name when converted
+  from .grib2 to netcdf; and CFSR added.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -148,7 +151,7 @@ else:
 	fcy=nc.Dataset(cyclonemap)
 
 clat=np.array(fcy.variables['lat'][:]); clon=np.array(fcy.variables['lon'][:])
-cmap=fcy.variables['cmap']; ctime=fcy.variables['time'][:]
+cmap=fcy.variables['cmap']; ctime=np.array(fcy.variables['time'][:]).astype('double')
 cinfo=np.str(fcy.info); cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
 
 if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True: 
@@ -218,7 +221,7 @@ if forecastds>0:
 if size(slist)==1:
 	slist=[slist]
 
-sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B'])
+sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT'])
 slat=[];slon=[];swnd=[];shs=[];stime=[];sid=[]
 for i in range(0,size(slist)):
 	try:
@@ -233,7 +236,7 @@ for i in range(0,size(slist)):
 		else:
 			slat=np.append(slat,np.array(f.variables['latitude'][:]))
 			slon=np.append(slon,np.array(f.variables['longitude'][:]))
-
+			# use the calibrated variables by default
 			if 'wndcal' in f.variables.keys():	
 				swnd=np.append(swnd,np.array(f.variables['wndcal'][:]))
 			elif 'wnd' in f.variables.keys():
@@ -256,7 +259,7 @@ for i in range(0,size(slist)):
 			else:
 				sys.exit(' Error: Problem identifying satellite mission from file name: '+slist[i])
 
-			print('  - ok '+slist[i])
+			print('  - ok '+np.str(slist[i]))
 
 		del astime
 		f.close(); del f
@@ -296,7 +299,7 @@ for i in range(0,size(wlist)):
 			fformat=1
 			f=nc.Dataset(np.str(wlist[i]))
 			wlon=np.array(f.variables['longitude'][:]); wlat=np.array(f.variables['latitude'][:])
-			wtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			wtime = np.array(f.variables['time'][:]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 
 		elif (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
 			# grib2 format
@@ -333,7 +336,7 @@ for i in range(0,size(wlist)):
 		for t in range(0,size(indtauxw)):
 
 			# search for cyclone time index and cyclone map
-			indc=np.where(np.abs(ctime-wtime[indtauxw[t]])<5400.)
+			indc=np.where(np.abs(ctime-wtime[indtauxw[t]])<=5400.)
 			if size(indc)>0:
 				acmap=np.array(cmap[indc[0][0],:,:])
 				del indc
@@ -382,6 +385,7 @@ for i in range(0,size(wlist)):
 						ftime[c]=np.double(wtime[indtauxw[t]])
 						fmonth[c]=np.int(time.gmtime(wtime[indtauxw[t]])[1])
 						if forecastds>0:
+							# the cycle time is the minimum of the time array
 							fcycle[c]=np.double(np.nanmin(wtime))
 
 						c=c+1
