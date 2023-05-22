@@ -113,13 +113,13 @@ if len(sys.argv) < 5 :
 if len(sys.argv) >= 5 :
 	# list of WAVEWATCHIII files
 	# import os; os.system("ls -d $PWD/*.nc > ww3list.txt &")
-	wlist=np.loadtxt(np.str(sys.argv[1]),dtype=str)
+	wlist=np.loadtxt(sys.argv[1],dtype=str)
 	ftag=np.str(sys.argv[1]).split('list')[1].split('.txt')[0]
 	print(' Reading ww3 list '+np.str(sys.argv[1]))
 	print(' Tag '+ftag)
 	# list of gridded satellite files
 	# ls -d $PWD/AltimeterGridded_*.nc > satlist.txt
-	slist=np.loadtxt(np.str(sys.argv[2]),dtype=str)
+	slist=np.loadtxt(sys.argv[2],dtype=str)
 	# grid information
 	gridinfo=np.str(sys.argv[3])
 	print(' Using gridInfo '+gridinfo)
@@ -171,7 +171,7 @@ if size(wlist)==1:
 
 # Select initial and final model times (to speed up satellite data reading)
 auxmtime=[];c=0
-for i in [0,1,-1]:
+for i in [0,-1]:
 	try:
 		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
 			f = nc.Dataset(np.str(wlist[i]))
@@ -187,10 +187,8 @@ for i in [0,1,-1]:
 				wtimef = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')		
 				nrt=np.abs(wtimef-wtime)
 				del wtimef
-			elif c==2:
-				wtime = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 			else:
-				wtime = np.array(f.variables['time'][0]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+				wtime = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 
 			f.close(); del f
 
@@ -201,10 +199,8 @@ for i in [0,1,-1]:
 				wtimef = np.double(timegm(strptime(np.str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))
 				nrt=np.abs(wtimef-wtime)
 				del wtimef
-			elif c==2:
-				wtime = np.double(timegm(strptime(np.str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))			
 			else:
-				wtime = np.double(timegm(strptime(np.str(f.time.values)[0:-10], '%Y-%m-%dT%H:%M:%S')))
+				wtime = np.double(timegm(strptime(np.str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))			
 
 			f.close(); del f
 
@@ -281,10 +277,6 @@ if size( np.where(slon>180.) )>0:
 	slon[slon>180.] = slon[slon>180.]-360.
 
 print(" Satellite Data Ok.")
-
-# READ list WW3 files
-if size(wlist)==1:
-	wlist=[wlist]
 
 print(" Start building the matchups model/satellite ...")
 fwhs=np.zeros(stime.shape[0]*(forecastds+1),'f')*np.nan; fwwnd=np.zeros(stime.shape[0]*(forecastds+1),'f')*np.nan
