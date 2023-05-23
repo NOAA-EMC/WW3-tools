@@ -266,10 +266,12 @@ if size(indq)>10:
 	ncfile.history="AODN Altimeter data on regular grid." 
 	# create  dimensions.
 	ncfile.createDimension('time' , ftime.shape[0] )
+	ncfile.createDimension('sname' , 1 )
 	# create variables.
 	vflat = ncfile.createVariable('latitude',np.dtype('float32').char,('time'))
 	vflon = ncfile.createVariable('longitude',np.dtype('float32').char,('time'))
 	vft = ncfile.createVariable('stime',np.dtype('float64').char,('time'))
+	vsname = ncfile.createVariable('sat_name',dtype('a25'),('sname'))
 	vfhsk = ncfile.createVariable('hsk',np.dtype('float32').char,('time'))
 	vstdhsk = ncfile.createVariable('stdhsk',np.dtype('float32').char,('time'))
 	vcounthsk = ncfile.createVariable('counthsk',np.dtype('float32').char,('time'))
@@ -282,6 +284,7 @@ if size(indq)>10:
 	vfwnd.units = 'm/s' ; vfwndcal.units = 'm/s'
 	vfhsk.units = 'm'; vfhskcal.units = 'm'
 	# Allocate Data
+	vsname[:] = np.array(sdname[s]).astype('str')
 	vflat[:] = flat; vflon[:] = flon; vft[:] = ftime
 	vfhsk[:] = fhsk; vstdhsk[:] = stdhsk; vcounthsk[:] = counthsk
 	vfhskcal[:] = fhskcal
