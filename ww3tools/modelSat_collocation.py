@@ -54,7 +54,7 @@ USAGE:
   so it is recommended to run the following codes to prepare that:
   prepGridMask.py, procyclmap.py, and gridSatGlobal_Altimeter.py.
  Examples (from linux terminal command line):
-  python3 modelSat_collocation.py "ww3list_201901_c00.txt" "satlist.txt" "gridInfo_GEFS.nc" "CycloneMap_2019.nc" 1
+  python3 modelSat_collocation.py ww3list_201901_c00.txt satlist.txt gridInfo_GEFS.nc CycloneMap_2019.nc" 1
   nohup python3 modelSat_collocation.py "ww3list_201901_c00.txt" "satlist.txt" "gridInfo_GEFS.nc" "CycloneMap_2019.nc" 1 >> nohup_modelSat_collocation.out 2>&1 &
 
 OUTPUT:
@@ -92,7 +92,6 @@ PERSON OF CONTACT:
 
 import numpy as np
 from matplotlib.mlab import *
-from pylab import *
 import xarray as xr
 import netCDF4 as nc
 import time
@@ -107,7 +106,7 @@ fnetcdf="NETCDF4"
 start = timeit.default_timer()
 
 # Inputs
-forecastds=0
+forecastds=0; print(' ')
 if len(sys.argv) < 5 :
 	sys.exit(' At least 4 arguments (list of ww3 files; list of satellite [gridded] files; gridInfo; and cyclone map) must be entered.')
 if len(sys.argv) >= 5 :
@@ -157,7 +156,7 @@ cinfo=np.str(fcy.info); cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
 if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True: 
 	print(" CycloneMap Ok.")
 	ind=np.where(mlon>180.)
-	if size(ind)>0:
+	if np.size(ind)>0:
 		mlon[mlon>180.] = mlon[mlon>180.]-360.
 		clon[clon>180.] = clon[clon>180.]-360.
 		del ind
@@ -166,7 +165,7 @@ else:
 
 # -------------------
 # READ list WW3 files
-if size(wlist)==1:
+if np.size(wlist)==1:
 	wlist=[wlist]
 
 # Select initial and final model times (to speed up satellite data reading)
@@ -218,12 +217,12 @@ if forecastds>0:
 		forecastds=lforecastds
 
 # READ list Gridded Satellites
-if size(slist)==1:
+if np.size(slist)==1:
 	slist=[slist]
 
 sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT'])
 slat=[];slon=[];swnd=[];shs=[];stime=[];sid=[]
-for i in range(0,size(slist)):
+for i in range(0,np.size(slist)):
 	try:
 		f=nc.Dataset(slist[i])
 		astime=np.array(f.variables['stime'][:])
@@ -254,7 +253,12 @@ for i in range(0,size(slist)):
 				sys.exit(' Error: No Hs data in: '+slist[i])
 
 			stime=np.append(stime,astime)
-			if np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
+
+			if 'sat_name' in f.variables.keys():
+				auxsatname=f.variables['sat_name'][:]
+				sid=np.append(sid,np.zeros(stime.shape[0],'int')+np.int(np.where( auxsatname == sdname)[0][0]))
+				del auxsatname
+			elif np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
 				sid=np.append(sid,np.zeros(stime.shape[0],'int')+np.int(np.where(np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] == sdname)[0][0]))
 			else:
 				sys.exit(' Error: Problem identifying satellite mission from file name: '+slist[i])
@@ -265,7 +269,7 @@ for i in range(0,size(slist)):
 		f.close(); del f
 
 indes=np.where( (stime>=(auxmtime.min()-(3.*3600.))) & (stime<=(auxmtime.max()+(3.*3600.))) )
-if size(indes)>0:
+if np.size(indes)>0:
 	stime=stime[indes[0]]; sid=sid[indes[0]]
 	shs=shs[indes[0]]; swnd=swnd[indes[0]]
 	slat=slat[indes[0]]; slon=slon[indes[0]]
@@ -273,7 +277,7 @@ else:
 	sys.exit(' Insufficient amount of matchups model/satellite.')
 
 del indes,auxmtime
-if size( np.where(slon>180.) )>0:
+if np.size( np.where(slon>180.) )>0:
 	slon[slon>180.] = slon[slon>180.]-360.
 
 print(" Satellite Data Ok.")
@@ -288,7 +292,7 @@ if forecastds>0:
 	fcycle=np.zeros(stime.shape[0]*(forecastds+1),'d')*np.nan
 
 c=0
-for i in range(0,size(wlist)):
+for i in range(0,np.size(wlist)):
 	try:
 		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
 			# netcdf format
@@ -319,7 +323,7 @@ for i in range(0,size(wlist)):
 	else:
 		print(" Ok read "+np.str(wlist[i])+" starting matchups ...")
 
-		if size( np.where(wlon>180.) )>0:
+		if np.size( np.where(wlon>180.) )>0:
 			wlon[wlon>180.] = wlon[wlon>180.]-360.
 
 		if np.array_equal(wlat,mlat)==False | np.array_equal(wlon,mlon)==False: 
@@ -329,11 +333,11 @@ for i in range(0,size(wlist)):
 		aux=np.intersect1d(wtime, stime, assume_unique=False, return_indices=True)
 		indtauxw=np.array(aux[1]).astype('int'); del aux
 		# loop through ww3 time steps
-		for t in range(0,size(indtauxw)):
+		for t in range(0,np.size(indtauxw)):
 
 			# search for cyclone time index and cyclone map
 			indc=np.where(np.abs(ctime-wtime[indtauxw[t]])<=5400.)
-			if size(indc)>0:
+			if np.size(indc)>0:
 				acmap=np.array(cmap[indc[0][0],:,:])
 				del indc
 			else:
@@ -341,7 +345,7 @@ for i in range(0,size(wlist)):
 				print(' Warning: No cyclone information for this time step: '+repr(t))
 
 			inds=np.where(np.abs(stime-wtime[indtauxw[t]])<1800.)
-			if size(inds)>0:
+			if np.size(inds)>0:
 				if fformat==1:
 					# WW3 Significant Wave Height and Wind Speed
 					try:
@@ -361,7 +365,7 @@ for i in range(0,size(wlist)):
 						wwnd = np.array(np.sqrt( f['u'].values[indtauxw[t],:,:]**2 + f['v'].values[indtauxw[t],:,:]**2 ))
 
 				# loop through the gridded satellite data for that selected time matching WW3 time.
-				for j in range(0,size(inds)):
+				for j in range(0,np.size(inds)):
 					# indexes and lat/lon for the WW3 grid point
 					indgplat = np.where( abs(mlat-slat[inds[0][j]])==abs(mlat-slat[inds[0][j]]).min() )[0][0]
 					indgplon = np.where( abs(mlon-slon[inds[0][j]])==abs(mlon-slon[inds[0][j]]).min() )[0][0]
@@ -401,8 +405,8 @@ print(' Data Collocation/Matchups Ok.')
 
 # Quality Control
 ind=np.where( (fwhs>0.0) & (fwhs<20.0) & (fwwnd>0.0) & (fwwnd<60.0) & (fshs>0.0) & (fshs<20.0) & (fswnd>0.0) & (fswnd<60.0) )
-if size(ind)>0:
-	print(' Total amount of matchups model/satellite: '+repr(size(ind)))
+if np.size(ind)>0:
+	print(' Total amount of matchups model/satellite: '+repr(np.size(ind)))
 	fwhs=np.array(fwhs[ind[0]]); fwwnd=np.array(fwwnd[ind[0]])
 	fshs=np.array(fshs[ind[0]]); fswnd=np.array(fswnd[ind[0]]); fsid=np.array(fsid[ind[0]]).astype('int')
 	flat=np.array(flat[ind[0]]); flon=np.array(flon[ind[0]])
@@ -417,7 +421,7 @@ if size(ind)>0:
 	sdname=np.array(sdname).astype('O')
 	# Save netcdf output file
 	ncfile = nc.Dataset('WW3.Altimeter'+ftag+'_'+initime+'to'+fintime+'.nc', "w", format=fnetcdf)
-	ncfile.history="Matchups of WAVEWATCHIII and AODN Altimeter data. Total of "+repr(size(ind))+" observations or pairs model/observation."
+	ncfile.history="Matchups of WAVEWATCHIII and AODN Altimeter data. Total of "+repr(np.size(ind))+" observations or pairs model/observation."
 	# create  dimensions. 2 Dimensions
 	ncfile.createDimension('index',ftime.shape[0])
 	ncfile.createDimension('satellite', sdname.shape[0] )
@@ -432,13 +436,13 @@ if size(ind)>0:
 	vdistcoast = ncfile.createVariable('distcoast',np.dtype('float32').char,('index'))
 	vdepth = ncfile.createVariable('depth',np.dtype('float32').char,('index'))
 	voni = ncfile.createVariable('GlobalOceansSeas',np.dtype('int16').char,('index'))
-	vocnames = ncfile.createVariable('names_GlobalOceansSeas',dtype('a25'),('GlobalOceansSeas'))
+	vocnames = ncfile.createVariable('names_GlobalOceansSeas',np.dtype('a25'),('GlobalOceansSeas'))
 	vhsmz = ncfile.createVariable('HighSeasMarineZones',np.dtype('int16').char,('index'))
-	vhsmznames = ncfile.createVariable('names_HighSeasMarineZones',dtype('a25'),('HighSeasMarineZones'))
+	vhsmznames = ncfile.createVariable('names_HighSeasMarineZones',np.dtype('a25'),('HighSeasMarineZones'))
 	vcmap = ncfile.createVariable('cyclone',np.dtype('int16').char,('index'))
-	vcinfo = ncfile.createVariable('cycloneinfo',dtype('a25'),('cycloneinfo'))
+	vcinfo = ncfile.createVariable('cycloneinfo',np.dtype('a25'),('cycloneinfo'))
 	vsid = ncfile.createVariable('satelliteID',np.dtype('int16').char,('index'))
-	vsdname = ncfile.createVariable('names_satellite',dtype('a25'),('satellite'))
+	vsdname = ncfile.createVariable('names_satellite',np.dtype('a25'),('satellite'))
 	# results
 	vwhs = ncfile.createVariable('model_hs',np.dtype('float32').char,('index'))
 	vwwnd = ncfile.createVariable('model_wnd',np.dtype('float32').char,('index'))
