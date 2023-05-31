@@ -50,7 +50,7 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import *
@@ -224,7 +224,7 @@ def qqplot(*args):
 	  pvalstats.qqplot(np.c_[model1,model2].T,satdata,'/home/rmc/test/WW3PR_',['WW3PR3','WW3PR1'])
 	'''
 
-	ftag=''; mlabels=[]
+	ftag=''; mlabels=[]; axisnames=[]
 	mmark=np.array(np.atleast_1d(['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',])).astype('str')
 	ccol=np.array(np.atleast_1d(['navy','firebrick','darkgreen','fuchsia','gold',
 		'blue','salmon','lime','darkviolet','yellow',
@@ -239,10 +239,12 @@ def qqplot(*args):
 	if len(args) >= 4:
 		mlabels=np.array(np.atleast_1d(args[3])).astype('str')
 	if len(args) >= 5:
-		ccol=np.array(np.atleast_1d(args[4])).astype('str')
+		axisnames=np.array(args[4]).astype('str')
 	if len(args) >= 6:
-		mmark=np.array(np.atleast_1d(args[5])).astype('str')
-	if len(args) > 6:
+		ccol=np.array(np.atleast_1d(args[5])).astype('str')
+	if len(args) >= 7:
+		mmark=np.array(np.atleast_1d(args[6])).astype('str')
+	if len(args) > 7:
 		sys.exit(' Too many inputs')
 
 	if (size(model.shape)>2) | (size(obs.shape)>2):
@@ -272,19 +274,27 @@ def qqplot(*args):
 	ax.plot(aux,aux,'k', linewidth=2.,alpha=0.4,zorder=2)  # main diagonal
 	for i in range(0,model.shape[0]):
 		if size(mlabels)>0:
-			ax.plot(qobs[i,:],qm[i,:], color=ccol[i], marker=mmark[i], linestyle='--',label=mlabels[i],linewidth=1.,alpha=0.8,zorder=3)
+			ax.plot(gaussian_filter(qobs[i,:],1),gaussian_filter(qm[i,:],1), color=ccol[i], marker=mmark[i], linestyle='--',label=mlabels[i],linewidth=1.,alpha=0.8,zorder=3)
 		else:
-			ax.plot(qobs[i,:],qm[i,:], color=ccol[i], marker=mmark[i], linestyle='--',linewidth=1.,alpha=0.8,zorder=3)
+			ax.plot(gaussian_filter(qobs[i,:],1),gaussian_filter(qm[i,:],1), color=ccol[i], marker=mmark[i], linestyle='--',linewidth=1.,alpha=0.8,zorder=3)
 
 	plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
 	for i in np.array([50,80,90,95,99]):
 		plt.axvline(x= np.nanpercentile(obs,np.int(i)),ls='--',color='grey',linewidth=1.,alpha=0.9,zorder=1)
-		plt.text(np.nanpercentile(obs,np.int(i)),(aux.max()-aux.min())/15 + aux.min(),np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7)
+		plt.text(np.nanpercentile(obs,np.int(i)),(aux.max()-aux.min())/15 + aux.min(),np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7,zorder=4)
+		plt.text(np.nanpercentile(obs,np.int(i)),(aux.max()-aux.min())/1.05 + aux.min(),np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7)
 
 	plt.ylim(ymax = aux.max(), ymin = aux.min())
 	plt.xlim(xmax = aux.max(), xmin = aux.min())
 	plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7) 
+
 	ax.set_xlabel("Observations"); ax.set_ylabel("Model")
+
+	if size(axisnames)>1:	
+		ax.set_xlabel(axisnames[1]); ax.set_ylabel(axisnames[0])
+	else:
+		ax.set_xlabel("Observations"); ax.set_ylabel("Model")
+
 	if size(mlabels)>0:
 		plt.legend(loc="upper left",fontsize=sl-2)
 
@@ -311,7 +321,7 @@ def scatterplot(*args):
 	  pvalstats.scatterplot(np.c_[model1,model2].T,satdata,'/home/rmc/test/WW3PR_',['WW3PR3','WW3PR1'])
 	'''
 
-	ftag=''; mlabels=[]
+	ftag=''; mlabels=[]; axisnames=[]
 	mmark=np.array(np.atleast_1d(['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',])).astype('str')
 	ccol=np.array(np.atleast_1d(['navy','firebrick','darkgreen','fuchsia','gold',
 		'blue','salmon','lime','darkviolet','yellow',
@@ -322,12 +332,14 @@ def scatterplot(*args):
 	if len(args) >= 2:
 		model=np.array(np.atleast_2d(args[0])).astype('float'); obs=np.array(np.atleast_2d(args[1])).astype('float')
 	if len(args) >= 3:
-		ftag=np.str(args[2])
+		ftag=np.str(args[2])	
 	if len(args) >= 4:
 		mlabels=np.array(np.atleast_1d(args[3])).astype('str')
 	if len(args) >= 5:
-		ccol=np.array(np.atleast_1d(args[4])).astype('str')
-	if len(args) > 5:
+		axisnames=np.array(args[4]).astype('str')
+	if len(args) >= 6:
+		ccol=np.array(np.atleast_1d(args[5])).astype('str')
+	if len(args) > 6:
 		sys.exit(' Too many inputs')
 
 	if (size(model.shape)>2) | (size(obs.shape)>2):
@@ -348,46 +360,53 @@ def scatterplot(*args):
 
 	# plt.close('all')
 	fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
-	a=math.floor(np.nanmin(np.append(obs,model))*100.)/100. ; b=math.ceil(np.nanmax(np.append(obs,model))*100.)/100.
+
+	if obs[0,:].shape[0]>50000:
+		sk=np.int(np.round(np.float(obs[0,:].shape[0])/30000.,0))
+	else:
+		sk=1
+
+	a=math.floor(np.nanmin(np.append(obs[:,::sk],model[:,::sk]))*100.)/100. ; b=math.ceil(np.nanmax(np.append(obs[:,::sk],model[:,::sk]))*100.)/100.
 	famin=a-0.1*a; famax=b+0.1*a
 	faux=np.linspace(famin,famax,100); del a,b
-	for i in range(0,model.shape[0]):
-		b=np.array(obs[0,:]); a=np.array(model[i,:])
-		ind=np.where((a*b)>-999.)[0]; a=np.copy(a[ind]); b=np.copy(b[ind]); del ind
-		if a.shape[0]>50000:
-			sk=np.int(np.round(np.float(a.shape[0])/30000.,0))
-			a=np.copy(a[::sk]); b=np.copy(b[::sk])
 
-		#amax=math.ceil(np.nanmax(np.array([a,b]))*100.)/100.
-		#amin=math.floor(np.nanmin(np.array([a,b]))*100.)/100.
-		#aux=np.linspace(amin,amax,100)	
+	for i in range(0,model.shape[0]):
+		b=np.array(obs[0,::sk]); a=np.array(model[i,::sk])
+		ind=np.where((a*b)>-999.)[0]; a=np.copy(a[ind]); b=np.copy(b[ind]); del ind
 
 		if (a.shape[0]<30) | (model.shape[0]>1):
-			if size(mlabels)>0:
+			if size(mlabels)>0 and mlabels[0] != '':
 				ax.scatter(b,a,color=ccol[i],marker=mmark[i],label=mlabels[i],zorder=2) #, linestyle='--', linewidth=1.
 			else:
 				ax.scatter(b,a,color=ccol[i],marker=mmark[i],zorder=2)
 		else:
 			xy = np.vstack([a,b]); z = gaussian_kde(xy)(xy)
-			if size(mlabels)>0:
+			if size(mlabels)>0 and mlabels[0] != '':
 				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,label=mlabels[i],zorder=2)
 			else:
 				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,zorder=2)
 
 		# famax=np.append(famax,amax); famin=np.append(famin,amin)
 		del a,b
-	
+
 	ax.plot(faux,faux,'k--', linewidth=1.,alpha=0.9,zorder=3)  # main diagonal
 	plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7)
-	ax.set_xlabel("Observations"); ax.set_ylabel("Model")
+
+	if size(axisnames)>1:	
+		ax.set_xlabel(axisnames[0]); ax.set_ylabel(axisnames[1])
+	else:
+		ax.set_xlabel("Observations"); ax.set_ylabel("Model")
+
 	plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
-	for i in np.array([50,80,90,95,99]):
+	# for i in np.array([50,80,90,95,99]):
+	for i in np.array([50,80,95,99]):
 		plt.axvline(x= np.nanpercentile(obs,np.int(i)),ls='--',color='grey',linewidth=1.,alpha=0.7,zorder=1)
-		plt.text(np.nanpercentile(obs,np.int(i)),((famax-famin)/15)+famin,np.str(np.int(i))+'th',color='grey',fontsize=sl-7,zorder=4)
+		plt.text(np.nanpercentile(obs,np.int(i)),((famax-famin)/15)+famin,np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7,zorder=4)
+		plt.text(np.nanpercentile(obs,np.int(i)),((famax-famin)/1.05)+famin,np.str(np.int(i))+'th',color='dimgrey',fontsize=sl-7,zorder=4)
 
 	plt.gca().set_xlim(left=famin, right=famax); plt.gca().set_ylim(ymin=famin,ymax=famax)
 
-	if size(mlabels)>0:
+	if mlabels[0] != '':
 		plt.legend(loc="upper left",fontsize=sl-2)
 
 	# ax.set_axisbelow(True)

@@ -8,6 +8,7 @@ cd WW3-tools
 pip install .
 python3 prep_ww3tools.py
 ```
+&emsp; The installation is done with the steps above, being prep_ww3tools.py a script to check ww3tools installation, set paths, download observations (optional), and run regtests.
 
 ## Documentation
 

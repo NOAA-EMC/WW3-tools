@@ -110,7 +110,7 @@ for h in $fleads;do
     # size TAM and tries TRIES will control the process
     TAM=0
     TRIES=1
-    # while file has a lower size than expected or attemps are less than 130 (almos 11 hours trying) it does:
+    # while file has lower size than expected it does:
     while [ $TAM -lt 1000000 ] && [ $TRIES -le 130 ]; do
       # sleep 5 minutes between attemps
       if [ ${TRIES} -gt 5 ]; then
