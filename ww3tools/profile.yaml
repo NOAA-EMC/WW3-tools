@@ -1,0 +1,17 @@
+---
+gridmask:
+  settings:
+    gridName: 'GFS_HR1'
+    pFig: 1
+  lengths:
+    minDepth: 80.           # in meters
+    minDistFromCoast: 50.   # in km
+  paths:
+    output: "/home/mmas/work/projs/ww3_tools/WW3-tools/ww3tools/output/"
+    globalOceanSeas: 'blah'
+    highSeasMarineZones: 'blah1'
+    offshoreMarineZones: 'blah2'
+    etopo1: 'blah3'
+    distFromCoast: 'blah4'
+    ww3Gridded: 'blah5'
+...
