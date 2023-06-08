@@ -91,476 +91,480 @@ PERSON OF CONTACT:
 
 """
 
-import numpy as np
-from matplotlib.mlab import *
-from pylab import *
-import xarray as xr
-import netCDF4 as nc
-from mpl_toolkits.basemap import shiftgrid
-import xarray
-import warnings; warnings.filterwarnings("ignore")
-import yaml
-# netcdf format
-fnetcdf="NETCDF4"
+class PrepGridMask:
+    import numpy as np
+    from matplotlib.mlab import *
+    from pylab import *
+    import xarray as xr
+    import netCDF4 as nc
+    from mpl_toolkits.basemap import shiftgrid
+    import xarray
+    import warnings; warnings.filterwarnings("ignore")
+    import yaml
 
-fainfo=np.int(0)
-if len(sys.argv) == 2 :
-	fainfo=np.int(sys.argv[1])
-elif len(sys.argv) > 2:
-	sys.exit(' Too many inputs')
+    # netcdf format
+    fnetcdf="NETCDF4"
 
-# input from profile.yaml
-with open('profile.yaml','r') as configfile:
-        configs = yaml.safe_load(configfile)
+    @classmethod
+    def prepMask(cls):
+        fainfo=np.int(0)
+        if len(sys.argv) == 2 :
+                fainfo=np.int(sys.argv[1])
+        elif len(sys.argv) > 2:
+                sys.exit(' Too many inputs')
 
-# --------------------
-# Grid Name and prefix
-gridn=configs['gridmask']['settings']['gridName']
-# Minimum water depth
-mindepth=configs['gridmask']['lengths']['minDepth'] # in meters
-# Minimum distance from the coast
-mindfc=configs['gridmask']['lengths']['minDistFromCoast'] # in Km
-# Flag to generate plots and save figures (1) or not (0)
-pfig=configs['gridmask']['settings']['pFig']
-# Output path where results will be saved
-outpath=configs['gridmask']['paths']['output']
-# -----------------
-if fainfo>=1:
-	# marineregions Global Ocean shapefile path
-	goshp=configs['gridmask']['paths']['globalOceanSeas']
-	import salem
-	import regionmask
-if fainfo>=2:
-	# NOAA HighSeasMarineZones
-	hsshp=configs['gridmask']['paths']['highSeasMarineZones']
-if fainfo>=3:
-	# NOAA OffshoreMarineZones
-	ofshp=configs['gridmask']['paths']['offshoreMarineZones']
+        # input from profile.yaml
+        with open('profile.yaml','r') as configfile:
+                configs = yaml.safe_load(configfile)
 
-# Sample ww3 file (reference) lat lon array
-ds=xr.open_dataset(configs['gridmask']['paths']['ww3Gridded'])
-lat = ds['latitude'].values[:]; lon = ds['longitude'].values[:]
-if "MAPSTA" in ds.keys():
-	mapsta=ds["MAPSTA"].values[:,:]
-	nmapsta=1
-else:
-	nmapsta=0
+        # --------------------
+        # Grid Name and prefix
+        gridn=configs['gridmask']['settings']['gridName']
+        # Minimum water depth
+        mindepth=configs['gridmask']['lengths']['minDepth'] # in meters
+        # Minimum distance from the coast
+        mindfc=configs['gridmask']['lengths']['minDistFromCoast'] # in Km
+        # Flag to generate plots and save figures (1) or not (0)
+        pfig=configs['gridmask']['settings']['pFig']
+        # Output path where results will be saved
+        outpath=configs['gridmask']['paths']['output']
+        # -----------------
+        if fainfo>=1:
+                # marineregions Global Ocean shapefile path
+                goshp=configs['gridmask']['paths']['globalOceanSeas']
+                import salem
+                import regionmask
+        if fainfo>=2:
+                # NOAA HighSeasMarineZones
+                hsshp=configs['gridmask']['paths']['highSeasMarineZones']
+        if fainfo>=3:
+                # NOAA OffshoreMarineZones
+                ofshp=configs['gridmask']['paths']['offshoreMarineZones']
 
-ds.close(); del ds
-print(' read model sample to get lat/lon: OK')
+        # Sample ww3 file (reference) lat lon array
+        ds=xr.open_dataset(configs['gridmask']['paths']['ww3Gridded'])
+        lat = ds['latitude'].values[:]; lon = ds['longitude'].values[:]
+        if "MAPSTA" in ds.keys():
+                mapsta=ds["MAPSTA"].values[:,:]
+                nmapsta=1
+        else:
+                nmapsta=0
 
-# ====== BATHYMETRY Etopo grid ==============
-ds = xr.open_dataset(configs['gridmask']['paths']['etopo1'])
-latb = ds['lat'].values[:]; lonb = ds['lon'].values[:]
-b = ds['z'].values[:,:]
-# interpolate Bathymetry to Model
-dsi = ds.interp(lat=lat[:], lon=lon[:])
-ib = dsi['z'].values[:,:]
-ds.close(); del ds, dsi
-print(' read bathymetry: OK')
+        ds.close(); del ds
+        print(' read model sample to get lat/lon: OK')
 
-# ======  Distance to the Coast ==============
-ds = xr.open_dataset(configs['gridmask']['paths']['distFromCoast'])
-latd = ds['latitude'].values[:]; lond = ds['longitude'].values[:]
-dfc = ds['distcoast'].values[:,:]
-# interpolate to Model
-dsc = ds.interp(latitude=lat[:], longitude=lon[:])
-idfc = dsc['distcoast'].values[:,:]; ds.close(); del ds, dsc
-print(' read distance to coast: OK')
+        # ====== BATHYMETRY Etopo grid ==============
+        ds = xr.open_dataset(configs['gridmask']['paths']['etopo1'])
+        latb = ds['lat'].values[:]; lonb = ds['lon'].values[:]
+        b = ds['z'].values[:,:]
+        # interpolate Bathymetry to Model
+        dsi = ds.interp(lat=lat[:], lon=lon[:])
+        ib = dsi['z'].values[:,:]
+        ds.close(); del ds, dsi
+        print(' read bathymetry: OK')
 
-# Build Mask (nan = land excluded; 0 = ocean excluded; 1 = ocean valid)
-mask = np.zeros((lat.shape[0],lon.shape[0]),'f')
-# excluding continent or model mask
-if nmapsta==1:
-	ind = np.where((ib>0)|(mapsta>100)|(mapsta==0)); mask[ind[0],ind[1]] = np.nan; del ind
-else:
-	ind = np.where(ib>0); mask[ind[0],ind[1]] = np.nan; del ind
+        # ======  Distance to the Coast ==============
+        ds = xr.open_dataset(configs['gridmask']['paths']['distFromCoast'])
+        latd = ds['latitude'].values[:]; lond = ds['longitude'].values[:]
+        dfc = ds['distcoast'].values[:,:]
+        # interpolate to Model
+        dsc = ds.interp(latitude=lat[:], longitude=lon[:])
+        idfc = dsc['distcoast'].values[:,:]; ds.close(); del ds, dsc
+        print(' read distance to coast: OK')
 
-# excluding based on depth and dist-to-coast criteria
-ind = np.where( (ib<=(-1*mindepth)) & (idfc>=mindfc) & (np.isnan(mask)==False) ); mask[ind[0],ind[1]] = 1; del ind
-mask[:,0]=mask[:,-1]
-print(' grid mask: OK')
+        # Build Mask (nan = land excluded; 0 = ocean excluded; 1 = ocean valid)
+        mask = np.zeros((lat.shape[0],lon.shape[0]),'f')
+        # excluding continent or model mask
+        if nmapsta==1:
+                ind = np.where((ib>0)|(mapsta>100)|(mapsta==0)); mask[ind[0],ind[1]] = np.nan; del ind
+        else:
+                ind = np.where(ib>0); mask[ind[0],ind[1]] = np.nan; del ind
 
-if fainfo>=1:
-	# ======  Ocean Names ==============
-	# from https://www.marineregions.org/downloads.php  "Global Oceans and Seas"
-	print(' '); print(' Allocating ocean names. This may take a while ...')
-	if goshp[-1] != '/':
-		goshp=goshp+"/"
+        # excluding based on depth and dist-to-coast criteria
+        ind = np.where( (ib<=(-1*mindepth)) & (idfc>=mindfc) & (np.isnan(mask)==False) ); mask[ind[0],ind[1]] = 1; del ind
+        mask[:,0]=mask[:,-1]
+        print(' grid mask: OK')
 
-	# initialize matrix. Look at lon standard (-180to180 versus 0to360)
-	oni = np.zeros((lat.shape[0],lon.shape[0]),'f')
-	oni,nlon = shiftgrid(180.,oni,lon,start=False)
-	nmask,nlon = shiftgrid(180.,mask,lon,start=False)
-	ind=np.where(np.isnan(nmask)==True)
-	oni[ind]=np.nan; del ind
-	# Read shapefile
-	odata = salem.read_shapefile(goshp+"goas_v01.shp")
-	# take Ocean Names
-	ocnames=np.array(odata['name'].values[:])
-	ocnames=np.append(np.array(['Undefined']),ocnames)
-	# indexes
-	ilon=np.arange(0,lon.shape[0]); ilat=np.arange(0,lat.shape[0])
-	milon,milat = meshgrid(ilon,ilat); del ilon,ilat
-	# loop through the Oceans
-	for i in range(1,size(ocnames)):
+        if fainfo>=1:
+                # ======  Ocean Names ==============
+                # from https://www.marineregions.org/downloads.php  "Global Oceans and Seas"
+                print(' '); print(' Allocating ocean names. This may take a while ...')
+                if goshp[-1] != '/':
+                        goshp=goshp+"/"
 
-		basin = odata.loc[odata['name']==ocnames[i]]
-		# basin.reset_index(drop=True, inplace=True)
-		# https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
-		# https://salem.readthedocs.io/en/stable/examples.html
+                # initialize matrix. Look at lon standard (-180to180 versus 0to360)
+                oni = np.zeros((lat.shape[0],lon.shape[0]),'f')
+                oni,nlon = shiftgrid(180.,oni,lon,start=False)
+                nmask,nlon = shiftgrid(180.,mask,lon,start=False)
+                ind=np.where(np.isnan(nmask)==True)
+                oni[ind]=np.nan; del ind
+                # Read shapefile
+                odata = salem.read_shapefile(goshp+"goas_v01.shp")
+                # take Ocean Names
+                ocnames=np.array(odata['name'].values[:])
+                ocnames=np.append(np.array(['Undefined']),ocnames)
+                # indexes
+                ilon=np.arange(0,lon.shape[0]); ilat=np.arange(0,lat.shape[0])
+                milon,milat = meshgrid(ilon,ilat); del ilon,ilat
+                # loop through the Oceans
+                for i in range(1,size(ocnames)):
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milon
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilon=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        basin = odata.loc[odata['name']==ocnames[i]]
+                        # basin.reset_index(drop=True, inplace=True)
+                        # https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
+                        # https://salem.readthedocs.io/en/stable/examples.html
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milat
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilat=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milon
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilon=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		oni[ilat,ilon] = np.int(i)
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milat
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilat=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		del basin,ilat,ilon
+                        oni[ilat,ilon] = np.int(i)
 
-		print(' '+ocnames[i]+' : OK')
+                        del basin,ilat,ilon
 
-	# Return to 0to360 lon standard
-	nmask[nmask>=0.]=1.; oni=oni*nmask
-	foni,nnlon = shiftgrid(0.,oni,nlon,start=False)
-	del nnlon,oni,odata
+                        print(' '+ocnames[i]+' : OK')
 
-# ======  Forecast Areas ==============
-if fainfo>=2:
-	# *** High Seas Marine Zones ***
-	# from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "High Seas Marine Zones"
-	# this does not include a projection file in the directory. So I had to artificially create a .prj file
-	print(' '); print(' Allocating NWS Forecast areas, High Seas Marine Zones. This may take a while ...')
-	if hsshp[-1] != '/':
-		hsshp=hsshp+"/"
+                # Return to 0to360 lon standard
+                nmask[nmask>=0.]=1.; oni=oni*nmask
+                foni,nnlon = shiftgrid(0.,oni,nlon,start=False)
+                del nnlon,oni,odata
 
-	fcta = np.zeros((lat.shape[0],lon.shape[0]),'f')
-	ind=np.where(np.isnan(nmask)==True)
-	fcta[ind]=np.nan; del ind
-	# Read shapefile
-	fdata = salem.read_shapefile(hsshp+"hz30jn17.shp")
-	# take Ocean Names
-	hsmznames=np.array(fdata['NAME'].values[:])
-	hsmznames=np.append(np.array(['Undefined']),hsmznames)
-	# loop through the Areas
-	for i in range(1,size(hsmznames)):
+        # ======  Forecast Areas ==============
+        if fainfo>=2:
+                # *** High Seas Marine Zones ***
+                # from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "High Seas Marine Zones"
+                # this does not include a projection file in the directory. So I had to artificially create a .prj file
+                print(' '); print(' Allocating NWS Forecast areas, High Seas Marine Zones. This may take a while ...')
+                if hsshp[-1] != '/':
+                        hsshp=hsshp+"/"
 
-		basin = fdata.loc[fdata['NAME']==hsmznames[i]]
-		# basin.reset_index(drop=True, inplace=True)
-		# https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
-		# https://salem.readthedocs.io/en/stable/examples.html
+                fcta = np.zeros((lat.shape[0],lon.shape[0]),'f')
+                ind=np.where(np.isnan(nmask)==True)
+                fcta[ind]=np.nan; del ind
+                # Read shapefile
+                fdata = salem.read_shapefile(hsshp+"hz30jn17.shp")
+                # take Ocean Names
+                hsmznames=np.array(fdata['NAME'].values[:])
+                hsmznames=np.append(np.array(['Undefined']),hsmznames)
+                # loop through the Areas
+                for i in range(1,size(hsmznames)):
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milon
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilon=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        basin = fdata.loc[fdata['NAME']==hsmznames[i]]
+                        # basin.reset_index(drop=True, inplace=True)
+                        # https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
+                        # https://salem.readthedocs.io/en/stable/examples.html
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milat
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilat=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milon
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilon=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		fcta[ilat,ilon] = np.int(i)
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milat
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilat=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		del basin,ilat,ilon
+                        fcta[ilat,ilon] = np.int(i)
 
-		print(' '+hsmznames[i]+' : OK')
+                        del basin,ilat,ilon
 
-	# Return to 0to360 lon standard
-	fcta=fcta*nmask
-	hsmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
-	del nnlon,fdata,fcta
+                        print(' '+hsmznames[i]+' : OK')
 
-if fainfo>=3:
-	# *** Offshore Marine Zones ***
-	# from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "Offshore Marine Zones"
-	# this does not include a projection file in the directory. So I had to artificially create a .prj file
-	print(' '); print(' Allocating NWS Forecast areas, Offshore Marine Zones. This may take a while ...')
-	if ofshp[-1] != '/':
-		ofshp=ofshp+"/"
+                # Return to 0to360 lon standard
+                fcta=fcta*nmask
+                hsmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
+                del nnlon,fdata,fcta
 
-	fcta = np.zeros((lat.shape[0],lon.shape[0]),'f')
-	ind=np.where(np.isnan(nmask)==True)
-	fcta[ind]=np.nan; del ind
-	# Read shapefile
-	fdata = salem.read_shapefile(ofshp+"oz22mr22.shp")
-	# take Zone Names
-	ofmznames=np.array(fdata['NAME'].values[:])
-	ofmznames=np.append(np.array(['Undefined']),ofmznames)
-	ofmzids=np.array(fdata['ID'].values[:])
-	ofmzids=np.append(np.array(['Undefined']),ofmzids)
-	# loop through the Areas
-	for i in range(1,size(ofmzids)):
+        if fainfo>=3:
+                # *** Offshore Marine Zones ***
+                # from https://www.weather.gov/gis/ click on "AWIPS basemaps", "Coastal and Offshore Marine Zones", "Offshore Marine Zones"
+                # this does not include a projection file in the directory. So I had to artificially create a .prj file
+                print(' '); print(' Allocating NWS Forecast areas, Offshore Marine Zones. This may take a while ...')
+                if ofshp[-1] != '/':
+                        ofshp=ofshp+"/"
 
-		basin = fdata.loc[fdata['ID']==ofmzids[i]]
-		# basin.reset_index(drop=True, inplace=True)
-		# https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
-		# https://salem.readthedocs.io/en/stable/examples.html
+                fcta = np.zeros((lat.shape[0],lon.shape[0]),'f')
+                ind=np.where(np.isnan(nmask)==True)
+                fcta[ind]=np.nan; del ind
+                # Read shapefile
+                fdata = salem.read_shapefile(ofshp+"oz22mr22.shp")
+                # take Zone Names
+                ofmznames=np.array(fdata['NAME'].values[:])
+                ofmznames=np.append(np.array(['Undefined']),ofmznames)
+                ofmzids=np.array(fdata['ID'].values[:])
+                ofmzids=np.append(np.array(['Undefined']),ofmzids)
+                # loop through the Areas
+                for i in range(1,size(ofmzids)):
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milon
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilon=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        basin = fdata.loc[fdata['ID']==ofmzids[i]]
+                        # basin.reset_index(drop=True, inplace=True)
+                        # https://regionmask.readthedocs.io/en/v0.3.1/_static/notebooks/mask_numpy.html
+                        # https://salem.readthedocs.io/en/stable/examples.html
 
-		aux = regionmask.defined_regions.srex.mask(nlon,lat)
-		aux.values[:,:]=milat
-		aux = aux.salem.subset(shape=basin)
-		aux = aux.salem.roi(shape=basin)
-		ind=np.where(aux>=0)
-		ilat=np.array(aux.values[ind]).astype('int')
-		del aux,ind
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milon
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilon=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		fcta[ilat,ilon] = np.int(i)
+                        aux = regionmask.defined_regions.srex.mask(nlon,lat)
+                        aux.values[:,:]=milat
+                        aux = aux.salem.subset(shape=basin)
+                        aux = aux.salem.roi(shape=basin)
+                        ind=np.where(aux>=0)
+                        ilat=np.array(aux.values[ind]).astype('int')
+                        del aux,ind
 
-		del basin,ilat,ilon
+                        fcta[ilat,ilon] = np.int(i)
 
-		print(' '+ofmznames[i]+' : OK')
+                        del basin,ilat,ilon
 
-	# Return to 0to360 lon standard
-	fcta=fcta*nmask
-	ofmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
-	del nnlon,fdata,fcta
-	# ====================
+                        print(' '+ofmznames[i]+' : OK')
 
-print(' '); print(' Done! Final plots and netcdf output file ...')
+                # Return to 0to360 lon standard
+                fcta=fcta*nmask
+                ofmz,nnlon = shiftgrid(0.,fcta,nlon,start=False)
+                del nnlon,fdata,fcta
+                # ====================
 
-
-# ================== SAVE NETCDF FILE ==================
-
-if outpath[-1] != '/':
-	outpath=outpath+"/"
-
-# Water depth is positive, by definition
-ib = np.array(ib*-1); ib[ib<0]=np.nan; ib[np.isnan(mask)==True]=np.nan
-idfc[np.isnan(ib)==True]=np.nan
-
-ncfile = nc.Dataset(outpath+'gridInfo_'+gridn+'.nc', "w", format=fnetcdf)
-ncfile.description='Bathymetry, Distance from the coast, Mask, and Areas (GlobalOceansSeas, NOAA HighSeasMarineZones, NOAA OffshoreMarineZones). Total of '+repr(mask[mask>=0].shape[0])+' Ocean grid points, and '+repr(mask[mask>0].shape[0])+' valid ocean grid points to use.'
-# dimensions.
-ncfile.createDimension( 'latitude' , lat.shape[0] ); ncfile.createDimension( 'longitude' , lon.shape[0] )
-if fainfo>=1:
-	ncfile.createDimension('GlobalOceansSeas', ocnames.shape[0] )
-if fainfo>=2:
-	ncfile.createDimension('HighSeasMarineZones', hsmznames.shape[0] )
-if fainfo>=3:
-	ncfile.createDimension('OffshoreMarineZones', ofmznames.shape[0] )
-
-# create  variables
-lats = ncfile.createVariable('latitude',dtype('float32').char,('latitude',))
-lons = ncfile.createVariable('longitude',dtype('float32').char,('longitude',))
-if fainfo>=1:
-	vocnames = ncfile.createVariable('names_GlobalOceansSeas',dtype('a25'),('GlobalOceansSeas'))
-	vfoni = ncfile.createVariable('GlobalOceansSeas',dtype('float32').char,('latitude','longitude'))
-if fainfo>=2:
-	vhsmznames = ncfile.createVariable('names_HighSeasMarineZones',dtype('a25'),('HighSeasMarineZones'))
-	vhsmz = ncfile.createVariable('HighSeasMarineZones',dtype('float32').char,('latitude','longitude'))
-if fainfo>=3:
-	vofmznames = ncfile.createVariable('names_OffshoreMarineZones',dtype('a25'),('OffshoreMarineZones'))
-	vofmzids = ncfile.createVariable('id_OffshoreMarineZones',dtype('a25'),('OffshoreMarineZones'))
-	vofmz = ncfile.createVariable('OffshoreMarineZones',dtype('float32').char,('latitude','longitude'))
-
-# main fields
-vdfc = ncfile.createVariable('distcoast',dtype('float32').char,('latitude','longitude'))
-vib = ncfile.createVariable('depth',dtype('float32').char,('latitude','longitude'))
-vmask = ncfile.createVariable('mask',dtype('float32').char,('latitude','longitude'))
-
-# Assign units attributes
-vdfc.units = 'km'
-vib.units = 'm'
-lats.units = 'degrees_north'
-lons.units = 'degrees_east'
-# write data to vars.
-lats[:] = lat[:]; lons[:] = lon[:]
-vdfc[:,:]=idfc[:,:]
-vib[:,:]=ib[:,:]
-vmask[:,:]=mask[:,:]
-if fainfo>=1:
-	vocnames[:] = ocnames[:]
-	vfoni[:,:]=foni[:,:]
-if fainfo>=2:
-	vhsmznames[:] = hsmznames[:]
-	vhsmz[:,:]=hsmz[:,:]
-if fainfo>=3:
-	vofmznames[:] = ofmznames[:]
-	vofmzids[:] = ofmzids[:]
-	vofmz[:,:]=ofmz[:,:]
-
-# close the file
-ncfile.close()
-print('netcdf ok'); print(' ')
-print('Number of Ocean points: '+repr(ib[ib>=0].shape[0]))
-print('Number of valid Ocean points: '+repr(mask[mask>0].shape[0]))
+        print(' '); print(' Done! Final plots and netcdf output file ...')
 
 
-# ======== PLOTS =================
-if pfig==1:
+        # ================== SAVE NETCDF FILE ==================
 
-	import matplotlib
-	matplotlib.use('Agg')
-	import matplotlib.pyplot as plt
-	import cartopy.crs as ccrs
-	import cartopy
-	from matplotlib import ticker
-	from matplotlib.colors import BoundaryNorm
-	palette = plt.cm.jet
-	# Font size and style
-	sl=14
-	matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl)
-	matplotlib.rc('xtick', labelsize=sl); matplotlib.rc('ytick', labelsize=sl); matplotlib.rcParams.update({'font.size': sl})
+        if outpath[-1] != '/':
+                outpath=outpath+"/"
 
-	# Bathymetry
-	levels = np.linspace( ib[(np.isnan(ib)==False)].min(), np.percentile(ib[(np.isnan(ib)==False)],99.), 100)
-	plt.figure(figsize=(7,4))
-	ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-	ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-	cs=ax.contourf(lon,lat,ib,levels,cmap=palette,zorder=1,extend="max",transform = ccrs.PlateCarree())
-	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-	ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-	plt.tight_layout()
-	ax = plt.gca()
-	pos = ax.get_position()
-	l, b, w, h = pos.bounds
-	cax = plt.axes([l+0.07, b-0.075, w-0.12, 0.025]) # setup colorbar axes.
-	cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
-	plt.axes(ax)  # make the original axes current again
-	plt.savefig(outpath+'bathymetry_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        # Water depth is positive, by definition
+        ib = np.array(ib*-1); ib[ib<0]=np.nan; ib[np.isnan(mask)==True]=np.nan
+        idfc[np.isnan(ib)==True]=np.nan
 
-	plt.close('all'); del ax
+        ncfile = nc.Dataset(outpath+'gridInfo_'+gridn+'.nc', "w", format=fnetcdf)
+        ncfile.description='Bathymetry, Distance from the coast, Mask, and Areas (GlobalOceansSeas, NOAA HighSeasMarineZones, NOAA OffshoreMarineZones). Total of '+repr(mask[mask>=0].shape[0])+' Ocean grid points, and '+repr(mask[mask>0].shape[0])+' valid ocean grid points to use.'
+        # dimensions.
+        ncfile.createDimension( 'latitude' , lat.shape[0] ); ncfile.createDimension( 'longitude' , lon.shape[0] )
+        if fainfo>=1:
+                ncfile.createDimension('GlobalOceansSeas', ocnames.shape[0] )
+        if fainfo>=2:
+                ncfile.createDimension('HighSeasMarineZones', hsmznames.shape[0] )
+        if fainfo>=3:
+                ncfile.createDimension('OffshoreMarineZones', ofmznames.shape[0] )
 
-	# Distance to the coast
-	levels = np.linspace( idfc[(np.isnan(idfc)==False)].min(), np.percentile(idfc[(np.isnan(idfc)==False)],99.), 100)
-	plt.figure(figsize=(7,4))
-	ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-	ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-	cs=ax.contourf(lon,lat,idfc,levels,cmap=palette,zorder=1,extend="max",transform = ccrs.PlateCarree())
-	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-	ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-	plt.tight_layout()
-	ax = plt.gca()
-	pos = ax.get_position()
-	l, b, w, h = pos.bounds
-	cax = plt.axes([l+0.07, b-0.075, w-0.12, 0.025]) # setup colorbar axes.
-	cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
-	plt.axes(ax)  # make the original axes current again
-	plt.savefig(outpath+'DistanceToCoast_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        # create  variables
+        lats = ncfile.createVariable('latitude',dtype('float32').char,('latitude',))
+        lons = ncfile.createVariable('longitude',dtype('float32').char,('longitude',))
+        if fainfo>=1:
+                vocnames = ncfile.createVariable('names_GlobalOceansSeas',dtype('a25'),('GlobalOceansSeas'))
+                vfoni = ncfile.createVariable('GlobalOceansSeas',dtype('float32').char,('latitude','longitude'))
+        if fainfo>=2:
+                vhsmznames = ncfile.createVariable('names_HighSeasMarineZones',dtype('a25'),('HighSeasMarineZones'))
+                vhsmz = ncfile.createVariable('HighSeasMarineZones',dtype('float32').char,('latitude','longitude'))
+        if fainfo>=3:
+                vofmznames = ncfile.createVariable('names_OffshoreMarineZones',dtype('a25'),('OffshoreMarineZones'))
+                vofmzids = ncfile.createVariable('id_OffshoreMarineZones',dtype('a25'),('OffshoreMarineZones'))
+                vofmz = ncfile.createVariable('OffshoreMarineZones',dtype('float32').char,('latitude','longitude'))
 
-	plt.close('all'); del ax
+        # main fields
+        vdfc = ncfile.createVariable('distcoast',dtype('float32').char,('latitude','longitude'))
+        vib = ncfile.createVariable('depth',dtype('float32').char,('latitude','longitude'))
+        vmask = ncfile.createVariable('mask',dtype('float32').char,('latitude','longitude'))
 
-	# Final Mask
-	levels = np.linspace(-2,3,10)
-	plt.figure(figsize=(7,4))
-	ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-	ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-	gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-	gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-	ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-	norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
-	im = ax.contourf(lon,lat,-mask,shading='flat',cmap=palette,norm=norm,transform = ccrs.PlateCarree(),zorder=2)
-	plt.tight_layout()
-	plt.savefig(outpath+'Mask_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        # Assign units attributes
+        vdfc.units = 'km'
+        vib.units = 'm'
+        lats.units = 'degrees_north'
+        lons.units = 'degrees_east'
+        # write data to vars.
+        lats[:] = lat[:]; lons[:] = lon[:]
+        vdfc[:,:]=idfc[:,:]
+        vib[:,:]=ib[:,:]
+        vmask[:,:]=mask[:,:]
+        if fainfo>=1:
+                vocnames[:] = ocnames[:]
+                vfoni[:,:]=foni[:,:]
+        if fainfo>=2:
+                vhsmznames[:] = hsmznames[:]
+                vhsmz[:,:]=hsmz[:,:]
+        if fainfo>=3:
+                vofmznames[:] = ofmznames[:]
+                vofmzids[:] = ofmzids[:]
+                vofmz[:,:]=ofmz[:,:]
 
-	plt.close('all'); del ax
+        # close the file
+        ncfile.close()
+        print('netcdf ok'); print(' ')
+        print('Number of Ocean points: '+repr(ib[ib>=0].shape[0]))
+        print('Number of valid Ocean points: '+repr(mask[mask>0].shape[0]))
 
-	if fainfo>=1:
-		# Ocean names
-		levels = np.arange(0,size(ocnames)+2,1)
-		plt.figure(figsize=(7,4))
-		ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-		ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-		ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-		ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-		ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-		ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-		norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
-		im = ax.pcolormesh(lon,lat,foni,shading='flat',cmap=palette,norm=norm,transform = ccrs.PlateCarree(), zorder=2)
-		im = ax.contour(lon,lat,foni,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
-		plt.tight_layout(); del foni
-		plt.savefig(outpath+'OceanNames_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
-		plt.close('all'); del ax
+        # ======== PLOTS =================
+        if pfig==1:
 
-	if fainfo>=2:
-		# High Seas Marine Zones
-		levels = np.arange(0,size(hsmznames)+1,1)
-		plt.figure(figsize=(7,4))
-		ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-		ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-		ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-		ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-		ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-		ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-		norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
-		ahsmz=np.copy(hsmz); ahsmz[ahsmz<1]=np.nan
-		im = ax.pcolormesh(lon,lat,ahsmz,transform = ccrs.PlateCarree(),zorder=2)
-		im = ax.contour(lon,lat,hsmz,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
-		plt.tight_layout(); del hsmz
-		plt.savefig(outpath+'HighSeasMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+                import matplotlib
+                matplotlib.use('Agg')
+                import matplotlib.pyplot as plt
+                import cartopy.crs as ccrs
+                import cartopy
+                from matplotlib import ticker
+                from matplotlib.colors import BoundaryNorm
+                palette = plt.cm.jet
+                # Font size and style
+                sl=14
+                matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl)
+                matplotlib.rc('xtick', labelsize=sl); matplotlib.rc('ytick', labelsize=sl); matplotlib.rcParams.update({'font.size': sl})
 
-		plt.close('all'); del ax
+                # Bathymetry
+                levels = np.linspace( ib[(np.isnan(ib)==False)].min(), np.percentile(ib[(np.isnan(ib)==False)],99.), 100)
+                plt.figure(figsize=(7,4))
+                ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                cs=ax.contourf(lon,lat,ib,levels,cmap=palette,zorder=1,extend="max",transform = ccrs.PlateCarree())
+                ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                plt.tight_layout()
+                ax = plt.gca()
+                pos = ax.get_position()
+                l, b, w, h = pos.bounds
+                cax = plt.axes([l+0.07, b-0.075, w-0.12, 0.025]) # setup colorbar axes.
+                cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
+                plt.axes(ax)  # make the original axes current again
+                plt.savefig(outpath+'bathymetry_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
-	if fainfo>=3:
-		# Offshore Marine Zones
-		levels = np.arange(0,size(ofmznames)+1,1)
-		plt.figure(figsize=(7,4))
-		ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
-		ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
-		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-		ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-		ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-		ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-		ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-		norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
-		aofmz=np.copy(ofmz); aofmz[aofmz<1]=np.nan
-		im = ax.pcolormesh(lon,lat,aofmz,zorder=2)
-		im = ax.contour(lon,lat,ofmz,levels=levels,colors='black',linewidths=0.5,zorder=3)
-		plt.tight_layout(); del aofmz
-		plt.savefig(outpath+'OffshoreMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+                plt.close('all'); del ax
 
-		plt.close('all'); del ax
+                # Distance to the coast
+                levels = np.linspace( idfc[(np.isnan(idfc)==False)].min(), np.percentile(idfc[(np.isnan(idfc)==False)],99.), 100)
+                plt.figure(figsize=(7,4))
+                ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                cs=ax.contourf(lon,lat,idfc,levels,cmap=palette,zorder=1,extend="max",transform = ccrs.PlateCarree())
+                ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                plt.tight_layout()
+                ax = plt.gca()
+                pos = ax.get_position()
+                l, b, w, h = pos.bounds
+                cax = plt.axes([l+0.07, b-0.075, w-0.12, 0.025]) # setup colorbar axes.
+                cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
+                plt.axes(ax)  # make the original axes current again
+                plt.savefig(outpath+'DistanceToCoast_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
-	print('plots ok')
+                plt.close('all'); del ax
 
-print('prepGridMask.py Completed')
+                # Final Mask
+                levels = np.linspace(-2,3,10)
+                plt.figure(figsize=(7,4))
+                ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
+                im = ax.contourf(lon,lat,-mask,shading='flat',cmap=palette,norm=norm,transform = ccrs.PlateCarree(),zorder=2)
+                plt.tight_layout()
+                plt.savefig(outpath+'Mask_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+
+                plt.close('all'); del ax
+
+                if fainfo>=1:
+                        # Ocean names
+                        levels = np.arange(0,size(ocnames)+2,1)
+                        plt.figure(figsize=(7,4))
+                        ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                        ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                        gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                        ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                        ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                        ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                        ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                        norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
+                        im = ax.pcolormesh(lon,lat,foni,shading='flat',cmap=palette,norm=norm,transform = ccrs.PlateCarree(), zorder=2)
+                        im = ax.contour(lon,lat,foni,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
+                        plt.tight_layout(); del foni
+                        plt.savefig(outpath+'OceanNames_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                        orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+
+                        plt.close('all'); del ax
+
+                if fainfo>=2:
+                        # High Seas Marine Zones
+                        levels = np.arange(0,size(hsmznames)+1,1)
+                        plt.figure(figsize=(7,4))
+                        ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                        ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                        gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                        ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                        ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                        ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                        ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                        norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
+                        ahsmz=np.copy(hsmz); ahsmz[ahsmz<1]=np.nan
+                        im = ax.pcolormesh(lon,lat,ahsmz,transform = ccrs.PlateCarree(),zorder=2)
+                        im = ax.contour(lon,lat,hsmz,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
+                        plt.tight_layout(); del hsmz
+                        plt.savefig(outpath+'HighSeasMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                        orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+
+                        plt.close('all'); del ax
+
+                if fainfo>=3:
+                        # Offshore Marine Zones
+                        levels = np.arange(0,size(ofmznames)+1,1)
+                        plt.figure(figsize=(7,4))
+                        ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+                        ax.set_extent([lon.min(),lon.max(),lat.min(),lat.max()], crs=ccrs.PlateCarree())
+                        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+                        gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+                        ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+                        ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+                        ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+                        ax.coastlines(resolution='110m', color='dimgrey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+                        norm = BoundaryNorm(levels, ncolors=palette.N, clip=False)
+                        aofmz=np.copy(ofmz); aofmz[aofmz<1]=np.nan
+                        im = ax.pcolormesh(lon,lat,aofmz,zorder=2)
+                        im = ax.contour(lon,lat,ofmz,levels=levels,colors='black',linewidths=0.5,zorder=3)
+                        plt.tight_layout(); del aofmz
+                        plt.savefig(outpath+'OffshoreMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
+                                        orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+
+                        plt.close('all'); del ax
+
+                print('plots ok')
+
+        print('prepGridMask.py Completed')
