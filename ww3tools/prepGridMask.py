@@ -91,27 +91,29 @@ PERSON OF CONTACT:
 
 """
 
+import numpy as np
+from matplotlib.mlab import *
+from pylab import *
+import xarray as xr
+import netCDF4 as nc
+from mpl_toolkits.basemap import shiftgrid
+import xarray
+import warnings; warnings.filterwarnings("ignore")
+import yaml
+
 class PrepGridMask:
-    import numpy as np
-    from matplotlib.mlab import *
-    from pylab import *
-    import xarray as xr
-    import netCDF4 as nc
-    from mpl_toolkits.basemap import shiftgrid
-    import xarray
-    import warnings; warnings.filterwarnings("ignore")
-    import yaml
 
     # netcdf format
     fnetcdf="NETCDF4"
 
     @classmethod
     def prepMask(cls):
-        fainfo=np.int(0)
-        if len(sys.argv) == 2 :
-                fainfo=np.int(sys.argv[1])
-        elif len(sys.argv) > 2:
-                sys.exit(' Too many inputs')
+        fainfo=2
+        # fainfo=np.int(0)
+        # if len(sys.argv) == 2 :
+        #         fainfo=np.int(sys.argv[1])
+        # elif len(sys.argv) > 2:
+        #         sys.exit(' Too many inputs')
 
         # input from profile.yaml
         with open('profile.yaml','r') as configfile:

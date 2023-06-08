@@ -7,11 +7,11 @@ gridmask:
     minDepth: 80.           # in meters
     minDistFromCoast: 50.   # in km
   paths:
-    output: "/home/mmas/work/projs/ww3_tools/WW3-tools/ww3tools/output/"
-    globalOceanSeas: 'blah'
-    highSeasMarineZones: 'blah1'
-    offshoreMarineZones: 'blah2'
-    etopo1: 'blah3'
-    distFromCoast: 'blah4'
-    ww3Gridded: 'blah5'
+    output: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools/oop/WW3-tools/ww3tools/output"
+    globalOceanSeas: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/work/WW3-tools-20230522/ww3tools/output/gridinfo/shapefiles/GlobalOceansSeas"
+    highSeasMarineZones: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/work/WW3-tools-20230522/ww3tools/output/gridinfo/shapefiles/NOAA/HighSeasMarineZones"
+    offshoreMarineZones: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/work/WW3-tools-20230522/ww3tools/output/gridinfo/shapefiles/NOAA/OffshoreMarineZones"
+    etopo1: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/work/WW3-tools-20230522/ww3tools/output/gridinfo/etopo1.nc"
+    distFromCoast: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/work/WW3-tools-20230522/ww3tools/output/gridinfo/distFromCoast.nc"
+    ww3Gridded: "/scratch1/NCEPDEV/climate/Matthew.Masarik/projs/ww3_tools_p8/HR1_dat/Summer/gfs.20200601.t00z.0p25.nc"
 ...
