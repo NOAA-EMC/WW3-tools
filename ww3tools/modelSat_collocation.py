@@ -54,8 +54,8 @@ USAGE:
   so it is recommended to run the following codes to prepare that:
   prepGridMask.py, procyclmap.py, and gridSatGlobal_Altimeter.py.
  Examples (from linux terminal command line):
-  python3 modelSat_collocation.py ww3list_201901_c00.txt satlist.txt gridInfo_GEFS.nc CycloneMap_2019.nc" 1
-  nohup python3 modelSat_collocation.py "ww3list_201901_c00.txt" "satlist.txt" "gridInfo_GEFS.nc" "CycloneMap_2019.nc" 1 >> nohup_modelSat_collocation.out 2>&1 &
+  python3 modelSat_collocation.py ww3list_201901_c00.txt satlist.txt gridInfo_GEFS.nc CycloneMap_2019.nc 1
+  nohup python3 modelSat_collocation.py ww3list_201901_c00.txt satlist.txt gridInfo_GEFS.nc CycloneMap_2019.nc 1 >> nohup_modelSat_collocation.out 2>&1 &
 
 OUTPUT:
  netcdf file WW3.Altimeter_*.nc containing the matchups of WAVEWATCHIII
@@ -112,13 +112,13 @@ if len(sys.argv) < 5 :
 if len(sys.argv) >= 5 :
 	# list of WAVEWATCHIII files
 	# import os; os.system("ls -d $PWD/*.nc > ww3list.txt &")
-	wlist=np.loadtxt(sys.argv[1],dtype=str)
+	wlist=np.atleast_1d(np.loadtxt(sys.argv[1],dtype=str))
 	ftag=np.str(sys.argv[1]).split('list')[1].split('.txt')[0]
 	print(' Reading ww3 list '+np.str(sys.argv[1]))
 	print(' Tag '+ftag)
 	# list of gridded satellite files
 	# ls -d $PWD/AltimeterGridded_*.nc > satlist.txt
-	slist=np.loadtxt(sys.argv[2],dtype=str)
+	slist=np.atleast_1d(np.loadtxt(sys.argv[2],dtype=str))
 	# grid information
 	gridinfo=np.str(sys.argv[3])
 	print(' Using gridInfo '+gridinfo)
@@ -165,9 +165,6 @@ else:
 
 # -------------------
 # READ list WW3 files
-if np.size(wlist)==1:
-	wlist=[wlist]
-
 # Select initial and final model times (to speed up satellite data reading)
 auxmtime=[];c=0
 for i in [0,-1]:
@@ -217,9 +214,6 @@ if forecastds>0:
 		forecastds=lforecastds
 
 # READ list Gridded Satellites
-if np.size(slist)==1:
-	slist=[slist]
-
 sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT'])
 slat=[];slon=[];swnd=[];shs=[];stime=[];sid=[]
 for i in range(0,np.size(slist)):
@@ -342,7 +336,7 @@ for i in range(0,np.size(wlist)):
 				del indc
 			else:
 				acmap=np.zeros((mlat.shape[0],mlon.shape[0]),'f')*np.nan
-				print(' Warning: No cyclone information for this time step: '+repr(t))
+				print('     - No cyclone information for this time step: '+repr(t))
 
 			inds=np.where(np.abs(stime-wtime[indtauxw[t]])<1800.)
 			if np.size(inds)>0:
