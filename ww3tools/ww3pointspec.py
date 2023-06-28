@@ -65,14 +65,14 @@ sk=1
 if len(sys.argv) < 3 :
 	sys.exit(' Two inputs must be provided: fileName and StationName')
 elif len(sys.argv) == 3:
-	fname=np.str(sys.argv[1]); stname=np.str(sys.argv[2])
+	fname=str(sys.argv[1]); stname=str(sys.argv[2])
 elif len(sys.argv) == 4:
-	fname=np.str(sys.argv[1]); stname=np.str(sys.argv[2]); sk=np.int(sys.argv[3])
+	fname=str(sys.argv[1]); stname=str(sys.argv[2]); sk=int(sys.argv[3])
 elif len(sys.argv) > 4:
 	sys.exit(' Too many inputs')
 
 # --- READ FILE ---
-if np.str(fname).split('.')[-1] == 'nc':
+if str(fname).split('.')[-1] == 'nc':
 	# NetCDF format
 	ds = xr.open_dataset(fname)
 	dspec=np.array(ds['efth'].values[:,:,:,:])
@@ -108,19 +108,19 @@ if np.str(fname).split('.')[-1] == 'nc':
 	ds.close(); del ds, auxstationname
 
 	if str.isnumeric(stname) == True:
-		if np.int(stname) < 1000:
-			inds=np.int(stname); stname=np.str(stationname[inds])
+		if int(stname) < 1000:
+			inds=int(stname); stname=str(stationname[inds])
 		else:
 			inds=np.where(stationname[:]==stname)
-			if size(inds)>0:
-				inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
+			if np.size(inds)>0:
+				inds=int(inds[0][0]); stname=str(stationname[inds])
 			else:
 				sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
 
 	else:
 		inds=np.where(stationname[:]==stname)
-		if size(inds)>0:
-			inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
+		if np.size(inds)>0:
+			inds=int(inds[0][0]); stname=str(stationname[inds])
 		else:
 			sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
 
@@ -147,7 +147,7 @@ else:
 		ntime=np.zeros((nt),'d')
 
 		# Frequencies --------------------
-		ncf=np.int(np.floor(nf/8));rncf=np.int(np.round(8*((float(nf)/8)-ncf)))
+		ncf=int(np.floor(nf/8));rncf=int(np.round(8*((float(nf)/8)-ncf)))
 		k=0
 		for i in range(0,ncf):
 			line=fp.readline()
@@ -172,7 +172,7 @@ else:
 				dfreq[i] = freq[i]*(freq[-1]/freq[-2]) - freq[i]
 
 		# Directions ---------------------
-		ncd=np.int(np.floor(nd/7));rncd=np.int(np.round(7*((float(nd)/7)-ncd)))
+		ncd=int(np.floor(nd/7));rncd=int(np.round(7*((float(nd)/7)-ncd)))
 		k=0
 		for i in range(0,ncd):
 			line=fp.readline()
@@ -313,8 +313,8 @@ for t in range(0,nt,sk):
 	plt.figtext(0.05,0.61,"Wind Speed: "+str(np.round(wnds[t],2))+" m/s",fontsize=13)
 	plt.figtext(0.05,0.54,"Wind Direc: "+str(np.round(wndd[t]))+"$^\circ$",fontsize=13)
 
-	plt.savefig('wspectrum_'+stname+'_'+np.str(pd.to_datetime(ntime[t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
-		papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+	plt.savefig('wspectrum_'+stname+'_'+str(pd.to_datetime(ntime[t]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
+		format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 	plt.close(); del ax, fig
 	# =================================================== 

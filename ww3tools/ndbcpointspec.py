@@ -64,14 +64,14 @@ sk=1
 if len(sys.argv) < 2 :
 	sys.exit(' At least one input must be provided: NDBC netcdf file')
 elif len(sys.argv) == 2:
-	bspec=np.str(sys.argv[1])
+	bspec=str(sys.argv[1])
 elif len(sys.argv) == 3:
-	bspec=np.str(sys.argv[1]); sk=np.int(sys.argv[2])
+	bspec=str(sys.argv[1]); sk=int(sys.argv[2])
 elif len(sys.argv) > 3:
 	sys.exit(' Too many inputs')
 
-stname=np.str(bspec).split('.nc')[0][-10:-5]
-figname="NDBCspectrum_"+np.str(bspec).split('.nc')[0][-10::]+"_"
+stname=str(bspec).split('.nc')[0][-10:-5]
+figname="NDBCspectrum_"+str(bspec).split('.nc')[0][-10::]+"_"
 
 # READ NDBC data
 # spo_time,ignore,spo_lat,spo_lon,spo_freq,spo_dfreq,spo_pspec,spo_dmspec,ignore,spo_dire,spo_dspec = wread.spec_ndbc(bspec,sk)
@@ -94,7 +94,7 @@ for t in range(0,spo_time.shape[0]):
 	if np.any(np.isnan(spo_dspec[t,:,:])==False):
 	
 		ndspec=np.zeros((spo_freq.shape[0],ndire.shape[0]),'f')
-		#if size(indlf)>0: # uncomment this block and line indlf above if too much energy on frequencies above 27s are found.
+		#if np.size(indlf)>0: # uncomment this block and line indlf above if too much energy on frequencies above 27s are found.
 		#	spo_dspec[t,indlf,:]=0.0
 		#	spo_pspec[t,indlf]=0.0
 		ndspec[:,1:-1]=spo_dspec[t,:,:]
@@ -131,10 +131,10 @@ for t in range(0,spo_time.shape[0]):
 
 		fig.canvas.draw() # https://github.com/SciTools/cartopy/issues/1207
 		fig.tight_layout()
-		plt.savefig(figname+np.str(pd.to_datetime(spo_time[t]).strftime('%Y%m%d%H'))+'.png', dpi=300, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, pad_inches=0.1)
+		plt.savefig(figname+str(pd.to_datetime(spo_time[t]).strftime('%Y%m%d%H'))+'.png', dpi=300, facecolor='w', edgecolor='w',
+			orientation='portrait', format='png',transparent=False, pad_inches=0.1)
 
 		plt.close('all'); del axs, fig
-		print("    Figure Ok. "+np.str(pd.to_datetime(spo_time[t]).strftime('%Y%m%d%H')))
+		print("    Figure Ok. "+str(pd.to_datetime(spo_time[t]).strftime('%Y%m%d%H')))
 
 print(" Done.")

@@ -83,7 +83,7 @@ dirs='/work/noaa/marine/ricardo.campos/data/AODN/altimeter'
 datemin='2019120100'; datemax='2020013123'
 
 # Satellite missions available at AODN dataset, pick one as this code runs one satellite at a time!
-s=np.int(sys.argv[1]) # argument satellite ID for satellite mission selection. s=0 is JASON3, s=1 is JASON2 etc. See list below.
+s=int(sys.argv[1]) # argument satellite ID for satellite mission selection. s=0 is JASON3, s=1 is JASON2 etc. See list below.
 sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT'])
 sname=np.array(['JASON-3','JASON-2','CRYOSAT-2','JASON-1','HY-2','SARAL','SENTINEL-3A','ENVISAT','ERS-1','ERS-2','GEOSAT','GFO','TOPEX','SENTINEL-3B','CFOSAT'])
 
@@ -134,7 +134,7 @@ for j in auxlat:
 			print(dirs+'/'+sdname[s]+'/IMOS_SRS-Surface-Waves_MW_'+sname[s]+'_FV02_'+str(np.abs(j)).zfill(3)+hem+'-'+str(k).zfill(3)+'E-DM00.nc does not exist'); vai=0
 		else:
 			st=np.double(fu.variables['TIME'][:])
-			if size(st)>10:
+			if np.size(st)>10:
 				slat=fu.variables['LATITUDE'][:]
 				slon=fu.variables['LONGITUDE'][:]
 				wnd=fu.variables['WSPD'][:]
@@ -155,7 +155,7 @@ for j in auxlat:
 					swhknstd=fu.variables['SWH_KA_std_dev'][:]
 					swhkqc=fu.variables['SWH_KA_quality_control'][:]
 
-				if ii+size(st) <= ast.shape[0] :
+				if ii+np.size(st) <= ast.shape[0] :
 					if (st.shape[0]==wnd.shape[0]) & (slat.shape[0]==slon.shape[0]) & (hsk.shape[0]==hskcal.shape[0]) :	
 						ast[ii:ii+st.shape[0]]=np.array(st).astype('double')
 						aslat[ii:ii+st.shape[0]]=np.array(slat).astype('float')
@@ -186,7 +186,7 @@ adatemax= np.double(  (timegm( time.strptime(datemax, '%Y%m%d%H') )-float(timegm
 indq = np.where( (aswhknstd<=max_swh_rms) & (asig0knstd<=max_sig0_rms) & (aswhknobs>=min_swh_numval[s]) & (aswhkqc<=max_swh_qc) & (ahsk>0.1) & (ahsk<hsmax) & (awnd>0.2) & (awnd<wspmax) & (ast>=adatemin) & (ast<=adatemax) )
 del asig0knstd,aswhknobs,aswhknstd,aswhkqc,adatemin,adatemax
 
-if size(indq)>10:
+if np.size(indq)>10:
 	ii=0
 	ast=np.double(np.copy(ast[indq[0]]))
 	ast=np.double(np.copy(ast)*24.*3600.+float(timegm( time.strptime('1985010100', '%Y%m%d%H') )))
@@ -204,7 +204,7 @@ if size(indq)>10:
 	# into the regular grid with pyresample kd tree
 	for t in range(0,atime.shape[0]):
 		indt = np.where( abs(ast[:]-atime[t]) < maxti )
-		if size(indt)>2:
+		if np.size(indt)>2:
 			prlon=np.copy(aslon[indt[0]]); prlon[prlon>180.]=prlon[prlon>180.]-360.
 			orig_def = pyresample.geometry.SwathDefinition(lons=prlon, lats=aslat[indt[0]]); del prlon
 			# By distance function wf
@@ -215,16 +215,16 @@ if size(indq)>10:
 			# print('   - ok '+repr(t))
 			indpqq = np.where( (auxfhskcal>0.01) & (auxfwnd>0.01) & (auxfhskcal<hsmax) & (auxfwnd<wspmax) )[0]
 			# allocate data into final array
-			ftime[ii:ii+size(indpqq)] = np.array(np.zeros(size(indpqq),'d')+atime[t]).astype('double')
-			flat[ii:ii+size(indpqq)] = np.array(flatm[indpqq]).astype('float')
-			flon[ii:ii+size(indpqq)] = np.array(flonm[indpqq]).astype('float')
-			fhsk[ii:ii+size(indpqq)] = np.array(auxfhsk[indpqq]).astype('float')
-			stdhsk[ii:ii+size(indpqq)] = np.array(auxstdhsk[indpqq]).astype('float')
-			counthsk[ii:ii+size(indpqq)] = np.array(auxcounthsk[indpqq]).astype('float')
-			fhskcal[ii:ii+size(indpqq)] = np.array(auxfhskcal[indpqq]).astype('float')
-			fwnd[ii:ii+size(indpqq)] = np.array(auxfwnd[indpqq]).astype('float')
-			fwndcal[ii:ii+size(indpqq)] = np.array(auxfwndcal[indpqq]).astype('float')
-			ii=ii+size(indpqq)
+			ftime[ii:ii+np.size(indpqq)] = np.array(np.zeros(np.size(indpqq),'d')+atime[t]).astype('double')
+			flat[ii:ii+np.size(indpqq)] = np.array(flatm[indpqq]).astype('float')
+			flon[ii:ii+np.size(indpqq)] = np.array(flonm[indpqq]).astype('float')
+			fhsk[ii:ii+np.size(indpqq)] = np.array(auxfhsk[indpqq]).astype('float')
+			stdhsk[ii:ii+np.size(indpqq)] = np.array(auxstdhsk[indpqq]).astype('float')
+			counthsk[ii:ii+np.size(indpqq)] = np.array(auxcounthsk[indpqq]).astype('float')
+			fhskcal[ii:ii+np.size(indpqq)] = np.array(auxfhskcal[indpqq]).astype('float')
+			fwnd[ii:ii+np.size(indpqq)] = np.array(auxfwnd[indpqq]).astype('float')
+			fwndcal[ii:ii+np.size(indpqq)] = np.array(auxfwndcal[indpqq]).astype('float')
+			ii=ii+np.size(indpqq)
 
 			del auxfhsk, auxstdhsk, auxcounthsk, auxfhskcal, auxfwnd, auxfwndcal, indpqq
 				
@@ -258,7 +258,7 @@ if size(indq)>10:
 	fhsk=np.array(fhsk[indf[0]]); fhskcal=np.array(fhskcal[indf[0]])
 	stdhsk=np.array(stdhsk[indf[0]]); counthsk=np.array(counthsk[indf[0]])
 	fwnd=np.array(fwnd[indf[0]]); fwndcal=np.array(fwndcal[indf[0]])
-	print(sdname[s]+' .  Array Size '+np.str(size(indf))); print(' ')
+	print(sdname[s]+' .  Array Size '+str(np.size(indf))); print(' ')
 	del indf
 
 	# Save netcdf

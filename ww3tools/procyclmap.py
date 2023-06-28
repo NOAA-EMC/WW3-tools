@@ -58,10 +58,10 @@ import pandas as pd
 import warnings; warnings.filterwarnings("ignore")
 fnetcdf="NETCDF4_CLASSIC"
 
-year=np.int(sys.argv[1]) # input argument
-datelim=np.str(year)+'123123'
+year=int(sys.argv[1]) # input argument
+datelim=str(year)+'123123'
 # 3-hourly data, if you want to change the time resolution, please edit the next line.
-ftime = np.array(np.arange(float(timegm( time.strptime(np.str(year)+'010100', '%Y%m%d%H') )),float(timegm( time.strptime(datelim, '%Y%m%d%H') ))+1,3.*3600.)).astype('double')
+ftime = np.array(np.arange(float(timegm( time.strptime(str(year)+'010100', '%Y%m%d%H') )),float(timegm( time.strptime(datelim, '%Y%m%d%H') ))+1,3.*3600.)).astype('double')
 # Cyclone radius (km) for tropical cyclones, followed by its transition to extratropical 
 # https://journals.ametsoc.org/view/journals/clim/29/8/jcli-d-15-0731.1.xml
 # https://www.nhc.noaa.gov/pdf/carrasco-etal-wf2014.pdf
@@ -104,7 +104,7 @@ ilat=np.copy(np.array(ilat[ind]).astype('int')); ilon=np.copy(np.array(ilon[ind]
 ity=np.copy(np.array(ity[ind]).astype('int')); itm=np.copy(np.array(itm[ind]).astype('int'))
 itd=np.copy(np.array(itd[ind]).astype('int')); ith=np.copy(np.array(ith[ind]).astype('int'))
 del ind; it=[]
-for i in range(0,size(ity)):
+for i in range(0,np.size(ity)):
 	it = np.append(it,np.array(timegm( time.strptime(repr(ity[i])+str(itm[i]).zfill(2)+str(itd[i]).zfill(2)+str(ith[i]).zfill(2), '%Y%m%d%H') )).astype('double'))
 
 # -----------
@@ -112,7 +112,7 @@ for i in range(0,size(ity)):
 # resolution
 gres=np.diff(latm).mean()
 # displacement for the cyclone area
-dglat = np.int(np.ceil(((etr/100.)+1.0)/gres))
+dglat = int(np.ceil(((etr/100.)+1.0)/gres))
 # Final array of mask
 cmask=np.zeros((ftime.shape[0],maskm.shape[0],maskm.shape[1]),'i')
 # loop through all times
@@ -131,7 +131,7 @@ for t in range(0,ftime.shape[0]):
 
 			# Index of grid points whithin the cyclone
 			rlat=np.array(np.where( (latm>=latm[indilat]-gres*dglat) & (latm<=latm[indilat]+gres*dglat) )[0]).astype('int')
-			dglon = np.int(np.ceil((etr/(90./(1/np.cos(np.abs(latm)[np.int(np.round(np.mean(rlat)))]*(pi/180)))))/gres))
+			dglon = int(np.ceil((etr/(90./(1/np.cos(np.abs(latm)[int(np.round(np.mean(rlat)))]*(pi/180)))))/gres))
 			rlon=np.array(np.where( (lonm>=lonm[indilon]-gres*dglon) & (lonm<=lonm[indilon]+gres*dglon) )[0]).astype('int')
 			if np.abs(ilat[indt[i]])<40.:
 				etrl= tcr + np.max([0,np.abs(ilat[indt[i]])-20.])*(etr-tcr)/20.
@@ -143,15 +143,15 @@ for t in range(0,ftime.shape[0]):
 					cdist=np.float(geopy.distance.great_circle((latm[rlat[j]],lonm[rlon[k]]), (latm[indilat],lonm[indilon]) ).kilometers)
 					if (cdist<=etrl) and (maskm[rlat[j],rlon[k]]>=0.):
 						if inat[indt[i]]=='TS':
-							cmask[t,rlat[j],rlon[k]]=np.int(5)
+							cmask[t,rlat[j],rlon[k]]=int(5)
 						elif inat[indt[i]]=='SS':
-							cmask[t,rlat[j],rlon[k]]=np.int(4)
+							cmask[t,rlat[j],rlon[k]]=int(4)
 						elif inat[indt[i]]=='ET':
-							cmask[t,rlat[j],rlon[k]]=np.int(3)
+							cmask[t,rlat[j],rlon[k]]=int(3)
 						elif inat[indt[i]]=='DS':
-							cmask[t,rlat[j],rlon[k]]=np.int(2)
+							cmask[t,rlat[j],rlon[k]]=int(2)
 						else:
-							cmask[t,rlat[j],rlon[k]]=np.int(1)
+							cmask[t,rlat[j],rlon[k]]=int(1)
 
 					del cdist
 

@@ -68,26 +68,26 @@ sk=1; slat=0; slon=0
 if len(sys.argv) < 3 :
 	sys.exit(' Two inputs must be provided: fileName and VariableName')
 elif len(sys.argv) == 3:
-	fname=np.str(sys.argv[1]); wvar=np.str.lower(sys.argv[2])
+	fname=str(sys.argv[1]); wvar=str(sys.argv[2])
 elif len(sys.argv) == 4:
-	fname=np.str(sys.argv[1]); wvar=np.str.lower(sys.argv[2]); sk=np.int(sys.argv[3])
+	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
 elif len(sys.argv) == 5:
-	fname=np.str(sys.argv[1]); wvar=np.str.lower(sys.argv[2]); sk=np.int(sys.argv[3])
-	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(np.str(slat).split(',')[0]),np.float(np.str(slat).split(',')[1])])
+	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
+	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
 elif len(sys.argv) == 6:
-	fname=np.str(sys.argv[1]); wvar=np.str.lower(sys.argv[2]); sk=np.int(sys.argv[3])
-	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(np.str(slat).split(',')[0]),np.float(np.str(slat).split(',')[1])])
-	slon=sys.argv[5]; slon=slon[1:-1]; slon=np.array([np.float(np.str(slon).split(',')[0]),np.float(np.str(slon).split(',')[1])])
+	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
+	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
+	slon=sys.argv[5]; slon=slon[1:-1]; slon=np.array([np.float(str(slon).split(',')[0]),np.float(str(slon).split(',')[1])])
 elif len(sys.argv) > 6:
 	sys.exit(' Too many inputs')
 
 # ----- READ DATA ----- 
-if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'grb2': 
+if str(fname).split('.')[-1] == 'grib2' or str(fname).split('.')[-1] == 'grb2': 
 	# grib2 format
 	ds = xr.open_dataset(fname, engine='cfgrib')
 	wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
-	if wvar=='hs':
-		wvar=np.str('swh')
+	if str.lower(wvar)=='hs':
+		wvar=str('swh')
 
 	if (wvar in list(ds.keys()))==False:
 		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
@@ -95,7 +95,7 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 	lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
 	
 	if wtime.shape[0]==1:
-		if (size(ds[wvar].shape)==2) and (ds[wvar].shape[0]==lat.shape[0]) and (ds[wvar].shape[1]==lon.shape[0]):
+		if (np.size(ds[wvar].shape)==2) and (ds[wvar].shape[0]==lat.shape[0]) and (ds[wvar].shape[1]==lon.shape[0]):
 			# Structured
 			gstr=2
 			wdata = np.array([np.flip(ds[wvar].values[:,:],0)])
@@ -104,20 +104,20 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 			gstr=1
 			wdata = np.array(ds[wvar].values)
 	else:
-		if size(ds[wvar].shape)==3:
+		if np.size(ds[wvar].shape)==3:
 			# Structured
 			gstr=2
 			wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
-		elif size(ds[wvar].shape)==2:
+		elif np.size(ds[wvar].shape)==2:
 			# Unstructured
 			gstr=1
 			wdata = np.array(ds[wvar].values)
 		else:
 			sys.exit(' Unexpected file shape.')
 
-	units_wdata = np.str(ds[wvar].units)
+	units_wdata = str(ds[wvar].units)
 
-	if gstr==2 and size(lat.shape)==1:
+	if gstr==2 and np.size(lat.shape)==1:
 		lat = np.sort(lat)
 
 	ds.close(); del ds
@@ -125,41 +125,52 @@ if np.str(fname).split('.')[-1] == 'grib2' or np.str(fname).split('.')[-1] == 'g
 
 else:
 	# netcdf format
-	f=nc.Dataset(fname)
-	if (wvar in list(f.variables.keys()))==False:
-		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
+	ds = xr.open_dataset(fname)
+	if 'step' in ds:
+		wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
+	else:
+		wtime = np.atleast_1d(np.array(ds.time.values))
 
-	wdata = np.array(f.variables[wvar])
-	units_wdata = np.str(f.variables[wvar].units)
-	lat = np.array(f.variables['latitude']); lon = np.array(f.variables['longitude'])
+	if 'latitude' in ds:
+		lat = np.array(ds['latitude'].values); lon = np.array(ds['longitude'].values)
+	elif 'LATITUDE' in ds:
+		lat = np.array(ds['LATITUDE'].values); lon = np.array(ds['LONGITUDE'].values)
+	elif 'lat' in ds:
+		lat = np.array(ds['lat'].values); lon = np.array(ds['lon'].values)
+	elif 'LAT' in ds:
+		lat = np.array(ds['LAT'].values); lon = np.array(ds['LON'].values)
+	else:
+		sys.exit(' Lat/lon array not found.')
 
-	if f.variables['time'].shape[0]==1:
-		if (size(wdata.shape)==2) and (wdata.shape[0]==lat.shape[0]) and (wdata.shape[1]==lon.shape[0]):
+	if wvar in ds:
+		wdata = np.array(ds[wvar].values)
+		units_wdata = str(ds[wvar].units)
+	else:
+		sys.exit(' Variable name not included in the file. You can use ncdump -h filename.nc to see variable names.')
+
+	# data structure
+	if wtime.shape[0]==1:
+		if (np.size(wdata.shape)==2) and (wdata.shape[0]==lat.shape[0]) and (wdata.shape[1]==lon.shape[0]):
 			gstr=2 # Structured
-			wdata = np.array([f.variables[wvar][:,:]])
+			wdata = np.array([wdata])
+		elif (np.size(wdata.shape)>2) and (wdata.shape[1]==lat.shape[0]) and (wdata.shape[2]==lon.shape[0]):
+			gstr=2 # Structured
 		else:
 			gstr=1 # Unstructured
+
 	else:
-		if size(wdata.shape)==3 and size(lat.shape)==1:
+		if np.size(wdata.shape)==3 and np.size(lat.shape)==1:
 			# Structured
 			gstr=2
-		elif size(wdata.shape)==2 or size(lat.shape)==2:
+		elif np.size(wdata.shape)==2 or np.size(lat.shape)==2:
 			# Unstructured
 			gstr=1
 
-	# time
-	auxt = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
-	f.close(); del f
+	ds.close(); del ds
 
-	wtime=[]
-	for i in range(0,auxt.shape[0]):
-		wtime = np.append(wtime,datetime.fromtimestamp(auxt[i], timezone.utc))
+	wdata[wdata>360]=np.nan; wdata[wdata<0]=np.nan
 
-	del auxt
-
-	wdata[wdata>360]=np.nan
-
-if size(wdata.shape)==3 and size(lat.shape)==2:
+if np.size(wdata.shape)==3 and np.size(lat.shape)==2:
 	lon[lon>180]=lon[lon>180]-360.
 
 if np.any(slat):
@@ -171,7 +182,6 @@ if np.any(slon):
 	slon=np.array(np.sort(slon))
 else:
 	slon=np.array([np.nanmin(lon),np.nanmax(lon)])
-
 
 # cbar levels
 extdm=1
@@ -254,13 +264,13 @@ for t in range(wtime[::sk].shape[0]):
 	tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
 	plt.axes(ax)  # make the original axes current again
 	plt.tight_layout()
-	# plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
-	plt.savefig('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
-		orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+	# plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
+	plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
+		orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 	
 	# The pickle line below allow users to save the figure and edit later, using pickle. 
 	#   to use this option, uncomment the line below and the initial import pickle
-	# pickle.dump(ax, open('wfields_'+wvar+'_'+np.str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
+	# pickle.dump(ax, open('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
 	plt.close('all'); del ax
 
 

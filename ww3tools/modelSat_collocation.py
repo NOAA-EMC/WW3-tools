@@ -84,6 +84,8 @@ AUTHOR and DATE:
   up the process (1 month of GEFS reduced from 8+ hours to 2 hours).
  05/21/2023: Ricardo M. Campos, fix netcdf variable name and time array 
   when converted from .grib2 to netcdf; and CFSR added.
+ 06/20/2023: Ricardo M. Campos, improve time array and avoid problems
+  when working with different formats (grib2,netcdf) and variable names.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -113,20 +115,20 @@ if len(sys.argv) >= 5 :
 	# list of WAVEWATCHIII files
 	# import os; os.system("ls -d $PWD/*.nc > ww3list.txt &")
 	wlist=np.atleast_1d(np.loadtxt(sys.argv[1],dtype=str))
-	ftag=np.str(sys.argv[1]).split('list')[1].split('.txt')[0]
-	print(' Reading ww3 list '+np.str(sys.argv[1]))
+	ftag=str(sys.argv[1]).split('list')[1].split('.txt')[0]
+	print(' Reading ww3 list '+str(sys.argv[1]))
 	print(' Tag '+ftag)
 	# list of gridded satellite files
 	# ls -d $PWD/AltimeterGridded_*.nc > satlist.txt
 	slist=np.atleast_1d(np.loadtxt(sys.argv[2],dtype=str))
 	# grid information
-	gridinfo=np.str(sys.argv[3])
+	gridinfo=str(sys.argv[3])
 	print(' Using gridInfo '+gridinfo)
 	# cyclone map
-	cyclonemap=np.str(sys.argv[4])
+	cyclonemap=str(sys.argv[4])
 	print(' Using cyclone map '+cyclonemap)
 if len(sys.argv) >= 6:
-	forecastds=np.int(sys.argv[5])
+	forecastds=int(sys.argv[5])
 	if forecastds>0:
 		print(' Forecast-type data structure')
 if len(sys.argv) > 7:
@@ -144,14 +146,14 @@ print(" "); print(" GridInfo Ok.")
 # -------------
 
 # READ Cyclone map
-if "*" in np.str(cyclonemap).split('/')[-1]:
+if "*" in str(cyclonemap).split('/')[-1]:
 	fcy=nc.MFDataset(cyclonemap, aggdim='time')
 else:
 	fcy=nc.Dataset(cyclonemap)
 
 clat=np.array(fcy.variables['lat'][:]); clon=np.array(fcy.variables['lon'][:])
 cmap=fcy.variables['cmap']; ctime=np.array(fcy.variables['time'][:]).astype('double')
-cinfo=np.str(fcy.info); cinfo=np.array(np.str(cinfo).split(':')[1].split(';'))
+cinfo=str(fcy.info); cinfo=np.array(str(cinfo).split(':')[1].split(';'))
 
 if np.array_equal(clat,mlat)==True & np.array_equal(clon,mlon)==True: 
 	print(" CycloneMap Ok.")
@@ -166,49 +168,56 @@ else:
 # -------------------
 # READ list WW3 files
 # Select initial and final model times (to speed up satellite data reading)
-auxmtime=[];c=0
-for i in [0,-1]:
+auxmtime=[];c=0;nrt=0
+for i in range(0,np.size(wlist)):
 	try:
-		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
-			f = nc.Dataset(np.str(wlist[i]))
+		if str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
+			f = nc.Dataset(str(wlist[i]))
+			funits=f.variables['time'].units
+			ftunits=str(funits).split('since')[1][1::].replace('T',' ').replace('+00:00','').replace('00.0 0:00','00')
 			if c==0:
-				if np.str(f.variables['time'].units).split(' ')[0] == 'seconds':
+				if str(funits).split(' ')[0] == 'seconds':
 					tincr=1
-				elif np.str(f.variables['time'].units).split(' ')[0] == 'hours':
+				elif str(funits).split(' ')[0] == 'hours':
 					tincr=3600
-				elif np.str(f.variables['time'].units).split(' ')[0] == 'days':
+				elif str(funits).split(' ')[0] == 'days':
 					tincr=24*3600
 
-				wtime = np.array(f.variables['time'][0]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
-				wtimef = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')		
-				nrt=np.abs(wtimef-wtime)
-				del wtimef
-			else:
-				wtime = np.array(f.variables['time'][-1]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			wtime = np.array(f.variables['time'][0]*tincr +
+				timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
 
+			wtimef = np.array(f.variables['time'][-1]*tincr +
+				timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
+
+			anrt=np.abs(wtimef-wtime)
+			if anrt>nrt:
+				nrt=np.copy(anrt)
+
+			wtime=np.append(wtime,wtimef)
+			del wtimef,anrt
 			f.close(); del f
 
-		elif (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
-			f = xr.open_dataset(np.str(wlist[i]), engine='cfgrib')
-			if c==0:
-				wtime = np.double(timegm(strptime(np.str(f.time.values)[0:-10], '%Y-%m-%dT%H:%M:%S')))
-				wtimef = np.double(timegm(strptime(np.str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))
-				nrt=np.abs(wtimef-wtime)
-				del wtimef
-			else:
-				wtime = np.double(timegm(strptime(np.str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))			
+		elif (str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
+			f = xr.open_dataset(str(wlist[i]), engine='cfgrib')
+			wtime = np.double(timegm(strptime(str(f.time.values + f.step.values[0])[0:-10], '%Y-%m-%dT%H:%M:%S')))
+			wtimef = np.double(timegm(strptime(str(f.time.values + f.step.values[-1])[0:-10], '%Y-%m-%dT%H:%M:%S')))
+			anrt=np.abs(wtimef-wtime)
+			if anrt>nrt:
+				nrt=np.copy(anrt)
 
-			f.close(); del f
+			wtime=np.append(wtime,wtimef)
+			del wtimef,anrt
+			f.close(); del f		
 
 	except:
-		print(" Error: Cannot open "+np.str(wlist[i]))
+		print(" Error: Cannot open "+str(wlist[i]))
 	else:
 		auxmtime=np.append(auxmtime,wtime); del wtime
 		c=c+1
 
 del c
 if forecastds>0:
-	lforecastds=np.int(np.ceil(nrt/(auxmtime[1]-auxmtime[0]))+1); del nrt
+	lforecastds=int(np.ceil(nrt/(auxmtime.max()-auxmtime.min()))+1); del nrt
 	if forecastds<lforecastds:
 		print(" Forecastds updated to "+repr(lforecastds))
 		forecastds=lforecastds
@@ -221,7 +230,7 @@ for i in range(0,np.size(slist)):
 		f=nc.Dataset(slist[i])
 		astime=np.array(f.variables['stime'][:])
 	except:
-		print(" Error: Cannot open "+np.str(slist[i]))
+		print(" Error: Cannot open "+str(slist[i]))
 	else:
 		print('ok')
 		if (np.nanmin(astime)>=auxmtime.max()) or (np.nanmax(astime)<auxmtime.min()):
@@ -250,14 +259,14 @@ for i in range(0,np.size(slist)):
 
 			if 'sat_name' in f.variables.keys():
 				auxsatname=f.variables['sat_name'][:]
-				sid=np.append(sid,np.zeros(stime.shape[0],'int')+np.int(np.where( auxsatname == sdname)[0][0]))
+				sid=np.append(sid,np.zeros(stime.shape[0],'int')+int(np.where( auxsatname == sdname)[0][0]))
 				del auxsatname
-			elif np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
-				sid=np.append(sid,np.zeros(stime.shape[0],'int')+np.int(np.where(np.str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] == sdname)[0][0]))
+			elif str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
+				sid=np.append(sid,np.zeros(stime.shape[0],'int')+int(np.where(str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] == sdname)[0][0]))
 			else:
 				sys.exit(' Error: Problem identifying satellite mission from file name: '+slist[i])
 
-			print('  - ok '+np.str(slist[i]))
+			print('  - ok '+str(slist[i]))
 
 		del astime
 		f.close(); del f
@@ -288,18 +297,39 @@ if forecastds>0:
 c=0
 for i in range(0,np.size(wlist)):
 	try:
-		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
+		if str(wlist[i]).split('/')[-1].split('.')[-1]=='nc':
 			# netcdf format
 			fformat=1
-			f=nc.Dataset(np.str(wlist[i]))
-			wlon=np.array(f.variables['longitude'][:]); wlat=np.array(f.variables['latitude'][:])
-			wtime = np.array(f.variables['time'][:]*tincr + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			f=nc.Dataset(str(wlist[i]))
+			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','')
+			wtime = np.array(f.variables['time'][:]*tincr + timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
+			if 'latitude' in f.variables.keys():
+				wlat = np.array(f.variables['latitude'][:]); wlon = np.array(f.variables['longitude'][:])
+			elif 'LATITUDE' in f.variables.keys():
+				wlat = np.array(f.variables['LATITUDE'][:]); wlon = np.array(f.variables['LONGITUDE'][:])
+			elif 'lat' in f.variables.keys():
+				wlat = np.array(f.variables['lat'][:]); wlon = np.array(f.variables['lon'][:])
+			elif 'LAT' in f.variables.keys():
+				wlat = np.array(f.variables['LAT'][:]); wlon = np.array(f.variables['LON'][:])
+			else:
+				sys.exit(' Lat/lon array not found.')
 
-		elif (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (np.str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
+		elif (str(wlist[i]).split('/')[-1].split('.')[-1]=='grib2') or (str(wlist[i]).split('/')[-1].split('.')[-1]=='grb2'):
 			# grib2 format
 			fformat=2
-			f = xr.open_dataset(np.str(wlist[i]), engine='cfgrib')
-			wlon=np.array(f['longitude'].values); wlat=np.array(f['latitude'].values)
+			f = xr.open_dataset(str(wlist[i]), engine='cfgrib')
+
+			if 'latitude' in f:
+				wlat = np.array(f['latitude'].values); wlon = np.array(f['longitude'].values)
+			elif 'LATITUDE' in f:
+				wlat = np.array(f['LATITUDE'].values); wlon = np.array(f['LONGITUDE'].values)
+			elif 'lat' in f:
+				wlat = np.array(f['lat'].values); wlon = np.array(f['lon'].values)
+			elif 'LAT' in f:
+				wlat = np.array(f['LAT'].values); wlon = np.array(f['LON'].values)
+			else:
+				sys.exit(' Lat/lon array not found.')	
+
 			if wlat[-1]<wlat[0]:
 				wlat=np.array(np.flipud(wlat)); iwlat=1
 			else:
@@ -308,14 +338,14 @@ for i in range(0,np.size(wlist)):
 			auxtime = np.array(f.time.values + f.step.values )
 			wtime=np.zeros((auxtime.shape[0]),'d')*np.nan
 			for j in range(0,wtime.shape[0]):
-				wtime[j]=np.double(timegm(strptime(np.str(auxtime[j])[0:-10], '%Y-%m-%dT%H:%M:%S')))
+				wtime[j]=np.double(timegm(strptime(str(auxtime[j])[0:-10], '%Y-%m-%dT%H:%M:%S')))
 
 			del auxtime
 
 	except:
-		print(" Error: Cannot open "+np.str(wlist[i]))
+		print(" Error: Cannot open "+str(wlist[i]))
 	else:
-		print(" Ok read "+np.str(wlist[i])+" starting matchups ...")
+		print(" Ok read "+str(wlist[i])+" starting matchups ...")
 
 		if np.size( np.where(wlon>180.) )>0:
 			wlon[wlon>180.] = wlon[wlon>180.]-360.
@@ -324,7 +354,7 @@ for i in range(0,np.size(wlist)):
 			sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
 		# Coincident/Matching Time (model/satellite)
-		aux=np.intersect1d(wtime, stime, assume_unique=False, return_indices=True)
+		aux=intersect1d(wtime, stime, assume_unique=False, return_indices=True)
 		indtauxw=np.array(aux[1]).astype('int'); del aux
 		# loop through ww3 time steps
 		for t in range(0,np.size(indtauxw)):
@@ -377,7 +407,7 @@ for i in range(0,np.size(wlist)):
 						fcmap[c]=acmap[indgplat,indgplon]
 						# time
 						ftime[c]=np.double(wtime[indtauxw[t]])
-						fmonth[c]=np.int(time.gmtime(wtime[indtauxw[t]])[1])
+						fmonth[c]=int(time.gmtime(wtime[indtauxw[t]])[1])
 						if forecastds>0:
 							# the cycle time is the minimum of the time array
 							fcycle[c]=np.double(np.nanmin(wtime))
@@ -391,7 +421,7 @@ for i in range(0,np.size(wlist)):
 			print(repr(t))
 
 		f.close(); del f
-		print(" Done "+np.str(wlist[i]))
+		print(" Done "+str(wlist[i]))
 
 
 fcy.close(); del fcy
@@ -444,13 +474,13 @@ if np.size(ind)>0:
 	vswnd = ncfile.createVariable('obs_wnd',np.dtype('float32').char,('index'))
 	# Assign units
 	vlat.units = 'degrees_north' ; vlon.units = 'degrees_east'
-	vt.units = 'seconds since 1970-01-01T00:00:00+00:00'
+	vt.units = 'seconds since 1970-01-01 00:00:00'
 	vwhs.units='m'; vshs.units='m'
 	vwwnd.units='m/s'; vswnd.units='m/s'
 	vdepth.units='m'; vdistcoast.units='km'
 	if forecastds>0:
 		vcycle = ncfile.createVariable('cycle',np.dtype('float64').char,('index'))
-		vcycle.units = 'seconds since 1970-01-01T00:00:00+00:00'; vcycle[:]=fcycle[:]
+		vcycle.units = 'seconds since 1970-01-01 00:00:00'; vcycle[:]=fcycle[:]
 
 	# Allocate Data
 	vt[:]=ftime[:]; vmonth[:]=fmonth[:]

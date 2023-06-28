@@ -178,7 +178,7 @@ fy = input("Final year for download:  ")
 
 #    -- NDBC -- 
 print(' '); print(' Downloading NDBC buoy data (this may take a while) ...')
-wfetchbuoy.ndbc_nc(np.int(iy),np.int(fy),opath+'buoys/allbstations.txt',opath+'buoys/NDBC/wparam',opath+'buoys/NDBC/spec')
+wfetchbuoy.ndbc_nc(int(iy),int(fy),opath+'buoys/allbstations.txt',opath+'buoys/NDBC/wparam',opath+'buoys/NDBC/spec')
 
 print(' 2) OK NDBC buoy data successfully downloaded at '+opath+'buoys/NDBC/')
 
