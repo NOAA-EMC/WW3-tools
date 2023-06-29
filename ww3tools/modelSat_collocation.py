@@ -301,7 +301,7 @@ for i in range(0,np.size(wlist)):
 			# netcdf format
 			fformat=1
 			f=nc.Dataset(str(wlist[i]))
-			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','')
+			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','').replace('00.0 0:00','00')
 			wtime = np.array(f.variables['time'][:]*tincr + timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
 			if 'latitude' in f.variables.keys():
 				wlat = np.array(f.variables['latitude'][:]); wlon = np.array(f.variables['longitude'][:])
@@ -354,7 +354,7 @@ for i in range(0,np.size(wlist)):
 			sys.exit(' Error: Cyclone grid and Mask grid are different.')
 
 		# Coincident/Matching Time (model/satellite)
-		aux=intersect1d(wtime, stime, assume_unique=False, return_indices=True)
+		aux=np.intersect1d(wtime, stime, assume_unique=False, return_indices=True)
 		indtauxw=np.array(aux[1]).astype('int'); del aux
 		# loop through ww3 time steps
 		for t in range(0,np.size(indtauxw)):
