@@ -50,7 +50,7 @@ PERSON OF CONTACT:
 """
 
 import matplotlib
-# matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 from pylab import *
@@ -375,14 +375,16 @@ def scatterplot(*args):
 		ind=np.where((a*b)>-999.)[0]; a=np.copy(a[ind]); b=np.copy(b[ind]); del ind
 
 		if (a.shape[0]<30) | (model.shape[0]>1):
-			if np.size(mlabels)>0 and mlabels[0] != '':
-				ax.scatter(b,a,color=ccol[i],marker=mmark[i],label=mlabels[i],zorder=2) #, linestyle='--', linewidth=1.
+			if np.size(mlabels)>0:
+				if mlabels[0] != '':
+					ax.scatter(b,a,color=ccol[i],marker=mmark[i],label=mlabels[i],zorder=2) #, linestyle='--', linewidth=1.
 			else:
 				ax.scatter(b,a,color=ccol[i],marker=mmark[i],zorder=2)
 		else:
 			xy = np.vstack([a,b]); z = gaussian_kde(xy)(xy)
-			if np.size(mlabels)>0 and mlabels[0] != '':
-				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,label=mlabels[i],zorder=2)
+			if np.size(mlabels)>0:
+				if mlabels[0] != '':
+					ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,label=mlabels[i],zorder=2)
 			else:
 				ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,zorder=2)
 
@@ -406,8 +408,9 @@ def scatterplot(*args):
 
 	plt.gca().set_xlim(left=famin, right=famax); plt.gca().set_ylim(ymin=famin,ymax=famax)
 
-	if mlabels[0] != '':
-		plt.legend(loc="upper left",fontsize=sl-2)
+	if np.size(mlabels)>0:
+		if mlabels[0] != '':
+			plt.legend(loc="upper left",fontsize=sl-2)
 
 	# ax.set_axisbelow(True)
 	plt.tight_layout(); #plt.axis('tight')
