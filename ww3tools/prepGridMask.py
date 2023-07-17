@@ -107,13 +107,12 @@ class PrepGridMask:
     fnetcdf="NETCDF4"
 
     @classmethod
-    def prepMask(cls):
-        fainfo=2
-        # fainfo=np.int(0)
-        # if len(sys.argv) == 2 :
-        #         fainfo=np.int(sys.argv[1])
-        # elif len(sys.argv) > 2:
-        #         sys.exit(' Too many inputs')
+    def prepMask(cls,fainfo):
+        fainfo=np.int(0)
+        if len(sys.argv) == 2 :
+                fainfo=np.int(sys.argv[1])
+        elif len(sys.argv) > 2:
+                sys.exit(' Too many inputs')
 
         # input from profile.yaml
         with open('profile.yaml','r') as configfile:
@@ -569,4 +568,5 @@ class PrepGridMask:
 
                 print('plots ok')
 
-        print('prepGridMask.py Completed')
+        print('prepMask Completed')
+        return ncfile
