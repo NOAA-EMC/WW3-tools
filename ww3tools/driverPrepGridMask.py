@@ -6,4 +6,4 @@ tester.py - driver for testing oop/refactor updates.
 
 from prepGridMask import PrepGridMask
 
-PrepGridMask.prepMask()
+gridmasknc = PrepGridMask.prepMask(2)
