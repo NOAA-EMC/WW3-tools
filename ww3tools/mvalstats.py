@@ -7,6 +7,7 @@ mvalstats.py
 VERSION AND LAST UPDATE:
  v1.0  04/04/2022
  v1.1  05/22/2022
+ v1.2  07/13/2023
 
 PURPOSE:
  Group of python functions for statistical analyses and validation. 
@@ -33,6 +34,8 @@ DEPENDENCIES:
 AUTHOR and DATE:
  04/04/2022: Ricardo M. Campos, first version.
  05/22/2022: Ricardo M. Campos, removed L-moments from smrstat.
+ 07/13/2023: Ricardo M. Campos, argument reading has been modified and
+   L-moments are optional in smrstat.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
