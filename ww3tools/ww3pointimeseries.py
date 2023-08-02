@@ -49,7 +49,7 @@ import warnings; warnings.filterwarnings("ignore")
 if len(sys.argv) < 3 :
 	sys.exit(' Two inputs must be provided: fileName and StationName')
 elif len(sys.argv) == 3:
-	fname=np.str(sys.argv[1]); stname=np.str(sys.argv[2])
+	fname=str(sys.argv[1]); stname=str(sys.argv[2])
 elif len(sys.argv) > 3:
 	sys.exit(' Too many inputs')
 
@@ -62,12 +62,12 @@ for i in range(0,auxstationname.shape[0]):
 
 
 if str.isnumeric(stname) == True:
-	if np.int(stname) < 1000:
-		inds=np.int(stname); stname=np.str(stationname[inds])
+	if int(stname) < 1000:
+		inds=int(stname); stname=str(stationname[inds])
 	else:
 		inds=np.where(stationname[:]==stname)
-		if size(inds)>0:
-			inds=np.int(inds[0][0]); stname=np.str(stationname[inds])
+		if np.size(inds)>0:
+			inds=int(inds[0][0]); stname=str(stationname[inds])
 		else:
 			sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
 
@@ -77,7 +77,7 @@ ntime = ds['time'].values[:]
 # PLOT ---
 wvars=list(ds.keys())[3::]
 fig = plt.figure(figsize=(15,7))
-for i in range(0,size(wvars)):
+for i in range(0,np.size(wvars)):
 	fpos=421+i
 	ax = fig.add_subplot(fpos)
 	ax.plot_date(ntime,ds[wvars[i]].values[:,inds],'k.')
@@ -92,8 +92,8 @@ for i in range(0,size(wvars)):
 
 fig.tight_layout()
 
-plt.savefig('wtimeseries_'+stname+'_'+np.str(pd.to_datetime(ntime[0]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
-	papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+plt.savefig('wtimeseries_'+stname+'_'+str(pd.to_datetime(ntime[0]).strftime('%Y%m%d%H'))+'.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', 
+	format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 plt.close(); ds.close()
 del ax, fig, ds

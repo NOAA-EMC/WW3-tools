@@ -57,7 +57,7 @@ import wread
 palette = plt.cm.jet
 dpalette = plt.cm.RdBu_r
 
-stname=np.str(sys.argv[1]) # stname="41047" 
+stname=str(sys.argv[1]) # stname="41047" 
 
 # lowest period (upper limit frequency) for the directional wave spectra (2D) polat plot
 lper=4.5
@@ -73,7 +73,7 @@ pbuoys="/home/ricardo/cimas/analysis/3assessments/modelbuoys/evalGSE/data/buoys"
 # READ DATA ********************
 dt = np.arange(datetime(2016,10,4), datetime(2016,11,3), timedelta(days=1)).astype(datetime) # initial/final date of hindcast (each file with 1 day)
 it=0
-for t in range(0,size(dt)):
+for t in range(0,np.size(dt)):
 
 	cdate = pd.to_datetime(dt[t]).strftime('%Y%m%d')
 
@@ -83,7 +83,7 @@ for t in range(0,size(dt)):
 	if it==0:
 		wdata1 = np.array(ds[wvar].values[:,:,:])
 		wtime = np.array(ds.time.values)
-		units_wdata = np.str(ds[wvar].units)
+		units_wdata = str(ds[wvar].units)
 		lat = np.array(ds.latitude.values[:]); lon = np.array(ds.longitude.values[:])
 	else:
 		wdata1 = np.append(wdata1,np.array(ds[wvar].values[:,:,:]),axis=0)
@@ -104,7 +104,7 @@ for t in range(0,size(dt)):
 	#   TIME-SERIES
 	# Observations NDBC ----------------
 	if it==0:
-		fname=np.str(pbuoys+"/"+stname+"h2016.nc")
+		fname=str(pbuoys+"/"+stname+"h2016.nc")
 		result  = wread.tseriesnc_ndbc(fname)
 		tso_time=np.array(result['date']); tso_lat=np.array(result['latitude']); tso_lon=np.array(result['longitude'])
 		tso_wnd=np.array(result['wind_spd']); tso_hs=np.array(result['hs'])
@@ -116,12 +116,12 @@ for t in range(0,size(dt)):
 
 	# WAVEWATCH III ----------------
 	if it==0:
-		fname=np.str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
+		fname=str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
 		result = wread.tseriesnc_ww3(fname,stname)
 		tsm_time=np.array(result['date']); tsm_hs1=np.array(result['hs'])
 		tsm_tm1=np.array(result['tm']); tsm_dm1=np.array(result['dm']); del result,fname
 	else:
-		fname=np.str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
+		fname=str(wrun1+"/ww3gefs."+cdate+"_tab.nc")
 		result = wread.tseriesnc_ww3(fname,stname)
 		atsm_time=np.array(result['date']); atsm_hs1=np.array(result['hs'])
 		atsm_tm1=np.array(result['tm']); atsm_dm1=np.array(result['dm']); del result,fname
@@ -129,12 +129,12 @@ for t in range(0,size(dt)):
 		tsm_tm1 = np.append(tsm_tm1,atsm_tm1); tsm_dm1 = np.append(tsm_dm1,atsm_dm1)
 
 	if it==0:
-		fname=np.str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
+		fname=str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
 		result = wread.tseriesnc_ww3(fname,stname)
 		tsm_hs2=np.array(result['hs']); tsm_tm2=np.array(result['tm'])
 		tsm_dm2=np.array(result['dm']); del result,fname
 	else:
-		fname=np.str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
+		fname=str(wrun2+"/ww3gefs."+cdate+"_tab.nc")
 		result = wread.tseriesnc_ww3(fname,stname)
 		atsm_hs2=np.array(result['hs']); atsm_tm2=np.array(result['tm'])
 		atsm_dm2=np.array(result['dm']); del result,fname
@@ -206,7 +206,7 @@ r, theta = np.meshgrid(spm_freq[0:indf], angle)
 levels = np.linspace(np.nanmin(np.c_[wdata1,wdata2]),np.nanpercentile(np.c_[wdata1,wdata2],99.9),101)
 dlevels = np.linspace(-0.2,0.2,101); dlevelsp = np.linspace(0.,10.,101)
 
-for t in range(20,size(wtime)-20):
+for t in range(20,np.size(wtime)-20):
 
 	fig, axs = plt.subplots(nrows=3,ncols=4,subplot_kw={'projection': ccrs.PlateCarree()},figsize=(19,11))
 	# axs=axs.flatten()
@@ -261,10 +261,10 @@ for t in range(20,size(wtime)-20):
 	tick_locator = ticker.MaxNLocator(nbins=6); cbar.locator = tick_locator; cbar.update_ticks()
 	#
 	axs[0,3].remove()
-	fig.text(0.35,1.3,"hs_max "+trun1+": "+np.str(np.round(np.nanmax(wdata1[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
-	fig.text(0.35,1.1,"hs_max "+trun2+": "+np.str(np.round(np.nanmax(wdata2[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
-	fig.text(0.35,0.9,"hs_mean "+trun1+": "+np.str(np.round(np.nanmean(wdata1[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
-	fig.text(0.35,0.7,"hs_mean "+trun2+": "+np.str(np.round(np.nanmean(wdata2[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
+	fig.text(0.35,1.3,"hs_max "+trun1+": "+str(np.round(np.nanmax(wdata1[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
+	fig.text(0.35,1.1,"hs_max "+trun2+": "+str(np.round(np.nanmax(wdata2[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
+	fig.text(0.35,0.9,"hs_mean "+trun1+": "+str(np.round(np.nanmean(wdata1[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
+	fig.text(0.35,0.7,"hs_mean "+trun2+": "+str(np.round(np.nanmean(wdata2[t,:,:]),2)),color='k', size=14, horizontalalignment='left', verticalalignment='center', transform=axs[0,3].transAxes)
 	# -----------------
 	# WW3 Wave Spectra -----------------
 	slevels = np.linspace(0.1,np.nanpercentile(np.c_[spm_dspec1[t,:,:],spm_dspec2[t,:,:]],99.99),201)
@@ -327,7 +327,7 @@ for t in range(20,size(wtime)-20):
 	axs[1,3].set_xlabel('Frequency (Hz)', fontsize=12); axs[1,3].set_ylabel('Direction (°)', fontsize=12) 
 	axs[1,3].set_title('DirSpec '+stname+' '+pd.to_datetime(wtime[:][t]).strftime('%Y/%m/%d %H')+'Z')
 	indt=np.where(spm_time[t]==spo_time)
-	if size(indt)>0:
+	if np.size(indt)>0:
 		axs[1,3].scatter(spo_freq[0:indfb],np.nanmean(spo_dmspec[indt[0][:],0:indfb],axis=0), color='k', marker='s', label='buoy', zorder=1)
 
 	axs[1,3].legend(loc='best')
@@ -358,7 +358,7 @@ for t in range(20,size(wtime)-20):
 	axs[2,3].plot(spi_freq[1:3650],spmi_pspec1[1:3650], color='b', linestyle='--',linewidth=2.0, label=trun1, zorder=3)
 	axs[2,3].plot(spi_freq[1:3650],spmi_pspec2[1:3650], color='r', linestyle='-.',linewidth=2.0, label=trun2, zorder=3)
 
-	if size(indt)>0:
+	if np.size(indt)>0:
 		axs[2,3].plot(spi_freq[1:3650],spoi_pspec[1:3650], color='grey', linestyle='-',linewidth=0.5, label='buoy', zorder=2)
 		axs[2,3].legend(loc='best')
 		axs[2,3].fill_between(spi_freq[1:3650], 0.,spoi_pspec[1:3650], color='silver', alpha=0.7,label='buoy', zorder=1)
@@ -378,7 +378,7 @@ for t in range(20,size(wtime)-20):
 	axs[2,0] = fig.add_subplot(3, 4, 9, projection='rectilinear')
 	axs[2,0].plot_date(tsm_time[indtst-60:indtst+61],tsm_hs1[indtst-60:indtst+61],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
 	axs[2,0].plot_date(tsm_time[indtst-60:indtst+61],tsm_hs2[indtst-60:indtst+61],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
-	if size(iaux)>0:
+	if np.size(iaux)>0:
 		axs[2,0].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_hs[np.min(iaux[2]):np.max(iaux[2])+1],'k.',label='buoy', zorder=2)
 	axs[2,0].xaxis.set_major_formatter( DateFormatter('%b%d') ); axs[2,0].fmt_xdata = DateFormatter('%b%d')
 	axs[2,0].axvline(x=wtime[t],color='grey', zorder=1)
@@ -391,7 +391,7 @@ for t in range(20,size(wtime)-20):
 	axs[2,1] = fig.add_subplot(3, 4, 10, projection='rectilinear')
 	axs[2,1].plot_date(tsm_time[indtst-60:indtst+61],tsm_tm1[indtst-60:indtst+61],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
 	axs[2,1].plot_date(tsm_time[indtst-60:indtst+61],tsm_tm2[indtst-60:indtst+61],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
-	if size(iaux)>0:
+	if np.size(iaux)>0:
 		axs[2,1].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_tm[np.min(iaux[2]):np.max(iaux[2])+1],'k.',label='buoy', zorder=2)
 	axs[2,1].xaxis.set_major_formatter( DateFormatter('%b%d') ); axs[2,1].fmt_xdata = DateFormatter('%b%d')
 	axs[2,1].axvline(x=wtime[t],color='grey', zorder=1)
@@ -404,7 +404,7 @@ for t in range(20,size(wtime)-20):
 	axs[2,2] = fig.add_subplot(3, 4, 11, projection='rectilinear')
 	axs[2,2].plot_date(tsm_time[indtst-60:indtst+61],tsm_dm1[indtst-60:indtst+61],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
 	axs[2,2].plot_date(tsm_time[indtst-60:indtst+61],tsm_dm2[indtst-60:indtst+61],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
-	if size(iaux)>0:
+	if np.size(iaux)>0:
 		axs[2,2].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_dm[np.min(iaux[2]):np.max(iaux[2])+1],'k.',label='buoy', zorder=2)
 	axs[2,2].xaxis.set_major_formatter( DateFormatter('%b%d') ); axs[2,2].fmt_xdata = DateFormatter('%b%d')
 	axs[2,2].axvline(x=wtime[t],color='grey', zorder=1)
@@ -416,7 +416,7 @@ for t in range(20,size(wtime)-20):
 
 	fig.canvas.draw() # https://github.com/SciTools/cartopy/issues/1207
 	fig.tight_layout()
-	plt.savefig('ComparisonBoard_'+stname+'_'+np.str(pd.to_datetime(wtime[:][t]).strftime('%Y%m%d%H'))+'_'+trun1+'_'+trun2+'.png', dpi=300, facecolor='w', edgecolor='w',
+	plt.savefig('ComparisonBoard_'+stname+'_'+str(pd.to_datetime(wtime[:][t]).strftime('%Y%m%d%H'))+'_'+trun1+'_'+trun2+'.png', dpi=300, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, pad_inches=0.1)
 		
 	plt.close('all'); del axs, fig, indtst, iaux

@@ -115,24 +115,24 @@ copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
 print('  ')
 
 # Options of including grid and cyclone information
-gridinfo=np.int(0); cyclonemap=np.int(0); wlist=[]; ftag=''; forecastds=0
+gridinfo=int(0); cyclonemap=int(0); wlist=[]; ftag=''; forecastds=0
 if len(sys.argv) < 2 :
 	sys.exit(' At least one argument (list of ww3 files) must be informed.')
 if len(sys.argv) >= 2 :
 	# # import os; os.system("ls -d $PWD/*tab.nc > ww3list.txt &")
 	wlist=np.atleast_1d(np.loadtxt(sys.argv[1],dtype=str))
-	ftag=np.str(sys.argv[1]).split('list')[1].split('.txt')[0]
-	print(' Reading ww3 list '+np.str(sys.argv[1]))
+	ftag=str(sys.argv[1]).split('list')[1].split('.txt')[0]
+	print(' Reading ww3 list '+str(sys.argv[1]))
 	print(' Tag '+ftag)
 if len(sys.argv) >= 3:
-	forecastds=np.int(sys.argv[2])
+	forecastds=int(sys.argv[2])
 	if forecastds>0:
 		print(' Forecast-type data structure')
 if len(sys.argv) >= 4:
-	gridinfo=np.str(sys.argv[3])
+	gridinfo=str(sys.argv[3])
 	print(' Using gridInfo '+gridinfo)
 if len(sys.argv) >= 5:
-	cyclonemap=np.str(sys.argv[4])
+	cyclonemap=str(sys.argv[4])
 	print(' Using cyclone map '+cyclonemap)
 if len(sys.argv) > 5:
 	sys.exit(' Too many inputs')
@@ -161,11 +161,11 @@ if gridinfo!=0:
 
 #   MODEL Point output, search among possible formats ------------------
 
-if (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='station_tar'):
+if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).split('/')[-1].split('.')[-1]=='station_tar'):
 	for i in range(0,np.size(wlist)):
-		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='bull_tar':
+		if str(wlist[i]).split('/')[-1].split('.')[-1]=='bull_tar':
 			result = wread.bull_tar(wlist[i])
-		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
+		if str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
 			result = wread.bull_tar(wlist[i])
 
 		at=result['time']
@@ -200,7 +200,7 @@ if (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (np.str(wlist
 		mdm=np.copy(mhs)*np.nan; mtm=np.copy(mhs)*np.nan # not saved in this file format
 		print("    ww3 file "+wlist[i]+" OK")
 
-elif (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull') or (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='ts'):
+elif (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull') or (str(wlist[0]).split('/')[-1].split('.')[-1]=='ts'):
 	if forecastds>0:
 		forecastds=0 # no 2D time array possible.
 		print("  Warning: no 2D time array possible. \
@@ -208,9 +208,9 @@ elif (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull') or (np.str(wlist[0
 
 	for i in range(0,np.size(wlist)):
 		# re-check each file in the list respects the same format
-		if np.str(wlist[i]).split('/')[-1].split('.')[-1]=='ts':
+		if str(wlist[i]).split('/')[-1].split('.')[-1]=='ts':
 			result = wread.ts(wlist[i])
-		elif np.str(wlist[i]).split('/')[-1].split('.')[-1]=='bull':
+		elif str(wlist[i]).split('/')[-1].split('.')[-1]=='bull':
 			result = wread.bull(wlist[i])
 
 		at=result['time']
@@ -263,12 +263,12 @@ elif (np.str(wlist[0]).split('/')[-1].split('.')[-1]=='bull') or (np.str(wlist[0
 		print("    ww3 file "+wlist[i]+" OK")
 
 
-elif np.str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
+elif str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 	print(" Using ww3 netcdf point output format")
 	# netcdf point output file 
 	for t in range(0,np.size(wlist)):
 		try:
-			f=nc.Dataset(np.str(wlist[t]))
+			f=nc.Dataset(str(wlist[t]))
 		except:
 			print(" Cannot open "+wlist[t])
 		else:
@@ -278,9 +278,17 @@ elif np.str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 				for i in range(0,auxstationname.shape[0]):
 					astname="".join(np.array(auxstationname[i,:]).astype('str'))
 					if '\t' in astname:
-						astname=np.str(astname).replace("\t","")
+						astname=str(astname).replace("\t","")
 
 					stname=np.append(stname,astname); del astname
+
+				funits=f.variables['time'].units
+				if str(funits).split(' ')[0] == 'seconds':
+					tincr=1
+				elif str(funits).split(' ')[0] == 'hours':
+					tincr=3600
+				elif str(funits).split(' ')[0] == 'days':
+					tincr=24*3600
 
 			ahs = np.array(f.variables['hs'][:,:]).T
 
@@ -312,7 +320,9 @@ elif np.str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 			else:
 				atm = np.array(np.copy(ahs*nan))
 
-			at = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(np.str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','')
+			at = np.array(f.variables['time'][:]*tincr + timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
+
 			f.close(); del f
 			fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
 			if t==0:
@@ -710,8 +720,8 @@ if np.size(ind)>0:
 
 	# Save netcdf output file 
 	lon[lon>180.]=lon[lon>180.]-360.
-	initime=np.str(time.gmtime(mtime.min())[0])+np.str(time.gmtime(mtime.min())[1]).zfill(2)+np.str(time.gmtime(mtime.min())[2]).zfill(2)+np.str(time.gmtime(mtime.min())[3]).zfill(2)
-	fintime=np.str(time.gmtime(mtime.max())[0])+np.str(time.gmtime(mtime.max())[1]).zfill(2)+np.str(time.gmtime(mtime.max())[2]).zfill(2)+np.str(time.gmtime(mtime.max())[3]).zfill(2)
+	initime=str(time.gmtime(mtime.min())[0])+str(time.gmtime(mtime.min())[1]).zfill(2)+str(time.gmtime(mtime.min())[2]).zfill(2)+str(time.gmtime(mtime.min())[3]).zfill(2)
+	fintime=str(time.gmtime(mtime.max())[0])+str(time.gmtime(mtime.max())[1]).zfill(2)+str(time.gmtime(mtime.max())[2]).zfill(2)+str(time.gmtime(mtime.max())[3]).zfill(2)
 	ncfile = nc.Dataset('WW3.Buoy'+ftag+'_'+initime+'to'+fintime+'.nc', "w", format=fnetcdf)
 	ncfile.history="Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of "+repr(bhs[bhs>0.].shape[0])+" observations or pairs model/observation."
 	# create  dimensions

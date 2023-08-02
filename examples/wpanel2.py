@@ -62,8 +62,8 @@ import wread
 palette = plt.cm.jet
 dpalette = plt.cm.RdBu_r
 
-# stname=np.str(sys.argv[1]) # stname="41047" 
-# anh=np.str(sys.argv[2]) # anh=4.1 
+# stname=str(sys.argv[1]) # stname="41047" 
+# anh=str(sys.argv[2]) # anh=4.1 
 stname="41049"
 anh=4.1 # you can find anemometer height at the NDBC buoy's webpage
 # lowest period (upper limit frequency) for the directional wave spectra (2D) polat plot
@@ -98,9 +98,9 @@ whs1 = ds[wvar]
 wucur = ds['ucur']; wvcur = ds['vcur']
 wuwnd = ds['uwnd']; wvwnd = ds['vwnd']
 wtime = np.array(ds.time.values[:])
-units_whs = np.str(ds[wvar].units)
-units_wcur = np.str(ds['ucur'].units)
-units_wwnd = np.str(ds['uwnd'].units)
+units_whs = str(ds[wvar].units)
+units_wcur = str(ds['ucur'].units)
+units_wwnd = str(ds['uwnd'].units)
 lat = np.array(ds.latitude.values[:]); lon = np.array(ds.longitude.values[:])
 ds.close(); del ds
 # second simulation (main)
@@ -291,7 +291,7 @@ for t in range(0,ftime.shape[0]):
 	# NDBC buoy
 	axs[1,3].remove()
 	indst=np.where( np.abs(spo_time-ftime[t]) == np.nanmin(np.abs(spo_time-ftime[t])) )
-	if size(indst)>0:
+	if np.size(indst)>0:
 		nslevels = np.linspace(0.001,np.nanpercentile(spo_dspec[indst[0],:,:],99.99),201)
 		ndspec3=np.zeros((spo_freq.shape[0],ndire3.shape[0]),'f')
 		ndspec3[:,1:-1]=spo_dspec[indst[0],:,:]
@@ -347,10 +347,10 @@ for t in range(0,ftime.shape[0]):
 	# -----------------
 	# Time-Series -----------------
 	axs[2,0].remove(); axs[2,1].remove(); axs[2,2].remove()
-	iaux=np.intersect1d(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])], np.array(tso_time, dtype='datetime64[h]'), assume_unique=False, return_indices=True)
+	iaux=np.intersect1d(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])], np.array(tso_time, dtype='datetime64[h]'), assume_unique=False, return_indices=True)
 	axs[2,0] = fig.add_subplot(3, 4, 9, projection='rectilinear')
-	axs[2,0].plot_date(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],tsm_wnd[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],color='navy', linestyle='--',marker='',linewidth=2.0, label='GFS winds', zorder=3)
-	if size(iaux)>0:
+	axs[2,0].plot_date(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],tsm_wnd[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],color='navy', linestyle='--',marker='',linewidth=2.0, label='GFS winds', zorder=3)
+	if np.size(iaux)>0:
 		axs[2,0].fill_between(tso_time[np.min(iaux[2]):np.max(iaux[2])+1], 0., tso_wnd[np.min(iaux[2]):np.max(iaux[2])+1], color='silver',alpha=0.5,zorder=1)
 		axs[2,0].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_wnd[np.min(iaux[2]):np.max(iaux[2])+1],color='dimgrey',marker='.',label='buoy', zorder=2)
 
@@ -361,12 +361,12 @@ for t in range(0,ftime.shape[0]):
 	axs[2,0].legend(loc='best', fontsize=9)
 	axs[2,0].set_xlabel('Date', fontsize=12); axs[2,0].set_ylabel('Wind Speed (m/s)', fontsize=12) 
 	axs[2,0].axis('tight')
-	axs[2,0].set_xlim( ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].max() )
+	axs[2,0].set_xlim( ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].max() )
 	#
 	axs[2,1] = fig.add_subplot(3, 4, 10, projection='rectilinear')
-	axs[2,1].plot_date(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],tsm_hs1[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
-	axs[2,1].plot_date(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],tsm_hs2[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
-	if size(iaux)>0:
+	axs[2,1].plot_date(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],tsm_hs1[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
+	axs[2,1].plot_date(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],tsm_hs2[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
+	if np.size(iaux)>0:
 		axs[2,1].fill_between(tso_time[np.min(iaux[2]):np.max(iaux[2])+1], 0., tso_hs[np.min(iaux[2]):np.max(iaux[2])+1], color='silver',alpha=0.5,zorder=1)
 		axs[2,1].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_hs[np.min(iaux[2]):np.max(iaux[2])+1],color='dimgrey',marker='.',label='buoy', zorder=2)
 	axs[2,1].xaxis.set_major_formatter( DateFormatter('%b%d') ); axs[2,1].fmt_xdata = DateFormatter('%b%d')
@@ -376,12 +376,12 @@ for t in range(0,ftime.shape[0]):
 	axs[2,1].legend(loc='best', fontsize=9)
 	axs[2,1].set_xlabel('Date', fontsize=12); axs[2,1].set_ylabel('Hs (m)', fontsize=12) 
 	axs[2,1].axis('tight')
-	axs[2,1].set_xlim( ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].max() )
+	axs[2,1].set_xlim( ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].max() )
 	#
 	axs[2,2] = fig.add_subplot(3, 4, 11, projection='rectilinear')
-	axs[2,2].plot_date(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],tsm_tp1[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
-	axs[2,2].plot_date(ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],tsm_tp2[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
-	if size(iaux)>0:
+	axs[2,2].plot_date(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],tsm_tp1[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],color='b', linestyle='--',marker='',linewidth=2.0, label=trun1, zorder=3)
+	axs[2,2].plot_date(ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],tsm_tp2[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])],color='r', linestyle='-.',marker='',linewidth=2.0, label=trun2, zorder=3)
+	if np.size(iaux)>0:
 		axs[2,2].fill_between(tso_time[np.min(iaux[2]):np.max(iaux[2])+1], 0., tso_tp[np.min(iaux[2]):np.max(iaux[2])+1], color='silver',alpha=0.5,zorder=1)
 		axs[2,2].plot_date(tso_time[np.min(iaux[2]):np.max(iaux[2])+1],tso_tp[np.min(iaux[2]):np.max(iaux[2])+1],color='dimgrey',marker='.',label='buoy', zorder=2)
 	axs[2,2].xaxis.set_major_formatter( DateFormatter('%b%d') ); axs[2,2].fmt_xdata = DateFormatter('%b%d')
@@ -391,11 +391,11 @@ for t in range(0,ftime.shape[0]):
 	axs[2,2].legend(loc='best', fontsize=9)
 	axs[2,2].set_xlabel('Date', fontsize=12); axs[2,2].set_ylabel('Tp (s)', fontsize=12) 
 	axs[2,2].axis('tight')
-	axs[2,2].set_xlim( ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([np.int(ftime.shape[0]-1),t+13])].max() )
+	axs[2,2].set_xlim( ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].min(), ftime[np.max([0,t-12]):np.min([int(ftime.shape[0]-1),t+13])].max() )
 
 	fig.canvas.draw() # https://github.com/SciTools/cartopy/issues/1207
 	fig.tight_layout()
-	plt.savefig('WPanel_'+stname+'_'+np.str(pd.to_datetime(ftime[t]).strftime('%Y%m%d%H'))+'_'+trun1+'_'+trun2+'.png', dpi=300, facecolor='w', edgecolor='w',
+	plt.savefig('WPanel_'+stname+'_'+str(pd.to_datetime(ftime[t]).strftime('%Y%m%d%H'))+'_'+trun1+'_'+trun2+'.png', dpi=300, facecolor='w', edgecolor='w',
 		orientation='portrait', papertype=None, format='png',transparent=False, pad_inches=0.1)
 
 	plt.close('all'); del axs, fig, indst, iaux

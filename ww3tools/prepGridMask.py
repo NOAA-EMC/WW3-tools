@@ -101,9 +101,9 @@ import warnings; warnings.filterwarnings("ignore")
 # netcdf format
 fnetcdf="NETCDF4"
 
-fainfo=np.int(0)
+fainfo=int(0)
 if len(sys.argv) == 2 :
-	fainfo=np.int(sys.argv[1])
+	fainfo=int(sys.argv[1])
 elif len(sys.argv) > 2:
 	sys.exit(' Too many inputs')
 
@@ -134,10 +134,10 @@ if fainfo>=3:
 # Sample ww3 file (reference) lat lon array
 fsname='gefswave.t00z.global.0p25.nc'
 
-if np.str(fsname).split('/')[-1].split('.')[-1]=='nc':
+if str(fsname).split('/')[-1].split('.')[-1]=='nc':
 	ds=xr.open_dataset(fsname); igrb=0
-elif (np.str(fsname).split('/')[-1].split('.')[-1]=='grib2') or (np.str(fsname).split('/')[-1].split('.')[-1]=='grb2'):
-	ds = xr.open_dataset(np.str(fsname), engine='cfgrib'); igrb=1
+elif (str(fsname).split('/')[-1].split('.')[-1]=='grib2') or (str(fsname).split('/')[-1].split('.')[-1]=='grb2'):
+	ds = xr.open_dataset(str(fsname), engine='cfgrib'); igrb=1
 
 if "latitude" in ds.keys():
 	lat = ds['latitude'].values[:]; lon = ds['longitude'].values[:]
@@ -242,7 +242,7 @@ if fainfo>=1:
 		ilat=np.array(aux.values[ind]).astype('int')
 		del aux,ind
 
-		oni[ilat,ilon] = np.int(i)
+		oni[ilat,ilon] = int(i)
 
 		del basin,ilat,ilon
 
@@ -294,7 +294,7 @@ if fainfo>=2:
 		ilat=np.array(aux.values[ind]).astype('int')
 		del aux,ind
 
-		fcta[ilat,ilon] = np.int(i)
+		fcta[ilat,ilon] = int(i)
 
 		del basin,ilat,ilon
 
@@ -347,7 +347,7 @@ if fainfo>=3:
 		ilat=np.array(aux.values[ind]).astype('int')
 		del aux,ind
 
-		fcta[ilat,ilon] = np.int(i)
+		fcta[ilat,ilon] = int(i)
 
 		del basin,ilat,ilon
 
@@ -465,7 +465,7 @@ if pfig==1:
 	cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
 	plt.axes(ax)  # make the original axes current again
 	plt.savefig(outpath+'bathymetry_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+			orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 	plt.close('all'); del ax
 
@@ -489,7 +489,7 @@ if pfig==1:
 	cbar=plt.colorbar(cs,cax=cax,orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
 	plt.axes(ax)  # make the original axes current again
 	plt.savefig(outpath+'DistanceToCoast_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+			orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 	plt.close('all'); del ax
 
@@ -508,7 +508,7 @@ if pfig==1:
 	im = ax.contourf(lon,lat,-mask,shading='flat',cmap=palette,norm=norm,transform = ccrs.PlateCarree(),zorder=2)
 	plt.tight_layout()
 	plt.savefig(outpath+'Mask_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-			orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+			orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 	plt.close('all'); del ax
 
@@ -529,7 +529,7 @@ if pfig==1:
 		im = ax.contour(lon,lat,foni,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
 		plt.tight_layout(); del foni
 		plt.savefig(outpath+'OceanNames_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+				orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 		plt.close('all'); del ax
 
@@ -551,7 +551,7 @@ if pfig==1:
 		im = ax.contour(lon,lat,hsmz,levels=levels,colors='black',linewidths=0.5,transform = ccrs.PlateCarree(),zorder=3)
 		plt.tight_layout(); del hsmz
 		plt.savefig(outpath+'HighSeasMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+				orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 		plt.close('all'); del ax
 
@@ -573,7 +573,7 @@ if pfig==1:
 		im = ax.contour(lon,lat,ofmz,levels=levels,colors='black',linewidths=0.5,zorder=3)
 		plt.tight_layout(); del aofmz
 		plt.savefig(outpath+'OffshoreMarineZones_'+gridn+'.png', dpi=200, facecolor='w', edgecolor='w',
-				orientation='portrait', papertype=None, format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+				orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
 
 		plt.close('all'); del ax
 
