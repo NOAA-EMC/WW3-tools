@@ -298,9 +298,8 @@ def orgensemblesat(flist,nmb,esize='yes'):
         del df, amhs, amwnd
         print('  Ok  '+"_".join(flist[i].split('_')[0:2]).split('/')[-1]+'  for all ensemble members')
 
-
-    return fdata,fmhs,fmwnd,dfnames
     print(" Done. wproc.orgensemblesat concluded.")
+    return fdata,fmhs,fmwnd,dfnames
     # ------------------------
 
 
