@@ -10,6 +10,7 @@ VERSION AND LAST UPDATE:
  v1.2  07/20/2022
  v1.3  02/13/2023
  v1.4  05/21/2023
+ v1.5  07/27/2023
 
 PURPOSE:
  Collocation/pairing ww3 field output results with altimeters.
@@ -86,6 +87,8 @@ AUTHOR and DATE:
   when converted from .grib2 to netcdf; and CFSR added.
  06/20/2023: Ricardo M. Campos, improve time array and avoid problems
   when working with different formats (grib2,netcdf) and variable names.
+ 07/27/2023: Ricardo M. Campos, fix problem with satellite ID (sid) to 
+  allow distinguishing satellite missions.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -134,6 +137,12 @@ if len(sys.argv) >= 6:
 if len(sys.argv) > 7:
 	sys.exit(' Too many inputs')
 
+# Quality control parameters
+qc="no"
+hsmin=0.
+hsmax=999.
+wndmin=0.
+wndmax=999.
 
 # READ mask Grid Info
 f=nc.Dataset(gridinfo)
@@ -232,7 +241,6 @@ for i in range(0,np.size(slist)):
 	except:
 		print(" Error: Cannot open "+str(slist[i]))
 	else:
-		print('ok')
 		if (np.nanmin(astime)>=auxmtime.max()) or (np.nanmax(astime)<auxmtime.min()):
 			print('  -   satellite '+slist[i]+' time range outside the model time interval.')
 		else:
@@ -259,10 +267,10 @@ for i in range(0,np.size(slist)):
 
 			if 'sat_name' in f.variables.keys():
 				auxsatname=f.variables['sat_name'][:]
-				sid=np.append(sid,np.zeros(stime.shape[0],'int')+int(np.where( auxsatname == sdname)[0][0]))
+				sid=np.append(sid,np.zeros(astime.shape[0],'int')+int(np.where( auxsatname == sdname)[0][0]))
 				del auxsatname
 			elif str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] in sdname:
-				sid=np.append(sid,np.zeros(stime.shape[0],'int')+int(np.where(str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] == sdname)[0][0]))
+				sid=np.append(sid,np.zeros(astime.shape[0],'int')+int(np.where(str(slist[i]).split('/')[-1].split('_')[1].split('.')[0] == sdname)[0][0]))
 			else:
 				sys.exit(' Error: Problem identifying satellite mission from file name: '+slist[i])
 
@@ -427,8 +435,12 @@ for i in range(0,np.size(wlist)):
 fcy.close(); del fcy
 print(' Data Collocation/Matchups Ok.')
 
-# Quality Control
-ind=np.where( (fwhs>0.0) & (fwhs<20.0) & (fwwnd>0.0) & (fwwnd<60.0) & (fshs>0.0) & (fshs<20.0) & (fswnd>0.0) & (fswnd<60.0) )
+# Quality Control (yes or no)
+if qc=="yes":
+	ind=np.where( (fwhs>=hsmin) & (fwhs<hsmax) & (fwwnd>=wndmin) & (fwwnd<wndmax) & (fshs>=hsmin) & (fshs<hsmax) & (fswnd>=wndmin) & (fswnd<wndmax) )
+else:
+	ind=np.where( (fwhs>=0.0) & (fwhs<999.) & (fwwnd>=0.0) & (fwwnd<999.) & (fshs>=0.0) & (fshs<999.) & (fswnd>=0.0) & (fswnd<999.) )
+
 if np.size(ind)>0:
 	print(' Total amount of matchups model/satellite: '+repr(np.size(ind)))
 	fwhs=np.array(fwhs[ind[0]]); fwwnd=np.array(fwwnd[ind[0]])
