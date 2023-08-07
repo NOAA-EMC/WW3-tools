@@ -112,7 +112,7 @@ def smrstat(x, vmin=-np.inf, vmax=np.inf, lmoments='no'):
 
 # Error metrics =============================
 
-def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf):
+def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf, pctlerr='no'):
     '''
     Error Metrics. Equations from Mentaschi et al. (2013)
      https://doi.org/10.1016/j.ocemod.2013.08.003
@@ -139,11 +139,12 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf):
         raise ValueError(' vmin cannot be higher than vmax.')
 
     ind=np.where((np.isnan(model)==False) & (np.isnan(obs)==False) & (model>vmin) & (model<vmax) & (obs>vmin) & (obs<vmax) & (np.abs(model-obs)<=maxdiff) )
-    if np.any(ind) or model.shape[0]==1:
+    if np.size(ind)>1:
         model=np.copy(model[ind[0]]); obs=np.copy(obs[ind[0]])
     else:
         raise ValueError(' Array without valid numbers.')
 
+    del ind
     ferr=np.zeros((8),'f')*np.nan
     ferr[0] = model.mean()-obs.mean() # Bias
     ferr[1] = (((model-obs)**2).mean())**0.5 # RMSE
@@ -156,6 +157,15 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf):
     ferr[5] = ( (((model-model.mean())-(obs-obs.mean()))**2).sum() / (obs**2).sum() )**0.5  # Scatter Index
     ferr[6] = ( ((model - obs)**2).sum() / (model * obs).sum() )**0.5  # HH
     ferr[7]=np.corrcoef(model,obs)[0,1]  #  Correlation Coefficient 
+
+    # Bias and RMSE for severe conditions above the 95 percentile.
+    if pctlerr!='no':
+        ind=np.where((np.isnan(model)==False) & (np.isnan(obs)==False) & (model>vmin) & (model<vmax) & (obs>vmin) & (obs<vmax) & (np.abs(model-obs)<=maxdiff) & (obs>np.nanpercentile(obs,95)) )
+        if np.size(ind)>1:
+            ferr=np.append(ferr, model[ind[0]].mean()-obs[ind[0]].mean()) # Bias
+            ferr=np.append(ferr, ((((model[ind[0]]-obs[ind[0]])**2).mean())**0.5)) # RMSE
+        else:
+            ferr=np.append(ferr, np.nan); ferr=np.append(ferr, np.nan)
 
     return ferr
 
