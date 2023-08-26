@@ -1130,12 +1130,6 @@ class ModelObsPlot:
 #    def rocaucxfctime(self,result="no"):
 
 
-
-
-
-
-
-
 # --------------------------------
 # ------ Global Map --------------
 
@@ -1156,11 +1150,8 @@ def gsmooth(data,gflev=1):
     del fdata1,fdata
 
 class GlobalMapPlot:
-    def __init__(self,lat=None,lon=None,gdata=None,
-
-        latmin=-85.,latmax=85.,
-        ftag=None,levels=None,palette=None,pextend="max",
-        contcolor="lightgrey",sl=13):
+    def __init__(self,lat=None,lon=None,gdata=None,latmin=-85.,latmax=85.,
+        ftag=None,levels=None,palette=None,pextend="max", contcolor="lightgrey",sl=13):
 
         self.lat = lat
         self.lon = lon

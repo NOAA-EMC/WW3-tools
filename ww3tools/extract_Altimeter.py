@@ -8,20 +8,20 @@ VERSION AND LAST UPDATE:
  v1.0  05/09/2022
 
 PURPOSE:
- Script to take altimeter tracks and collocate into a moving
-  track lat/lon/time array (for ex. drifting buoy, ship etc) 
+ Script to take altimeter tracks and collocate into a moving (or fixed)
+  track lat/lon/time array (for ex. drifting buoy, moored buoy, ship etc) 
  A total of 15 satellite missions are listed below. The period of each
   altimeter can be verified at:
   https://www.sciencedirect.com/science/article/pii/S0273117721000594
   https://ars.els-cdn.com/content/image/1-s2.0-S0273117721000594-gr1_lrg.jpg
 
 USAGE:
- This program processes Altimeter data from AODN and collocate into given
-  lon/lat/time array, enter as input txt file.
- Altimeters must have been previously downloaded (see wfetchsatellite_AODN_Altimeter.sh)
- Path where altimeter data is saved must be informed and 
+ This program processes Altimeter data from AODN and collocates it into a specified
+  lon/lat/time array, which is provided as an input txt file.
+ Altimeters must have been downloaded beforehand (see wfetchsatellite_AODN_Altimeter.sh)
+ The path where altimeter data is saved must be informed and
   edited (see dirs below)
- Check the pre-selected parameters below for the altimeter collocation 
+ Check the pre-selected parameters below for the altimeter collocation
   and date interval (datemin and datemax)
  Example (from linux terminal command line):
    nohup python3 extract_Altimeter.py >> nohup_extract_Altimeter.out 2>&1 &
@@ -58,11 +58,11 @@ import warnings; warnings.filterwarnings("ignore")
 fnetcdf="NETCDF4"
 
 # Input text file name (with path if not in the same local dir)
-fname='interp_AllBremChic_to_XBT.dat'  # containing lon/lat/time to be extracted
+fname='interp_AllBremChic_to_XBT.dat'  # containing lon/lat/time to be extracted. One line of example:
+# -80.030  25.793 20200220T141000
 
 # Directory where AODN altimeter data is saved, downloaded using wfetchsatellite_AODN_Altimeter.sh
-# dirs='/work/noaa/marine/ricardo.campos/data/AODN/altimeter'
-dirs='/media/data/observations/satellite/altimeter/AODN_altm'
+dirs='/work/noaa/marine/ricardo.campos/data/AODN/altimeter'
 # Minimum distance (km) from the coast
 mindfc=30. # in Km
 # Maximum distance (m) for the collocation average
