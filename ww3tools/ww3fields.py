@@ -66,212 +66,212 @@ palette = plt.cm.jet
 # Input arguments
 sk=1; slat=0; slon=0
 if len(sys.argv) < 3 :
-	sys.exit(' Two inputs must be provided: fileName and VariableName')
+    sys.exit(' Two inputs must be provided: fileName and VariableName')
 elif len(sys.argv) == 3:
-	fname=str(sys.argv[1]); wvar=str(sys.argv[2])
+    fname=str(sys.argv[1]); wvar=str(sys.argv[2])
 elif len(sys.argv) == 4:
-	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
+    fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
 elif len(sys.argv) == 5:
-	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
-	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
+    fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
+    slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
 elif len(sys.argv) == 6:
-	fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
-	slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
-	slon=sys.argv[5]; slon=slon[1:-1]; slon=np.array([np.float(str(slon).split(',')[0]),np.float(str(slon).split(',')[1])])
+    fname=str(sys.argv[1]); wvar=str(sys.argv[2]); sk=int(sys.argv[3])
+    slat=sys.argv[4]; slat=slat[1:-1]; slat=np.array([np.float(str(slat).split(',')[0]),np.float(str(slat).split(',')[1])])
+    slon=sys.argv[5]; slon=slon[1:-1]; slon=np.array([np.float(str(slon).split(',')[0]),np.float(str(slon).split(',')[1])])
 elif len(sys.argv) > 6:
-	sys.exit(' Too many inputs')
+    sys.exit(' Too many inputs')
 
 # ----- READ DATA ----- 
 if str(fname).split('.')[-1] == 'grib2' or str(fname).split('.')[-1] == 'grb2': 
-	# grib2 format
-	ds = xr.open_dataset(fname, engine='cfgrib')
-	wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
-	if str.lower(wvar)=='hs':
-		wvar=str('swh')
+    # grib2 format
+    ds = xr.open_dataset(fname, engine='cfgrib')
+    wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
+    if str.lower(wvar)=='hs':
+        wvar=str('swh')
 
-	if (wvar in list(ds.keys()))==False:
-		sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
+    if (wvar in list(ds.keys()))==False:
+        sys.exit(' Variable name not included in the file. You can use ncdump -h filename to see variable names.')
 
-	lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
-	
-	if wtime.shape[0]==1:
-		if (np.size(ds[wvar].shape)==2) and (ds[wvar].shape[0]==lat.shape[0]) and (ds[wvar].shape[1]==lon.shape[0]):
-			# Structured
-			gstr=2
-			wdata = np.array([np.flip(ds[wvar].values[:,:],0)])
-		else:
-			# Unstructured
-			gstr=1
-			wdata = np.array(ds[wvar].values)
-	else:
-		if np.size(ds[wvar].shape)==3:
-			# Structured
-			gstr=2
-			wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
-		elif np.size(ds[wvar].shape)==2:
-			# Unstructured
-			gstr=1
-			wdata = np.array(ds[wvar].values)
-		else:
-			sys.exit(' Unexpected file shape.')
+    lat = np.array(ds.latitude.values); lon = np.array(ds.longitude.values)
+    
+    if wtime.shape[0]==1:
+        if (np.size(ds[wvar].shape)==2) and (ds[wvar].shape[0]==lat.shape[0]) and (ds[wvar].shape[1]==lon.shape[0]):
+            # Structured
+            gstr=2
+            wdata = np.array([np.flip(ds[wvar].values[:,:],0)])
+        else:
+            # Unstructured
+            gstr=1
+            wdata = np.array(ds[wvar].values)
+    else:
+        if np.size(ds[wvar].shape)==3:
+            # Structured
+            gstr=2
+            wdata = np.array(np.flip(ds[wvar].values[:,:,:],1))
+        elif np.size(ds[wvar].shape)==2:
+            # Unstructured
+            gstr=1
+            wdata = np.array(ds[wvar].values)
+        else:
+            sys.exit(' Unexpected file shape.')
 
-	units_wdata = str(ds[wvar].units)
+    units_wdata = str(ds[wvar].units)
 
-	if gstr==2 and np.size(lat.shape)==1:
-		lat = np.sort(lat)
+    if gstr==2 and np.size(lat.shape)==1:
+        lat = np.sort(lat)
 
-	ds.close(); del ds
-	# -----------
+    ds.close(); del ds
+    # -----------
 
 else:
-	# netcdf format
-	ds = xr.open_dataset(fname)
-	if 'step' in ds:
-		wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
-	else:
-		wtime = np.atleast_1d(np.array(ds.time.values))
+    # netcdf format
+    ds = xr.open_dataset(fname)
+    if 'step' in ds:
+        wtime = np.atleast_1d(np.array(ds.time.values + ds.step.values))
+    else:
+        wtime = np.atleast_1d(np.array(ds.time.values))
 
-	if 'latitude' in ds:
-		lat = np.array(ds['latitude'].values); lon = np.array(ds['longitude'].values)
-	elif 'LATITUDE' in ds:
-		lat = np.array(ds['LATITUDE'].values); lon = np.array(ds['LONGITUDE'].values)
-	elif 'lat' in ds:
-		lat = np.array(ds['lat'].values); lon = np.array(ds['lon'].values)
-	elif 'LAT' in ds:
-		lat = np.array(ds['LAT'].values); lon = np.array(ds['LON'].values)
-	else:
-		sys.exit(' Lat/lon array not found.')
+    if 'latitude' in ds:
+        lat = np.array(ds['latitude'].values); lon = np.array(ds['longitude'].values)
+    elif 'LATITUDE' in ds:
+        lat = np.array(ds['LATITUDE'].values); lon = np.array(ds['LONGITUDE'].values)
+    elif 'lat' in ds:
+        lat = np.array(ds['lat'].values); lon = np.array(ds['lon'].values)
+    elif 'LAT' in ds:
+        lat = np.array(ds['LAT'].values); lon = np.array(ds['LON'].values)
+    else:
+        sys.exit(' Lat/lon array not found.')
 
-	if wvar in ds:
-		wdata = np.array(ds[wvar].values)
-		units_wdata = str(ds[wvar].units)
-	else:
-		sys.exit(' Variable name not included in the file. You can use ncdump -h filename.nc to see variable names.')
+    if wvar in ds:
+        wdata = np.array(ds[wvar].values)
+        units_wdata = str(ds[wvar].units)
+    else:
+        sys.exit(' Variable name not included in the file. You can use ncdump -h filename.nc to see variable names.')
 
-	# data structure
-	if wtime.shape[0]==1:
-		if (np.size(wdata.shape)==2) and (wdata.shape[0]==lat.shape[0]) and (wdata.shape[1]==lon.shape[0]):
-			gstr=2 # Structured
-			wdata = np.array([wdata])
-		elif (np.size(wdata.shape)>2) and (wdata.shape[1]==lat.shape[0]) and (wdata.shape[2]==lon.shape[0]):
-			gstr=2 # Structured
-		else:
-			gstr=1 # Unstructured
+    # data structure
+    if wtime.shape[0]==1:
+        if (np.size(wdata.shape)==2) and (wdata.shape[0]==lat.shape[0]) and (wdata.shape[1]==lon.shape[0]):
+            gstr=2 # Structured
+            wdata = np.array([wdata])
+        elif (np.size(wdata.shape)>2) and (wdata.shape[1]==lat.shape[0]) and (wdata.shape[2]==lon.shape[0]):
+            gstr=2 # Structured
+        else:
+            gstr=1 # Unstructured
 
-	else:
-		if np.size(wdata.shape)==3 and np.size(lat.shape)==1:
-			# Structured
-			gstr=2
-		elif np.size(wdata.shape)==2 or np.size(lat.shape)==2:
-			# Unstructured
-			gstr=1
+    else:
+        if np.size(wdata.shape)==3 and np.size(lat.shape)==1:
+            # Structured
+            gstr=2
+        elif np.size(wdata.shape)==2 or np.size(lat.shape)==2:
+            # Unstructured
+            gstr=1
 
-	ds.close(); del ds
+    ds.close(); del ds
 
-	wdata[wdata>360]=np.nan; wdata[wdata<0]=np.nan
+    wdata[wdata>360]=np.nan; wdata[wdata<0]=np.nan
 
 if np.size(wdata.shape)==3 and np.size(lat.shape)==2:
-	lon[lon>180]=lon[lon>180]-360.
+    lon[lon>180]=lon[lon>180]-360.
 
 if np.any(slat):
-	slat=np.array(np.sort(slat))
+    slat=np.array(np.sort(slat))
 else:
-	slat=np.array([np.nanmin(lat),np.nanmax(lat)])
+    slat=np.array([np.nanmin(lat),np.nanmax(lat)])
 
 if np.any(slon):
-	slon=np.array(np.sort(slon))
+    slon=np.array(np.sort(slon))
 else:
-	slon=np.array([np.nanmin(lon),np.nanmax(lon)])
+    slon=np.array([np.nanmin(lon),np.nanmax(lon)])
 
 # cbar levels
 extdm=1
 if "dir" in wvar or "dp" in wvar or "wlv" in wvar or "u" in wvar or "v" in wvar:
-	levels = np.linspace(np.nanmin(wdata),np.nanmax(wdata),101)
-	extdm=0
+    levels = np.linspace(np.nanmin(wdata),np.nanmax(wdata),101)
+    extdm=0
 elif "fp" in wvar:
-	levels = np.linspace(0.,np.nanpercentile(wdata,99.995),101)
+    levels = np.linspace(0.,np.nanpercentile(wdata,99.995),101)
 else:
-	levels = np.linspace(np.nanmin(wdata),np.nanpercentile(wdata,99.995),101)
+    levels = np.linspace(np.nanmin(wdata),np.nanpercentile(wdata,99.995),101)
 
 print("ww3fields.py maps, file: "+fname+",  field: "+wvar)
 # loop time
 for t in range(wtime[::sk].shape[0]):
 
-	# Robinson projection if global grid
-	if np.diff(slat)>150 and np.diff(slon)>350 and gstr==2:
-		# ax=plt.axes(projection=ccrs.Mollweide())
-		ax=plt.axes(projection=ccrs.Robinson())
-		gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-		gl.ylocator = ticker.MultipleLocator(15)
-		gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
-		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
-		data=wdata[::sk,:,:][t,:,:]
-		adata, alon = add_cyclic_point(data, coord=lon)
-		alat=lat 
+    # Robinson projection if global grid
+    if np.diff(slat)>150 and np.diff(slon)>350 and gstr==2 and np.diff(lon).min()==np.diff(lon).max():
+        # ax=plt.axes(projection=ccrs.Mollweide())
+        ax=plt.axes(projection=ccrs.Robinson())
+        gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+        gl.ylocator = ticker.MultipleLocator(15)
+        gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+        gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+        data=wdata[::sk,:,:][t,:,:]
+        adata, alon = add_cyclic_point(data, coord=lon)
+        alat=lat 
 
-	# Polar projection
-	elif slat.max()>87 and slat.min()>30:
-		ax=plt.axes(projection=ccrs.NorthPolarStereo())
-		ax.set_extent([-180, 180, slat.min(), 90], crs=ccrs.PlateCarree())
-		# ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,transform=ccrs.PlateCarree())
-		gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
-		gl.ylocator = ticker.MultipleLocator(10)
-		gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
-		gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
-		alon=lon; alat=lat
-		adata=wdata[::sk,:][t,:]
+    # Polar projection
+    elif slat.max()>87 and slat.min()>30:
+        ax=plt.axes(projection=ccrs.NorthPolarStereo())
+        ax.set_extent([-180, 180, slat.min(), 90], crs=ccrs.PlateCarree())
+        # ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,transform=ccrs.PlateCarree())
+        gl = ax.gridlines(draw_labels=True,x_inline=False, y_inline=False, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+        gl.ylocator = ticker.MultipleLocator(10)
+        gl.xlabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+        gl.ylabel_style = {'size': 7, 'color': 'black', 'rotation': 0, 'rotation_mode': 'anchor'}
+        alon=lon; alat=lat
+        adata=wdata[::sk,:][t,:]
 
-	# Miller projection
-	else:
-		ax = plt.axes(projection=ccrs.PlateCarree())
-		ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
-		gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
-		gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
-		alon=lon; alat=lat
-		adata=wdata[::sk,:][t,:]
+    # Miller projection
+    else:
+        ax = plt.axes(projection=ccrs.PlateCarree())
+        ax.set_extent([slon.min(),slon.max(),slat.min(),slat.max()], crs=ccrs.PlateCarree())
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--', zorder=3)
+        gl.xlabel_style = {'size': 9, 'color': 'k','rotation':0}; gl.ylabel_style = {'size': 9, 'color': 'k','rotation':0}
+        alon=lon; alat=lat
+        adata=wdata[::sk,:][t,:]
 
-	if gstr==1:
-		# Unstructured
-		ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)
-		if extdm==1:	
-			if slat.max()>87 and slat.min()>30:
-				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1,transform=ccrs.PlateCarree())
-			else:
-				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
-		else:
-			if slat.max()>87 and slat.min()>30:
-				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1,transform=ccrs.PlateCarree())
-			else:
-				cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
-	else:
-		# Structured
-		if extdm==1:
-			cs=ax.contourf(alon,alat,adata,levels,cmap=palette,extend="max", zorder=1,transform = ccrs.PlateCarree())
-		else:
-			cs=ax.contourf(alon,alat,adata,levels,cmap=palette,zorder=1,transform = ccrs.PlateCarree())
+    if gstr==1:
+        # Unstructured
+        ind=np.where(np.isnan(wdata[::sk,:][t,:])==False)
+        if extdm==1:    
+            if slat.max()>87 and slat.min()>30:
+                cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1,transform=ccrs.PlateCarree())
+            else:
+                cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,:][ind],levels,cmap=palette,extend="max", zorder=1)
+        else:
+            if slat.max()>87 and slat.min()>30:
+                cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1,transform=ccrs.PlateCarree())
+            else:
+                cs=ax.tricontourf(lon[ind],lat[ind],wdata[::sk,:][t,ind],levels,cmap=palette,zorder=1)
+    else:
+        # Structured
+        if extdm==1:
+            cs=ax.contourf(alon,alat,adata,levels,cmap=palette,extend="max", zorder=1,transform = ccrs.PlateCarree())
+        else:
+            cs=ax.contourf(alon,alat,adata,levels,cmap=palette,zorder=1,transform = ccrs.PlateCarree())
 
-	ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
-	ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
-	ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
-	ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
-	plt.title(wvar+' ('+units_wdata+')    '+pd.to_datetime(wtime[::sk][t]).strftime('%Y/%m/%d %H:%M')+'Z') 
-	plt.tight_layout()
-	ax = plt.gca()
-	pos = ax.get_position()
-	l, b, w, h = pos.bounds
-	cax = plt.axes([l+0.07, b-0.07, w-0.12, 0.025]) # setup colorbar axes.
-	cbar=plt.colorbar(cs,cax=cax, orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
-	tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
-	plt.axes(ax)  # make the original axes current again
-	plt.tight_layout()
-	# plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
-	plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
-		orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
-	
-	# The pickle line below allow users to save the figure and edit later, using pickle. 
-	#   to use this option, uncomment the line below and the initial import pickle
-	# pickle.dump(ax, open('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
-	plt.close('all'); del ax
+    ax.add_feature(cartopy.feature.OCEAN,facecolor=("white"))
+    ax.add_feature(cartopy.feature.LAND,facecolor=("lightgrey"), edgecolor='grey',linewidth=0.5, zorder=2)
+    ax.add_feature(cartopy.feature.BORDERS, edgecolor='grey', linestyle='-',linewidth=0.5, alpha=1, zorder=3)
+    ax.coastlines(resolution='110m', color='grey',linewidth=0.5, linestyle='-', alpha=1, zorder=4)
+    plt.title(wvar+' ('+units_wdata+')    '+pd.to_datetime(wtime[::sk][t]).strftime('%Y/%m/%d %H:%M')+'Z') 
+    plt.tight_layout()
+    ax = plt.gca()
+    pos = ax.get_position()
+    l, b, w, h = pos.bounds
+    cax = plt.axes([l+0.07, b-0.07, w-0.12, 0.025]) # setup colorbar axes.
+    cbar=plt.colorbar(cs,cax=cax, orientation='horizontal'); cbar.ax.tick_params(labelsize=10)
+    tick_locator = ticker.MaxNLocator(nbins=7); cbar.locator = tick_locator; cbar.update_ticks()
+    plt.axes(ax)  # make the original axes current again
+    plt.tight_layout()
+    # plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.eps', format='eps', dpi=200)
+    plt.savefig('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H%M'))+'.png', dpi=200, facecolor='w', edgecolor='w',
+        orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+    
+    # The pickle line below allow users to save the figure and edit later, using pickle. 
+    #   to use this option, uncomment the line below and the initial import pickle
+    # pickle.dump(ax, open('wfields_'+wvar+'_'+str(pd.to_datetime(wtime[::sk][t]).strftime('%Y%m%d%H'))+'.pickle', 'wb'))
+    plt.close('all'); del ax
 
 
 
