@@ -503,7 +503,6 @@ class ModelObsPlot:
           Optional: see object construction above.
         Output: png figure saved in the local directory where python is running or in the path given through ftag.
         Example:
-        Example:
           from pvalstats import ModelObsPlot
           mop=ModelObsPlot(ww3gfs,obs)
           mop.taylordiagram()
