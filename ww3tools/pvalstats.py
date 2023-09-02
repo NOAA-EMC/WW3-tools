@@ -726,8 +726,8 @@ class ModelObsPlot:
         months=np.arange(1,13,1)
         monthlyval=np.zeros((months.shape[0],self.model.shape[0],np.size(self.nerrm)),'f')*np.nan
         for i in range(0,months.shape[0]):
-            indm=np.where(self.fmonth==months[i])
-            if np.size(indm)>0:
+            indm=np.where((self.fmonth==months[i]) & (np.mean(self.model[:,:],axis=0)>-999) & (np.mean(self.obs[:,:],axis=0)>-999))
+            if np.size(indm)>1:
                 indm=indm[0]
                 for j in range(0,self.model.shape[0]):
                     monthlyval[i,j,:] = mvalstats.metrics(self.model[j,indm],self.obs[0,indm])
