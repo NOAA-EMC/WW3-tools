@@ -35,6 +35,38 @@ import sys
 import pandas as pd
 import warnings; warnings.filterwarnings("ignore")
 
+
+def wlevconv(data_lev1=None,lev1=None,lev2=None,alpha=0.12):
+    """
+    Wind height conversion DNV-C209 standard/recommendation
+    Input:
+    - time-series (numpy array) of origin level
+    - height (meters) of origin level
+    - height (meters) of target level
+    - alpha (see DNV-C209 standard/recommendation)
+    Output:
+    - time-series converted to the target level
+
+    Example1 (4.1 m height obs data to 10-m model level):
+    lev1=4.1; lev2=10; data_lev1=10 #(m/s)
+    converted_wind = wlevconv(data_lev1,lev1,lev2)
+
+    Example2 (10-m wind from model to 3.8 m anemometer position):
+    lev1=10; lev2=3.8; data_lev1=10 #(m/s)
+    converted_wind = wlevconv(data_lev1,lev1,lev2)
+    """
+
+    if np.any(lev1)==None or np.any(lev2)==None or np.any(data_lev1)==None:
+        raise ValueError("Two levels (in meters) and one data record (wind in m/s) must be informed.")
+
+    mfactor=((lev2/lev1)**(alpha))
+    data_lev2 = (mfactor * data_lev1)
+
+    return data_lev2
+    print(' Wind conversion ok')
+
+
+
 def orgensemblesat(flist,nmb,esize='yes'):
     '''
     This function reads and organizes the ensemble members and 
@@ -303,7 +335,7 @@ def orgensemblesat(flist,nmb,esize='yes'):
     # ------------------------
 
 
-# Under development: spectral interpolation function, quality control, wind speed conversion to 10m
+# Under development: spectral interpolation function, quality control
 
 
 
