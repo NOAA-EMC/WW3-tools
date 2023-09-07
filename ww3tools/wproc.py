@@ -66,6 +66,29 @@ def wlevconv(data_lev1=None,lev1=None,lev2=None,alpha=0.12):
     print(' Wind conversion ok')
 
 
+def interp_nan(data,lmt=10**50):
+    '''
+    Fill NaN values with linear interpolation.
+    User can enter one or two inputs:
+      1) time-series containing NaN values to fill in
+      2) maximum number of consecutive NaN values to interpolate (to
+         avoid interpolating long segments)
+    '''
+    data=np.array(data)
+    lmt=int(lmt)
+
+    if data.ndim>1:
+        raise ValueError(' Input array with too many dimensions. Only time-series (1 dimension) allowed.')
+    else:
+        # using pandas
+        A=pd.Series(data)
+        # B=A.interpolate(method="polynomial",order=2,limit=lmt)
+        B=A.interpolate(method="linear",limit=lmt)
+        B=np.array(B.values)
+
+    return B
+    del lmt,A,data
+
 
 def orgensemblesat(flist,nmb,esize='yes'):
     '''
