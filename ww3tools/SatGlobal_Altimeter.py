@@ -1,6 +1,47 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+
+#Purpose and usage:
+
+# This Python script is designed to process satellite data from netCDF files for a specific satellite (e.g., JASON-2).
+# It can perform time averaging on the data if desired and save the results in new NetCDF files.
+#Altimeters must have been previously downloaded. Path where altimeter data is saved must be informed and
+#edited (see dirs below).
+
+
+#USAGE:
+# This program processes one satellite mission per run, entered as argument (only the ID),the sdname for the list of all altimeters
+#are like:
+#sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','SENTINEL3B']), you only have to pick one of them.
+# Altimeters must have been previously downloaded.  Path where altimeter data is saved must be informed and edited (see dirs below).
+# Check the pre-selected parameters below for the altimeter collocation and date interval (datemin and datemax).you can change those preset data.
+#Set enable_time_averaging as a variable (True or False).
+# enable_time_averaging = True  # Change this to False if you want to disable time averaging
+#The output for this code is a netcdf file (.nc) that either shows the rae saved data or the time avarage saved data.
+#Set the time interval for time averaging in seconds with thistime_interval_seconds = 600  # 10 minutes
+
+
+#DEPENDENCIES:
+# Before using this script, make sure you have the necessary Python libraries installed:
+# - numpy
+# - netCDF4
+# - datetime
+# - time
+# - calendar
+# - sys
+# - os
+#AODN altimeter data previously downloaded (see wfetchsatellite_AODN_Altimeter.sh)
+
+#Author:
+#Maryam Mohammadpour, Ricardo Campos
+
+#Contact:
+#Ghazal.Mohammadpour@noaa.gov
+
+#______________________________________________________________________________________________________
+
+
 import numpy as np
 import netCDF4 as nc
 import datetime
@@ -9,10 +50,11 @@ from calendar import timegm
 import sys
 import os
 import warnings
+import argparse  # Added argparse for command-line argument parsing
 warnings.filterwarnings("ignore")
 
 # Function to process data for a specific satellite
-def process_satellite_data(dirs, sdname, sname, start_date, end_date):
+def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_time_averaging, time_interval_seconds):
     # Define a range of latitudes and longitudes
     auxlat = np.arange(-90, 91, 1)
     auxlon = np.arange(0, 361, 1)  # Adjust the longitude range as needed
@@ -98,41 +140,57 @@ def process_satellite_data(dirs, sdname, sname, start_date, end_date):
 
     # Check if any data was read and allocated
     if ii > 0:
-        # Perform time averaging for every 10 minutes
-        time_intervals = np.arange(start_date.timestamp(), end_date.timestamp(), 600)  # 10 minutes in seconds
-        time_averaged_data = {
-            'TIME': [],
-            'LATITUDE': [],
-            'LONGITUDE': [],
-            'SWH_KU': [],
-            'SWH_KU_CAL': [],
-            'WSPD': [],
-            'WSPD_CAL': [],
-            'SIG0_KU_std_dev': [],
-            'SWH_KU_num_obs': [],
-            'SWH_KU_std_dev': [],
-            'SWH_KU_quality_control': [],
-        }
+        if enable_time_averaging:
+            # Perform time averaging
+            time_intervals = np.arange(start_date.timestamp(), end_date.timestamp(), time_interval_seconds)
+            time_averaged_data = {
+                'TIME': [],
+                'LATITUDE': [],
+                'LONGITUDE': [],
+                'SWH_KU': [],
+                'SWH_KU_CAL': [],
+                'WSPD': [],
+                'WSPD_CAL': [],
+                'SIG0_KU_std_dev': [],
+                'SWH_KU_num_obs': [],
+                'SWH_KU_std_dev': [],
+                'SWH_KU_quality_control': [],
+            }
 
-        for interval_start in time_intervals:
-            interval_end = interval_start + 600  # 10 minutes in seconds
-            interval_indices = np.where(np.logical_and(ast[:ii] >= interval_start, ast[:ii] < interval_end))[0]
+            for interval_start in time_intervals:
+                interval_end = interval_start + time_interval_seconds
+                interval_indices = np.where(np.logical_and(ast[:ii] >= interval_start, ast[:ii] < interval_end))[0]
 
-            if len(interval_indices) > 0:
-                # Calculate time-averaged values for each variable within the time interval
-                time_averaged_data['TIME'].append(np.mean(ast[interval_indices]))
-                time_averaged_data['LATITUDE'].append(np.mean(aslat[interval_indices]))
-                time_averaged_data['LONGITUDE'].append(np.mean(aslon[interval_indices]))
-                time_averaged_data['SWH_KU'].append(np.mean(ahsk[interval_indices]))
-                time_averaged_data['SWH_KU_CAL'].append(np.mean(ahskcal[interval_indices]))
-                time_averaged_data['WSPD'].append(np.mean(awnd[interval_indices]))
-                time_averaged_data['WSPD_CAL'].append(np.mean(awndcal[interval_indices]))
-                time_averaged_data['SIG0_KU_std_dev'].append(np.mean(asig0knstd[interval_indices]))
-                time_averaged_data['SWH_KU_num_obs'].append(np.mean(aswhknobs[interval_indices]))
-                time_averaged_data['SWH_KU_std_dev'].append(np.mean(aswhknstd[interval_indices]))
-                time_averaged_data['SWH_KU_quality_control'].append(np.mean(aswhkqc[interval_indices]))
+                if len(interval_indices) > 0:
+                    # Calculate time-averaged values for each variable within the time interval
+                    time_averaged_data['TIME'].append(np.nanmean(ast[interval_indices]))
+                    time_averaged_data['LATITUDE'].append(np.nanmean(aslat[interval_indices]))
+                    time_averaged_data['LONGITUDE'].append(np.nanmean(aslon[interval_indices]))
+                    time_averaged_data['SWH_KU'].append(np.nanmean(ahsk[interval_indices]))
+                    time_averaged_data['SWH_KU_CAL'].append(np.nanmean(ahskcal[interval_indices]))
+                    time_averaged_data['WSPD'].append(np.nanmean(awnd[interval_indices]))
+                    time_averaged_data['WSPD_CAL'].append(np.nanmean(awndcal[interval_indices]))
+                    time_averaged_data['SIG0_KU_std_dev'].append(np.nanmean(asig0knstd[interval_indices]))
+                    time_averaged_data['SWH_KU_num_obs'].append(np.nanmean(aswhknobs[interval_indices]))
+                    time_averaged_data['SWH_KU_std_dev'].append(np.nanmean(aswhknstd[interval_indices]))
+                    time_averaged_data['SWH_KU_quality_control'].append(np.nanmean(aswhkqc[interval_indices]))
 
-        return time_averaged_data
+            return time_averaged_data
+        else:
+            raw_data = {
+                'TIME': ast[:ii],
+                'LATITUDE': aslat[:ii],
+                'LONGITUDE': aslon[:ii],
+                'SWH_KU': ahsk[:ii],
+                'SWH_KU_CAL': ahskcal[:ii],
+                'WSPD': awnd[:ii],
+                'WSPD_CAL': awndcal[:ii],
+                'SIG0_KU_std_dev': asig0knstd[:ii],
+                'SWH_KU_num_obs': aswhknobs[:ii],
+                'SWH_KU_std_dev': aswhknstd[:ii],
+                'SWH_KU_quality_control': aswhkqc[:ii],
+            }
+            return raw_data
 
 # Define the main program
 if __name__ == '__main__':
@@ -142,18 +200,27 @@ if __name__ == '__main__':
     end_date = datetime.datetime(2013, 1, 2, 0, 0, 0)
 
     # Specify the satellite name and directory
-    sdname = 'HY2'
-    sname = 'HY-2'
+    sdname = 'JASON2'
+    sname = 'JASON-2'
 
     # Specify the power of the initial array
     pia = 10
 
-    # Process the data for the specified satellite
-    time_averaged_data = process_satellite_data(dirs, sdname, sname, start_date, end_date)
+    # Set enable_time_averaging as a variable (True or False)
+    enable_time_averaging = True  # Change this to False if you want to disable time averaging
 
-    if time_averaged_data is not None:
-        # Save the time-averaged data in a new NetCDF file
-        output_file = f"{sdname}_time_averaged_data.nc"
+    # Set the time interval for time averaging in seconds
+    time_interval_seconds = 600  # 10 minutes
+
+    # Process the data for the specified satellite with time averaging as specified by the user
+    data = process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_time_averaging, time_interval_seconds)
+
+    if data is not None:
+        if enable_time_averaging:
+            output_file = f"{sdname}_time_averaged_data.nc"
+        else:
+            output_file = f"{sdname}_raw_data.nc"
+
         with nc.Dataset(output_file, 'w', format='NETCDF4') as ncfile:
             # Define dimensions
             ncfile.createDimension('TIME', None)
@@ -171,18 +238,18 @@ if __name__ == '__main__':
             swh_ku_std_dev_var = ncfile.createVariable('SWH_KU_std_dev', 'f4', ('TIME',))
             swh_ku_qc_var = ncfile.createVariable('SWH_KU_quality_control', 'f4', ('TIME',))
 
-            # Fill variables with time-averaged data
-            time_var[:] = time_averaged_data['TIME']
-            lat_var[:] = time_averaged_data['LATITUDE']
-            lon_var[:] = time_averaged_data['LONGITUDE']
-            swh_ku_var[:] = time_averaged_data['SWH_KU']
-            swh_ku_cal_var[:] = time_averaged_data['SWH_KU_CAL']
-            wspd_var[:] = time_averaged_data['WSPD']
-            wspd_cal_var[:] = time_averaged_data['WSPD_CAL']
-            sig0_ku_std_dev_var[:] = time_averaged_data['SIG0_KU_std_dev']
-            swh_ku_num_obs_var[:] = time_averaged_data['SWH_KU_num_obs']
-            swh_ku_std_dev_var[:] = time_averaged_data['SWH_KU_std_dev']
-            swh_ku_qc_var[:] = time_averaged_data['SWH_KU_quality_control']
+            # Fill variables with data
+            time_var[:] = data['TIME']
+            lat_var[:] = data['LATITUDE']
+            lon_var[:] = data['LONGITUDE']
+            swh_ku_var[:] = data['SWH_KU']
+            swh_ku_cal_var[:] = data['SWH_KU_CAL']
+            wspd_var[:] = data['WSPD']
+            wspd_cal_var[:] = data['WSPD_CAL']
+            sig0_ku_std_dev_var[:] = data['SIG0_KU_std_dev']
+            swh_ku_num_obs_var[:] = data['SWH_KU_num_obs']
+            swh_ku_std_dev_var[:] = data['SWH_KU_std_dev']
+            swh_ku_qc_var[:] = data['SWH_KU_quality_control']
 
-        print(f"Time-averaged data for {sname} saved in {output_file}")
+        print(f"Data for {sname} saved in {output_file}")
 
