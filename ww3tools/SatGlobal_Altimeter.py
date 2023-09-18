@@ -6,20 +6,20 @@
 
 # This Python script is designed to process satellite data from netCDF files for a specific satellite (e.g., JASON-2).
 # It can perform time averaging on the data if desired and save the results in new NetCDF files.
-#Altimeters must have been previously downloaded. Path where altimeter data is saved must be informed and
-#edited (see dirs below).
+# Altimeters must have been previously downloaded. Path where altimeter data is saved must be informed and
+# edited (see dirs below).
 
 
 #USAGE:
 # This program processes one satellite mission per run, entered as argument (only the ID),the sdname for the list of all altimeters
-#are like:
-#sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','SENTINEL3B']), you only have to pick one of them.
+# are like:
+# sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','SENTINEL3B']), you only have to pick one of them.
 # Altimeters must have been previously downloaded.  Path where altimeter data is saved must be informed and edited (see dirs below).
 # Check the pre-selected parameters below for the altimeter collocation and date interval (datemin and datemax).you can change those preset data.
-#Set enable_time_averaging as a variable (True or False).
+# Set enable_time_averaging as a variable (True or False).
 # enable_time_averaging = True  # Change this to False if you want to disable time averaging
-#The output for this code is a netcdf file (.nc) that either shows the rae saved data or the time avarage saved data.
-#Set the time interval for time averaging in seconds with thistime_interval_seconds = 600  # 10 minutes
+# The output for this code is a netcdf file (.nc) that either shows the rae saved data or the time avarage saved data.
+# Set the time interval for time averaging in seconds with thistime_interval_seconds = 600  # 10 minutes
 
 
 #DEPENDENCIES:
