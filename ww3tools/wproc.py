@@ -80,14 +80,22 @@ def interp_nan(data,lmt=10**50):
     if data.ndim>1:
         raise ValueError(' Input array with too many dimensions. Only time-series (1 dimension) allowed.')
     else:
-        # using pandas
-        A=pd.Series(data)
-        # B=A.interpolate(method="polynomial",order=2,limit=lmt)
-        B=A.interpolate(method="linear",limit=lmt)
-        B=np.array(B.values)
+        indd=np.where(data>-999.)
+        if np.size(indd)>0:
+            indd=indd[0][-1] # last valid number
+            adata=np.array(data[0:indd])
 
-    return B
-    del lmt,A,data
+            # using pandas
+            A=pd.Series(adata)
+            # B=A.interpolate(method="polynomial",order=2,limit=lmt)
+            B=A.interpolate(method="linear",limit=lmt)
+            B=np.array(B.values)
+
+            data[0:indd]=np.array(B)
+           
+            del lmt,A,B
+
+    return data
 
 
 def orgensemblesat(flist,nmb,esize='yes'):
