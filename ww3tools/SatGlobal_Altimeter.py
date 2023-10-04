@@ -1,25 +1,14 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+#Description:
 
+#The provided Python script (SatGlobal_Altimeter_new.py) is designed to process satellite data based on the input parameters you provide.
+#The batch script sets these parameters dynamically and submits the job for processing. Make sure to modify the batch script
+#to match your specific requirements, such as the satellite name, time-averaging settings, and paths to input and output directories.
 
-#Purpose and usage:
-
-# This Python script is designed to process satellite data from netCDF files for a specific satellite (e.g., JASON-2).
-# It can perform time averaging on the data if desired and save the results in new NetCDF files.
-# Altimeters must have been previously downloaded. Path where altimeter data is saved must be informed and
-# edited (see dirs below).
-
-
-#USAGE:
-# This program processes one satellite mission per run, entered as argument (only the ID),the sdname for the list of all altimeters
-# are like:
-# sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','SENTINEL3B']), you only have to pick one of them.
-# Altimeters must have been previously downloaded.  Path where altimeter data is saved must be informed and edited (see dirs below).
-# Check the pre-selected parameters below for the altimeter collocation and date interval (datemin and datemax).you can change those preset data.
-# Set enable_time_averaging as a variable (True or False).
-# enable_time_averaging = True  # Change this to False if you want to disable time averaging
-# The output for this code is a netcdf file (.nc) that either shows the rae saved data or the time avarage saved data.
-# Set the time interval for time averaging in seconds with thistime_interval_seconds = 600  # 10 minutes
+#In the batch script one should define:
+#Set your desired start and end dates using the start_date and end_date variables.
+#Specify the input directory (input_directory) where your satellite data files are located.
+#Specify the output directory (output_directory) where you want to save the processed data.
+#Set the satellite name (satellite_name) and other time-averaging parameters (time_averaging, averaging_time) as needed.
 
 
 #DEPENDENCIES:
@@ -39,8 +28,11 @@
 #Contact:
 #Ghazal.Mohammadpour@noaa.gov
 
-#______________________________________________________________________________________________________
+#---------------------------------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------------------------------------------------------------------
 
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import numpy as np
 import netCDF4 as nc
@@ -50,11 +42,12 @@ from calendar import timegm
 import sys
 import os
 import warnings
-import argparse  # Added argparse for command-line argument parsing
+import argparse
+
 warnings.filterwarnings("ignore")
 
 # Function to process data for a specific satellite
-def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_time_averaging, time_interval_seconds):
+def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_time_averaging, time_averaging_duration):
     # Define a range of latitudes and longitudes
     auxlat = np.arange(-90, 91, 1)
     auxlon = np.arange(0, 361, 1)  # Adjust the longitude range as needed
@@ -141,8 +134,8 @@ def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_tim
     # Check if any data was read and allocated
     if ii > 0:
         if enable_time_averaging:
-            # Perform time averaging
-            time_intervals = np.arange(start_date.timestamp(), end_date.timestamp(), time_interval_seconds)
+            # Perform time averaging for every specified duration
+            time_intervals = np.arange(start_date.timestamp(), end_date.timestamp(), time_averaging_duration)
             time_averaged_data = {
                 'TIME': [],
                 'LATITUDE': [],
@@ -158,7 +151,7 @@ def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_tim
             }
 
             for interval_start in time_intervals:
-                interval_end = interval_start + time_interval_seconds
+                interval_end = interval_start + time_averaging_duration
                 interval_indices = np.where(np.logical_and(ast[:ii] >= interval_start, ast[:ii] < interval_end))[0]
 
                 if len(interval_indices) > 0:
@@ -175,8 +168,14 @@ def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_tim
                     time_averaged_data['SWH_KU_std_dev'].append(np.nanmean(aswhknstd[interval_indices]))
                     time_averaged_data['SWH_KU_quality_control'].append(np.nanmean(aswhkqc[interval_indices]))
 
+            # Convert lists to numpy arrays
+            for key, value in time_averaged_data.items():
+                time_averaged_data[key] = np.array(value)
+
             return time_averaged_data
+
         else:
+            # If not performing time averaging, return the raw data
             raw_data = {
                 'TIME': ast[:ii],
                 'LATITUDE': aslat[:ii],
@@ -191,33 +190,46 @@ def process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_tim
                 'SWH_KU_quality_control': aswhkqc[:ii],
             }
             return raw_data
+    else:
+        print(f'No valid data found for {sname}')
+        return None
 
-# Define the main program
+# Function to parse command line arguments
+def parse_args():
+    parser = argparse.ArgumentParser(description='Process satellite data')
+    parser.add_argument('--time-averaging', action='store_true', help='Enable time averaging')
+    parser.add_argument('--duration', type=int, default=600, help='Time averaging duration in seconds')
+    parser.add_argument('--start-date', required=True, help='Start date in the format "YYYY-MM-DD HH:MM:SS"')
+    parser.add_argument('--end-date', required=True, help='End date in the format "YYYY-MM-DD HH:MM:SS"')
+    parser.add_argument('-i', '--input', required=True, help='Input directory path')
+    parser.add_argument('-o', '--output', default='output.nc', help='Output file path')
+    parser.add_argument('--sname', required=True, help='Satellite name')
+    parser.add_argument('--sdname', required=True, help='Satellite directory name')
+    return parser.parse_args()
+
 if __name__ == '__main__':
-    # Specify the data directory and start/end date
-    dirs = "/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/sat/AODN/altimeter"
-    start_date = datetime.datetime(2012, 1, 1, 0, 0, 0)
-    end_date = datetime.datetime(2013, 1, 2, 0, 0, 0)
+    args = parse_args()
+
+    # Parse start and end dates
+    start_date = datetime.datetime.strptime(args.start_date, '%Y-%m-%d %H:%M:%S')
+    end_date = datetime.datetime.strptime(args.end_date, '%Y-%m-%d %H:%M:%S')
+
+    # Specify the data directory
+    dirs = args.input  # Use the input path provided as an argument
 
     # Specify the satellite name and directory
-    sdname = 'JASON2'
-    sname = 'JASON-2'
+    sdname = args.sdname  # Use the satellite directory provided as an argument
+    sname = args.sname  # Use the satellite name provided as an argument
 
     # Specify the power of the initial array
     pia = 10
 
-    # Set enable_time_averaging as a variable (True or False)
-    enable_time_averaging = True  # Change this to False if you want to disable time averaging
-
-    # Set the time interval for time averaging in seconds
-    time_interval_seconds = 600  # 10 minutes
-
     # Process the data for the specified satellite with time averaging as specified by the user
-    data = process_satellite_data(dirs, sdname, sname, start_date, end_date, enable_time_averaging, time_interval_seconds)
+    data = process_satellite_data(dirs, sdname, sname, start_date, end_date, args.time_averaging, args.duration)
 
     if data is not None:
-        if enable_time_averaging:
-            output_file = f"{sdname}_time_averaged_data.nc"
+        if args.time_averaging:
+            output_file = f"{sdname}_time_averaged_data_{start_date.strftime('%Y%m%d%H%M%S')}_{end_date.strftime('%Y%m%d%H%M%S')}_{args.duration}s.nc"
         else:
             output_file = f"{sdname}_raw_data.nc"
 
@@ -238,7 +250,7 @@ if __name__ == '__main__':
             swh_ku_std_dev_var = ncfile.createVariable('SWH_KU_std_dev', 'f4', ('TIME',))
             swh_ku_qc_var = ncfile.createVariable('SWH_KU_quality_control', 'f4', ('TIME',))
 
-            # Fill variables with data
+            # Fill variables with data as before
             time_var[:] = data['TIME']
             lat_var[:] = data['LATITUDE']
             lon_var[:] = data['LONGITUDE']
@@ -251,5 +263,11 @@ if __name__ == '__main__':
             swh_ku_std_dev_var[:] = data['SWH_KU_std_dev']
             swh_ku_qc_var[:] = data['SWH_KU_quality_control']
 
+            # Set attributes for time average start time, end time, and duration
+            ncfile.setncattr('TimeAverageStartTime', str(start_date))
+            ncfile.setncattr('TimeAverageEndTime', str(end_date))
+            ncfile.setncattr('TimeAverageDuration', str(args.duration))
+
         print(f"Data for {sname} saved in {output_file}")
+
 
