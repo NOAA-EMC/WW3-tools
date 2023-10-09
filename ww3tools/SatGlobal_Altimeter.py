@@ -11,6 +11,30 @@
 #Set the satellite name (satellite_name) and other time-averaging parameters (time_averaging, averaging_time) as needed.
 
 
+
+#In the foloowing code, parse_args() defines the expected command-line arguments for the script and their properties, such as whether they are required,
+#their data types, default values, and help messages. When the script is executed, argparse processes the command-line arguments, 
+#and you can access their values to configure the behavior of your script.
+#Users running the script would need to provide the path to this file as a command-line argument when they execute the script. 
+#The location of the input file would depend on the user's setup and the file structure of the satellite data they are working with.
+
+#The script defines several command-line arguments that users can provide when they run the script:
+#--time-averaging: This is a flag argument. If provided, it sets a Boolean value to True, indicating that time averaging should be enabled.
+#--duration: This argument allows users to specify the time averaging duration in seconds. It has a default value of 600 seconds (10 minutes).
+#--start-date and --end-date: These required arguments expect users to provide start and end date/time values in the format "YYYY-MM-DD HH:MM:SS."
+#-i or --input: This required argument expects users to provide the path to an input directory. It is likely the directory where satellite data files are located.
+#-o or --output: This argument allows users to specify the output file path. It has a default value of 'output.nc'.
+#--sname and --sdname: These required arguments expect users to provide the name of the satellite and the satellite directory name, respectively.
+ 
+#this script is designed to be run from the command line, and it allows users to specify various parameters, such as time averaging settings
+#, input and output paths, and satellite information. These parameters will be used to control the processing of satellite data within the script.
+
+
+#OUTPUT:
+#The script will generate output files based on your settings. For example, if time averaging is enabled, the output file might be
+# named something like JASON2_time_averaged_data_20220101000000_20221231000000_600s.nc. If time averaging is disabled, the output 
+#file will be named JASON2_raw_data.nc.
+
 #DEPENDENCIES:
 # Before using this script, make sure you have the necessary Python libraries installed:
 # - numpy
