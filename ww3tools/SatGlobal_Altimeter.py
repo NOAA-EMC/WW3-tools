@@ -1,6 +1,6 @@
 #Description:
 
-#The provided Python script (SatGlobal_Altimeter_new.py) is designed to process satellite data based on the input parameters you provide.
+#The provided Python script (SatGlobal_Altimeter.py) is designed to process satellite data based on the input parameters you provide.
 #The batch script sets these parameters dynamically and submits the job for processing. Make sure to modify the batch script
 #to match your specific requirements, such as the satellite name, time-averaging settings, and paths to input and output directories.
 
