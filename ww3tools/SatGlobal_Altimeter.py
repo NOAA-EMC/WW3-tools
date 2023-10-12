@@ -22,7 +22,7 @@
 #--time-averaging: This is a flag argument. If provided, it sets a Boolean value to True, indicating that time averaging should be enabled.
 #--duration: This argument allows users to specify the time averaging duration in seconds. It has a default value of 600 seconds (10 minutes).
 #--start-date and --end-date: These required arguments expect users to provide start and end date/time values in the format "YYYY-MM-DD HH:MM:SS."
-#-i or --input: This required argument expects users to provide the path to an input directory. It is likely the directory where satellite data files are located.
+#-i or --input: This required argument expects users to provide the path to an input directory. It is the directory where satellite data files are located.
 #-o or --output: This argument allows users to specify the output file path. It has a default value of 'output.nc'.
 #--sname and --sdname: These required arguments expect users to provide the name of the satellite and the satellite directory name, respectively.
  
