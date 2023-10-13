@@ -7,6 +7,7 @@ wproc.py
 VERSION AND LAST UPDATE:
  v1.0  07/10/2023
  v1.1  07/24/2023
+ v1.2  10/11/2023
 
 PURPOSE:
  Auxiliary processing functions.
@@ -21,7 +22,8 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  07/10/2023: Ricardo M. Campos, first version.
- 07/24/2023: Ricardo M. Campos, debug orgensemblesat and improve speed. 
+ 07/24/2023: Ricardo M. Campos, debug orgensemblesat and improve processing speed. 
+ 10/11/2023: Ricardo M. Campos, new functions to support modularization.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -33,6 +35,7 @@ import netCDF4 as nc
 import numpy as np
 import sys
 import pandas as pd
+import os
 import warnings; warnings.filterwarnings("ignore")
 
 
