@@ -4,10 +4,10 @@
 # text string for identification. This will be included in the name of the output files.
 ftag: ww3tools
 # output path, where results will be saved
-path_out: /home/rmc/EXWAV/2collocation/test
+path_out: /work/noaa/marine/ricardo.campos/test
 
 # Data paths where the observations are saved
-path_alt: /media/data/observations/satellite/altimeter/AODN_altm
+path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
 path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
 path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
 
