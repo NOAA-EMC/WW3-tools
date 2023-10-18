@@ -51,3 +51,13 @@ npcs: 20
 # power of initial array 10**pia (size) that will be used to allocate satellite data (faster than append)
 pia: 10
 
+# interpolation_config.yml
+
+# Input observation file
+input_file: 'JASON2_time_averaged_data_20120101000000_20130102000000_600s.nc'
+
+# Output file name for the interpolated data
+output_file: 'interpolated_model_to_observation.nc'
+
+# Interpolation method (choose either 'pyresample' or 'linear')
+interpolation_method: 'linear'
