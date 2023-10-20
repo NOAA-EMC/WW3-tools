@@ -514,9 +514,27 @@ else:
 stop = timeit.default_timer()
 print('Concluded in '+repr(int(round(stop - start,0)))+' seconds')
 
+
+
+
+
+
+
+
+
+
 # new added functions:
 
-
+import netCDF4 as nc
+import numpy as np
+import os
+from datetime import datetime
+import time
+import timeit
+import yaml
+from scipy.interpolate import LinearNDInterpolator
+import pyresample as pr
+from pyresample.kd_tree import resample_nearest
 
 def create_model_grid(model_lat, model_lon):
     # Create a structured mesh grid for the model data
@@ -545,9 +563,21 @@ def interpolate_model_to_observation_linear(obs_lat, obs_lon, obs_time, model_gr
     return interpolated_model_data
 
 def interpolate_model_to_observation_pyresample(obs_lat, obs_lon, obs_time, model_grid, model_data):
-    # Implement Pyresample interpolation here
-    # You'll need to adapt this part according to your Pyresample implementation
-    pass
+    model_lat_grid, model_lon_grid = model_grid
+    target_def = pr.geometry.GridDefinition(lats=obs_lat, lons=obs_lon)
+
+    interpolated_model_data = []
+
+    for i in range(len(obs_time)):
+        result = resample_nearest(
+            model_grid=(model_lat_grid, model_lon_grid),
+            model_data=model_data,
+            target_def=target_def
+        )
+        interpolated_values = result[0]
+        interpolated_model_data.append(interpolated_values)
+
+    return interpolated_model_data
 
 if __name__ == "__main__":
     start = timeit.default_timer()
@@ -556,7 +586,7 @@ if __name__ == "__main__":
     with open('interpolation_config.yml', 'r') as config_file:
         wconfig = yaml.safe_load(config_file)
 
-    # Read the interpolation method from the configuration file
+    # Load the interpolation method from the configuration file
     interpolation_method = wconfig['interpolation_method']
 
     # Load the time-averaged observation data (provided by the existing code)
@@ -607,5 +637,5 @@ if __name__ == "__main__":
     print(f"Interpolated model data saved in {output_file}")
 
     stop = timeit.default_timer()
-    print('Processing completed in ' + repr(int(round(stop - start, 0)) + ' seconds. See the output at ' + wconfig['path_out'])
+    print(f'Processing completed in {int(round(stop - start, 0))} seconds. See the output at {wconfig["path_out"]}')
 
