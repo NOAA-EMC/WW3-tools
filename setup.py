@@ -2,9 +2,9 @@ from setuptools import setup
 
 setup(
     name='ww3tools',
-    version='1.0.0',
+    version='1.2.0',
     description='Python tools and utilities for WAVEWATCHIII post-processing and validation.',
-    author='Ricardo M. Campos, Ali Abdolali, Matthew Masarik',
+    authors='Ricardo M. Campos, Ali Abdolali, Matthew Masarik, Saeideh Banihashemi, Maryam Mohammadpour, Jessica Meixner', 
     author_email='ricardo.campos@noaa.gov',
     author_website='https://www.aoml.noaa.gov/people/ricardo-campos/',
     credits='National Oceanic and Atmospheric Administration (NOAA) and Cooperative Institute For Marine And Atmospheric Studies (CIMAS)',
@@ -28,6 +28,7 @@ setup(
         "geopy",
         "pathlib2",
         "tqdm",
+        "yaml",
         "boto3"]
 )
 

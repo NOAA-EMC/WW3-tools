@@ -155,8 +155,8 @@ def interp_nan(data,lmt=10**50):
 class ModelObsPlot:
 
     def __init__(self,model=None,obs=None,time=None,
-        fctime=None,fctintervals=None,fctxt=None,fctxticks=None,fctunits=None,month=None,
-        linreg=None,axisnames=None,mlabels=[],vaxisname=None,linestyle=None,marker=None,color=None,ftag=''):
+        fctime=None,fctintervals=None,fctxt=None,fctxticks=None,fctunits=None,month=None,linreg=None,axisnames=None,
+        mlabels=[],vaxisname=None,linestyle=None,linestyle_html=None,marker=None,color=None,ftag='',figformat=None):
 
         """
         Initialization of the main object used for the plot functions below.
@@ -181,6 +181,7 @@ class ModelObsPlot:
             self.model = np.array(np.atleast_2d(model)).astype('float') 
             self.obs = np.array(np.atleast_2d(obs)).astype('float')
 
+        self.figformat = figformat
         self.ftag = ftag
         self.mlabels = mlabels
         self.linreg = linreg
@@ -188,6 +189,9 @@ class ModelObsPlot:
         self.axisnames = axisnames if axisnames is not None else ["Model","Observations"]
         self.linestyle = (linestyle if linestyle is not None else
             np.array(['-', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.']))
+
+        self.linestyle_html = (linestyle_html if linestyle_html is not None else
+            np.array(['solid','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot']))
 
         self.marker = (marker if marker is not None else
             np.array(np.atleast_1d(['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',])).astype('str'))
@@ -287,11 +291,11 @@ class ModelObsPlot:
         for i in range(self.model.shape[0]):
             if np.size(self.mlabels) > 0:
                 if np.size(np.where(self.model[i, :] > -999)) > 1:
-                    ax.plot(self.dtime, interp_nan(self.model[i, :], 10), color=self.color[i], linestyle=self.linestyle[i],
+                    ax.plot(self.dtime, interp_nan(self.model[i, :], 3), color=self.color[i], linestyle=self.linestyle[i],
                             linewidth=2., label=self.mlabels[i], alpha=0.8, zorder=3)
             else:
                 if np.size(np.where(self.model[i, :] > -999)) > 1:
-                    ax.plot(self.dtime, interp_nan(self.model[i, :], 10), color=self.color[i], linestyle=self.linestyle[i],
+                    ax.plot(self.dtime, interp_nan(self.model[i, :], 3), color=self.color[i], linestyle=self.linestyle[i],
                             linewidth=2., alpha=0.8, zorder=3)
 
             if np.size(np.where(self.model[i, :] > -999)) > 1:
@@ -322,6 +326,34 @@ class ModelObsPlot:
         plt.savefig(self.ftag + 'TimeSeries.png', dpi=200, facecolor='w', edgecolor='w', orientation='portrait',
                     format='png', bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1)
+
+        # Html plot with bokeh
+        if self.figformat == 'html':
+            from bokeh.plotting import figure, output_file, show
+            plt.close('all')
+            p = figure(x_axis_type="datetime", plot_width=1400, plot_height=600)
+            p.title.text = 'Click on legend entries to hide the corresponding lines'
+            p.line(self.dtime,self.obs[0, :],line_width=3, color='black', alpha=0.8, legend_label='Obs')
+            for i in range(self.model.shape[0]):
+                if np.size(self.mlabels) > 0:
+                    if np.size(np.where(self.model[i, :] > -999)) > 1:
+                        p.line(self.dtime,interp_nan(self.model[i, :], 3), line_width=2, color=self.color[i], line_dash=self.linestyle_html[i], alpha=0.8, legend_label=self.mlabels[i])
+
+                else:
+                    if np.size(np.where(self.model[i, :] > -999)) > 1:
+                        p.line(self.dtime,interp_nan(self.model[i, :], 3), line_width=2, color=self.color[i], line_dash=self.linestyle_html[i], alpha=0.8)
+
+            if np.size(self.mlabels) > 0:
+                p.legend.location = "top_left" ; p.legend.click_policy = "hide"
+
+            p.xaxis.axis_label = "Time"
+
+            if np.size(self.vaxisname) > 0:
+                p.yaxis.axis_label = self.vaxisname
+            else:
+                p.yaxis.axis_label = "Model and Observations"
+         
+            output_file(self.ftag + 'TimeSeries.html'); show(p); del p
 
     def qqplot(self):
         '''
