@@ -368,7 +368,7 @@ for b in range(0,np.size(stname)):
 	ahs=[]
 	try:
 
-		ahs=[];atm=[];adm=[];atime=[]
+		ahs=[];atm=[];atp=[];adm=[];atime=[]
 		for y in yrange:
 
 			f=nc.Dataset(ndbcp+"/"+stname[b]+"h"+repr(y)+".nc")
@@ -385,7 +385,7 @@ for b in range(0,np.size(stname)):
 				atm = np.array(np.copy(ahs*nan))	
 
 			if 'dominant_wpd' in f.variables.keys():
-				atp = np.append(atm,f.variables['dominant_wpd'][:,0,0])
+				atp = np.append(atp,f.variables['dominant_wpd'][:,0,0])
 			else:
 				atp = np.array(np.copy(ahs*nan))			
 			
