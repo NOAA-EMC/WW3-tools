@@ -11,6 +11,12 @@ path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
 path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
 path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
 
+# WAVEWATCHIII field output, for the scripts to obtain the latitude and longitude
+# grid_info: /work/noaa/marine/ricardo.campos/work/ww3tools/tests/ww3gfs_met5_2022061600.nc
+grid_info: /work/noaa/marine/ricardo.campos/work/ww3tools/tests/ops.glwu.20220601.t19z.nc
+# Grid format: Unstructured (0) or Structured (1)
+grid_format: 1
+
 # General quality control parameters. Basic range test
 #  Significant wave height (m) min and max:
 hsmin: 0.
