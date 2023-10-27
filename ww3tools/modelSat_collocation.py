@@ -514,3 +514,113 @@ else:
 stop = timeit.default_timer()
 print('Concluded in '+repr(int(round(stop - start,0)))+' seconds')
 
+
+
+
+
+
+
+# For the interpolation
+
+
+
+import netCDF4 as nc
+import numpy as np
+import os
+import pyresample  # Make sure you have Pyresample installed
+from scipy.interpolate import LinearNDInterpolator
+from datetime import datetime
+import time
+import timeit
+import yaml
+
+def create_model_grid(model_lat, model_lon):
+    # Create a structured mesh grid for the model data
+    lon, lat = np.meshgrid(model_lon, model_lat)
+    return lat, lon
+
+def interpolate_model_to_observation_linear(obs_lat, obs_lon, obs_time, model_grid, model_data):
+    model_lat_grid, model_lon_grid = model_grid
+    model_points = np.column_stack((model_lat_grid.ravel(), model_lon_grid.ravel()))
+
+    interpolated_model_data = []
+
+    for i in range(len(obs_time)):
+        distances = np.sqrt((obs_lat[i] - model_points[:, 0]) ** 2 + (obs_lon[i] - model_points[:, 1]) ** 2)
+        closest_indices = np.argsort(distances)[:10]  # Adjust the number of neighbors as needed
+
+        interpolated_values = []
+        for var in model_data:
+            var_values = np.array(var).ravel()[closest_indices]
+            interp = LinearNDInterpolator(model_points[closest_indices], var_values, fill_value=999)
+            interpolated = interp(obs_lat[i], obs_lon[i])
+            interpolated_values.append(interpolated)
+
+        interpolated_model_data.append(interpolated_values)
+
+    return interpolated_model_data
+
+def interpolate_model_to_observation_pyresample(obs_lat, obs_lon, obs_time, model_grid, model_data):
+    # Implement Pyresample interpolation here
+    # You'll need to adapt this part according to your Pyresample implementation
+    pass
+
+if __name__ == "__main__":
+    start = timeit.default_timer()
+
+    # Read the configuration from the YAML file
+    with open('interpolation_config.yml', 'r') as config_file:
+        wconfig = yaml.safe_load(config_file)
+
+    # Read the interpolation method from the configuration file
+    interpolation_method = wconfig['interpolation_method']
+
+    # Load the time-averaged observation data (provided by the existing code)
+    obs_file = wconfig['input_file']
+
+    # Load observation NetCDF file
+    obs_nc = nc.Dataset(obs_file, 'r')
+    obs_lat = obs_nc.variables['LATITUDE'][:]
+    obs_lon = obs_nc.variables['LONGITUDE'][:]
+    obs_time = obs_nc.variables['TIME'][:]
+    obs_nc.close()
+
+    # Load and process model data (similar to the provided code)
+    model_directory = '/path/to/model/data'
+    model_variable = []  # Add the relevant model variable name here
+
+    # Create a structured mesh grid for the model data using the first model file's latitude and longitude
+    model_mesh_lat, model_mesh_lon = create_model_grid(model_lat[0], model_lon[0])
+
+    # Interpolate model data based on the selected method
+    if interpolation_method == 'linear':
+        interpolated_model_data = interpolate_model_to_observation_linear(obs_lat, obs_lon, obs_time, (model_mesh_lat, model_mesh_lon), (model_variable,))
+    elif interpolation_method == 'pyresample':
+        interpolated_model_data = interpolate_model_to_observation_pyresample(obs_lat, obs_lon, obs_time, (model_mesh_lat, model_mesh_lon), (model_variable))
+    else:
+        raise ValueError("Invalid interpolation method. Choose 'linear' or 'pyresample' in the configuration file.")
+
+    # Create a new NetCDF file to store the interpolated data
+    output_file = wconfig['output_file']
+    with nc.Dataset(output_file, 'w', format='NETCDF4') as ncfile:
+        # Define dimensions
+        ncfile.createDimension('time', len(obs_time))
+
+        # Create variables
+        time_var = ncfile.createVariable('time', 'f8', ('time',))
+        lat_var = ncfile.createVariable('latitude', 'f4', ('time',))
+        lon_var = ncfile.createVariable('longitude', 'f4', ('time',))
+        interpolated_var = ncfile.createVariable('INTERPOLATED_VARIABLE', 'f4', ('time',))
+        # Add other variables as needed
+
+        # Fill variables with data
+        time_var[:] = obs_time
+        lat_var[:] = obs_lat
+        lon_var[:] = obs_lon
+        interpolated_var[:] = interpolated_model_data
+        # Fill other model variables
+
+    print(f"Interpolated model data saved in {output_file}")
+
+    stop = timeit.default_timer()
+    print('Processing completed in ' + repr(int(round(stop - start, 0)) + ' seconds. See the output at ' + wconfig['path_out'])
