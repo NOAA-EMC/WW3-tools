@@ -348,8 +348,8 @@ def savesat(AODN,wconfig,altsel):
         smethod="AlongTrack"
         hmsg="AODN Altimeter data processed along track."
 
-    datein = datetime.utcfromtimestamp(AODN_ALONGTRACK['TIME'][0]).strftime('%Y%m%d%H')
-    datefin = datetime.utcfromtimestamp(AODN_ALONGTRACK['TIME'][-1]).strftime('%Y%m%d%H')
+    datein = datetime.utcfromtimestamp(AODN['TIME'].iloc[0]).strftime('%Y%m%d%H')
+    datefin = datetime.utcfromtimestamp(AODN['TIME'].iloc[-1]).strftime('%Y%m%d%H')
 
     fname=wconfig['path_out']+"Altimeter"+smethod+"_"+wconfig['ftag']+"_"+altsel+"_"+datein+"to"+datefin
 
