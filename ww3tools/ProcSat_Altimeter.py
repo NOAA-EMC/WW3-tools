@@ -83,7 +83,6 @@ import os
 import netCDF4 as nc
 import xarray as xr
 import pyresample
-from mpl_toolkits.basemap import shiftgrid
 from geopy.distance import geodesic
 import time
 import timeit
