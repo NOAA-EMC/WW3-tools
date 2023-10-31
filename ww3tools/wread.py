@@ -70,6 +70,7 @@ import numpy as np
 from pylab import *
 import yaml
 import re
+import os
 import sys
 from matplotlib import ticker
 # import pickle
