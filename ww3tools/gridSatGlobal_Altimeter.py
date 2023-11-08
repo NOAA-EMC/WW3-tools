@@ -70,7 +70,7 @@ import warnings; warnings.filterwarnings("ignore")
 fnetcdf="NETCDF4"
 
 # number of procs for parallelization
-npcs=5
+npcs=20
 # power of initial array 10**pia (size) that will be used to allocate satellite data (faster than append)
 pia=10
 # Maximum distance (m) for pyresample weighted average, See: https://doi.org/10.3390/rs15082203
@@ -80,7 +80,7 @@ maxti=1800.
 # Directory where AODN altimeter data is saved, downloaded using wfetchsatellite_AODN_Altimeter.sh
 dirs='/work/noaa/marine/ricardo.campos/data/AODN/altimeter'
 # Date interval
-datemin='2019120100'; datemax='2020013123'
+datemin='1999123118'; datemax='2020010106'
 
 # Satellite missions available at AODN dataset, pick one as this code runs one satellite at a time!
 s=int(sys.argv[1]) # argument satellite ID for satellite mission selection. s=0 is JASON3, s=1 is JASON2 etc. See list below.
@@ -91,7 +91,7 @@ sname=np.array(['JASON-3','JASON-2','CRYOSAT-2','JASON-1','HY-2','SARAL','SENTIN
 max_swh_rms = 1.5  # Max RMS of the band significant wave height
 max_sig0_rms = 0.8 # Max RMS of the backscatter coefficient
 max_swh_qc = 2.0 # Max SWH Ku band quality control
-hsmax=20.; wspmax=60.
+hsmax=20.; wspmax=80.
 min_swh_numval = np.array([17,17,17,17,17,17,17,17,17,17,-inf,3,7,17,-inf])
 
 # weight function for pyresample
@@ -270,7 +270,7 @@ if np.size(indq)>10:
 	# create variables.
 	vflat = ncfile.createVariable('latitude',np.dtype('float32').char,('time'))
 	vflon = ncfile.createVariable('longitude',np.dtype('float32').char,('time'))
-	vft = ncfile.createVariable('stime',np.dtype('float64').char,('time'))
+	vft = ncfile.createVariable('time',np.dtype('float64').char,('time'))
 	vsname = ncfile.createVariable('sat_name',dtype('a25'),('sname'))
 	vfhsk = ncfile.createVariable('hsk',np.dtype('float32').char,('time'))
 	vstdhsk = ncfile.createVariable('stdhsk',np.dtype('float32').char,('time'))

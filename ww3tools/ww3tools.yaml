@@ -1,0 +1,59 @@
+# Configuration file for WW3-tools
+# https://github.com/NOAA-EMC/WW3-tools
+
+# text string for identification. This will be included in the name of the output files.
+ftag: ww3tools
+# output path, where results will be saved
+path_out: /work/noaa/marine/ricardo.campos/test
+
+# Data paths where the observations are saved
+path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
+path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
+path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
+
+# WAVEWATCHIII field output, for the scripts to obtain the latitude and longitude
+# grid_info: /work/noaa/marine/ricardo.campos/work/ww3tools/tests/ww3gfs_met5_2022061600.nc
+grid_info: /work/noaa/marine/ricardo.campos/work/ww3tools/tests/ops.glwu.20220601.t19z.nc
+# Grid format: Unstructured (0) or Structured (1)
+grid_format: 1
+
+# General quality control parameters. Basic range test
+#  Significant wave height (m) min and max:
+hsmin: 0.
+hsmax: 20.
+#  Wind speed (m/s) min and max:
+wspmin: 0.
+wspmax: 80.
+
+# netcdf format when saving outputs
+fnetcdf: 'NETCDF4'
+
+# Parameters for ProcSat_Altimeter.py
+# target space for collocation. Model (1), Altimeter (2), I don't know (0)
+tspace: 2
+# Maximum distance (m) for pooling and averaging the data, See: https://doi.org/10.3390/rs15082203
+dlim: 35000.
+# Maximum temporal distance (s) for pooling and averaging the data
+maxti: 1800.
+# lat lon interval to read AODN altimeter data files (bins). Smaller areas read faster.
+latmin: 10.
+latmax: 60.
+lonmin: 300.
+lonmax: 340.
+# Apply Quality Control. 1(yes), 0(no)
+qc: 1
+# Minimum water depth, in meters
+mindepth: 80.
+# Minimum distance from the coast, in Km
+mindfc: 50.
+# Max RMS of the band significant wave height
+max_swh_rms: 1.5
+# Max RMS of the backscatter coefficient
+max_sig0_rms: 0.8
+# Max SWH Ku band quality control
+max_swh_qc: 2.0
+# Processing. Number of procs for parallelization
+npcs: 20
+# power of initial array 10**pia (size) that will be used to allocate satellite data (faster than append)
+pia: 10
+

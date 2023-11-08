@@ -9,12 +9,14 @@ VERSION AND LAST UPDATE:
  v1.1  06/30/2022
  v1.2  11/23/2022
  v1.2  07/17/2023
+ v1.3  08/03/2023
+ v1.4  08/04/2023
 
 PURPOSE:
  Group of functionalities for visualization of model/observation data
   and validation.
  Users can import as a standard python module, and use it accordingly:
- For example:
+- For example (ModelObsPlot):
 
   from pvalstats import ModelObsPlot
   mop=ModelObsPlot(model,obs)
@@ -27,6 +29,34 @@ PURPOSE:
   mop=ModelObsPlot(model,obs,dtime)
   mop.timeseries()
 
+  fctintervals=np.arange(0,1+np.ceil(np.max(forecastLeadTime)/24)*24,24).astype('int')
+  fctxt=np.array(frintervalsd/24).astype('int')[0:-1]+1 # x-axis plot array
+  fctxticks=np.array([1,2,3,4,5,7,10,15,20,25,30,35]) # x-axis figure ticks
+  outpath="/home/ricardo/validation/"
+  mop=ModelObsPlot(np.c_[modelControl,modelEnsMean].T,obs=obs,
+    fctime=forecastLeadTime,fctintervals=fctintervals,fctxt=fctxt,
+    fctxticks=fctxticks,fctunits="days",
+    ftag=outpath+"Results_Hs_",vaxisname="Hs")
+
+  mop.errxfctime()
+
+- For example (GlobalMapPlot):
+  from pvalstats import GlobalMapPlot, gsmooth
+
+  gdata = np.random.rand(10, 10)  # Example data
+  lonm = np.linspace(0, 360, 10)  # Example longitude values
+  latm = np.linspace(-90, 90, 10)  # Example latitude values
+  gmp = GlobalMapPlot(gdata=gsmooth(gdata,1),lat=latm,lon=lonm)
+  gmp.plot()
+
+  outpath="/home/ricardo/validation/"
+  figname=outpath+"GlobalMap_RMSE_Hs.png"
+  palette = plt.cm.jet; pextend="max"
+  levels = np.array(np.linspace(0.1,2.3,31)).round(2)
+  gmp = GlobalMapPlot(gdata=gsmooth(RmseGefsControl,1),latm=lat,lonm=lon,
+    latmin=-67.,latmax=67.,palette = palette, levels=levels,ftag=figname,pextend=pextend)
+  gmp.plot()   
+
 USAGE:
  Class ModelObsPlot
  Functions:
@@ -36,6 +66,18 @@ USAGE:
    taylordiagram
    combinerrors
    pdf
+   monthlystats
+   errxfctime
+   rankhist
+   spreadxfctime
+   crpsxfctime
+   brierxfctime
+   rocaucxfctime
+
+ Class GlobalMapPlot
+ Functions:
+   gsmooth
+   plot
 
  The explanation for each function is contained in the headers, including
   examples,
@@ -54,6 +96,9 @@ AUTHOR and DATE:
  11/23/2022: Ricardo M. Campos, new functions errXftime and interp_nan,
    plus some format improvements.
  07/17/2023: Ricardo M. Campos, modification to use python Class and OOP.
+ 08/03/2023: Ricardo M. Campos, new functions included rankhist,monthlystats,
+   errxfctime,spreadxfctime,crpsxfctime
+ 08/04/2023: Ricardo M. Campos, new class GlobalMapPlot and function gsmooth
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -64,8 +109,6 @@ import matplotlib
 # matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-from pylab import *
-from matplotlib.mlab import *
 import math
 import pandas as pd
 from datetime import datetime, timedelta
@@ -73,6 +116,9 @@ from scipy.ndimage.filters import gaussian_filter
 from scipy.stats import gaussian_kde, linregress
 import matplotlib.ticker
 from matplotlib.dates import DateFormatter
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+import os
 from mpl_toolkits.basemap import cm
 colormap = cm.GMT_polar
 palette = plt.cm.jet
@@ -108,29 +154,34 @@ def interp_nan(data,lmt=10**50):
 
 class ModelObsPlot:
 
-    def __init__(self,model=None,obs=None,time=None,axisnames=None,mlabels=[],linreg=None,vaxisname=None,linestyle=None,marker=None,color=None,ftag=''):
-        '''
-          Initialization of the main object used for the plot functions below.
-          model and obs are mandatory.
-          time is mandatory for the timeseries plot only.
-          Optional: 
-          - axisnames adds specific model and observation axis names to qqplot and scatterplot,
-              for ex axisnames=["WW3","Buoy"]
-          - vaxisname adds specific axis names when only one axis is need, for timeseries (y-axis) and pdf (x-axis),
-              for ex vaxisname="Hs(m), WW3 and Buoy"
-          - mlabels adds model labels for the legend, to differenciate simulations,
-              for ex mlabels=["WW3T1","WW3T2"]
-          - ftag is used to include prefix (can include the full path or not),
-              for example ftag="/home/ricardo/test/NewRunWW3T2_"
-        '''
+    def __init__(self,model=None,obs=None,time=None,
+        fctime=None,fctintervals=None,fctxt=None,fctxticks=None,fctunits=None,month=None,linreg=None,axisnames=None,
+        mlabels=[],vaxisname=None,linestyle=None,linestyle_html=None,marker=None,color=None,ftag='',figformat=None):
+
+        """
+        Initialization of the main object used for the plot functions below.
+        model and obs are mandatory.
+        time is mandatory for the timeseries plot only.
+        Optional: 
+        :param axisnames: adds specific model and observation axis names to qqplot and scatterplot,
+            for ex axisnames=["WW3","Buoy"]
+        :param vaxisname: adds specific axis names when only one axis is need, for timeseries (y-axis), month (y-axis), and pdf (x-axis),
+            for ex vaxisname="Hs(m)" or vaxisname="Hs(m), WW3 and Buoy"
+        :param mlabels: adds model labels for the legend, to differenciate simulations,
+            for ex mlabels=["WW3T1","WW3T2"]
+        :param ftag: is used to include prefix (can include the full path or not),
+            for example ftag="/home/ricardo/test/NewRunWW3T2_"
+
+        """
 
         if model is None or obs is None:
             raise ValueError("Missing required input arguments.")
             return
         else:
-            self.model = np.array(np.atleast_2d(model)).astype('float')
+            self.model = np.array(np.atleast_2d(model)).astype('float') 
             self.obs = np.array(np.atleast_2d(obs)).astype('float')
 
+        self.figformat = figformat
         self.ftag = ftag
         self.mlabels = mlabels
         self.linreg = linreg
@@ -138,6 +189,9 @@ class ModelObsPlot:
         self.axisnames = axisnames if axisnames is not None else ["Model","Observations"]
         self.linestyle = (linestyle if linestyle is not None else
             np.array(['-', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.', '--', '-.']))
+
+        self.linestyle_html = (linestyle_html if linestyle_html is not None else
+            np.array(['solid','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot','dashed','dashdot']))
 
         self.marker = (marker if marker is not None else
             np.array(np.atleast_1d(['.','.','.','.','.','.','.','.','.','.','.','.','.','.','.',])).astype('str'))
@@ -157,13 +211,20 @@ class ModelObsPlot:
         if self.model.shape[1] != self.obs.shape[1]:
             raise ValueError('Model and observation arrays must have the same index/time size.')
 
-        if (self.model.shape[0]>1) & (np.size(self.mlabels)<=1):
-            print(" Warning. You should use labels to differentiate model results.")
+        if np.size(fctime)>1:
+            self.fctime = fctime
+            if self.fctime.shape[0] != self.model.shape[1]:
+                raise ValueError('Forecast time array does not match the model/obs size.')
+
+        if np.size(month)>1:
+            self.fmonth = month
+            if self.fmonth.shape[0] != self.model.shape[1]:
+                raise ValueError('Month array does not match the model/obs size.')
 
         if np.size(time)>1:
             self.time = time
             if self.time.shape[0] != self.model.shape[1]:
-                raise ValueError('Time array does not match the model size.')
+                raise ValueError('Time array does not match the model/obs size.')
             else:
                 ind=np.where(self.time>-np.inf)
                 if np.size(ind)>1:
@@ -183,6 +244,13 @@ class ModelObsPlot:
 
         if self.linreg:
             from scipy.stats import linregress
+
+        self.fctintervals = fctintervals
+        self.fctxt = fctxt
+        self.fctunits = fctunits
+        self.fctxticks = fctxticks
+        # name of the 8 error metrics
+        self.nerrm=np.array(['bias','RMSE','NBias','NRMSE','SCrmse','SI','HH','CC'])
 
     def timeseries(self):
         '''
@@ -223,11 +291,11 @@ class ModelObsPlot:
         for i in range(self.model.shape[0]):
             if np.size(self.mlabels) > 0:
                 if np.size(np.where(self.model[i, :] > -999)) > 1:
-                    ax.plot(self.dtime, interp_nan(self.model[i, :], 10), color=self.color[i], linestyle=self.linestyle[i],
+                    ax.plot(self.dtime, interp_nan(self.model[i, :], 3), color=self.color[i], linestyle=self.linestyle[i],
                             linewidth=2., label=self.mlabels[i], alpha=0.8, zorder=3)
             else:
                 if np.size(np.where(self.model[i, :] > -999)) > 1:
-                    ax.plot(self.dtime, interp_nan(self.model[i, :], 10), color=self.color[i], linestyle=self.linestyle[i],
+                    ax.plot(self.dtime, interp_nan(self.model[i, :], 3), color=self.color[i], linestyle=self.linestyle[i],
                             linewidth=2., alpha=0.8, zorder=3)
 
             if np.size(np.where(self.model[i, :] > -999)) > 1:
@@ -259,6 +327,34 @@ class ModelObsPlot:
                     format='png', bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1)
 
+        # Html plot with bokeh
+        if self.figformat == 'html':
+            from bokeh.plotting import figure, output_file, show
+            plt.close('all')
+            p = figure(x_axis_type="datetime", plot_width=1400, plot_height=600)
+            p.title.text = 'Click on legend entries to hide the corresponding lines'
+            p.line(self.dtime,self.obs[0, :],line_width=3, color='black', alpha=0.8, legend_label='Obs')
+            for i in range(self.model.shape[0]):
+                if np.size(self.mlabels) > 0:
+                    if np.size(np.where(self.model[i, :] > -999)) > 1:
+                        p.line(self.dtime,interp_nan(self.model[i, :], 3), line_width=2, color=self.color[i], line_dash=self.linestyle_html[i], alpha=0.8, legend_label=self.mlabels[i])
+
+                else:
+                    if np.size(np.where(self.model[i, :] > -999)) > 1:
+                        p.line(self.dtime,interp_nan(self.model[i, :], 3), line_width=2, color=self.color[i], line_dash=self.linestyle_html[i], alpha=0.8)
+
+            if np.size(self.mlabels) > 0:
+                p.legend.location = "top_left" ; p.legend.click_policy = "hide"
+
+            p.xaxis.axis_label = "Time"
+
+            if np.size(self.vaxisname) > 0:
+                p.yaxis.axis_label = self.vaxisname
+            else:
+                p.yaxis.axis_label = "Model and Observations"
+         
+            output_file(self.ftag + 'TimeSeries.html'); show(p); del p
+
     def qqplot(self):
         '''
         Quantile-Quantile plot.
@@ -289,7 +385,7 @@ class ModelObsPlot:
 
         a=math.floor(np.nanmin([qobs,qm])*100.)/100. ; b=math.ceil(np.nanmax([qobs,qm])*100.)/100.
         aux=np.linspace(a-0.2*a,b+0.2*a,p.shape[0])
-	# plot
+        # plot
         fig1 = plt.figure(1,figsize=(5,4.5)); ax = fig1.add_subplot(111)
         ax.plot(aux,aux,'k', linewidth=2.,alpha=0.4,zorder=2); del a,b
         for i in range(0,self.model.shape[0]):
@@ -373,6 +469,9 @@ class ModelObsPlot:
                 if np.size(self.mlabels)>0:
                     if self.mlabels[0] != '':
                         ax.scatter(b,a,color=self.color[i],marker=self.marker[i],label=self.mlabels[i],zorder=2)
+                    else:
+                        ax.scatter(b,a,color=self.color[i],marker=self.marker[i],zorder=2)
+
                 else:
                     ax.scatter(b,a,color=self.color[i],marker=self.marker[i],zorder=2)
 
@@ -384,6 +483,9 @@ class ModelObsPlot:
                 if np.size(self.mlabels)>0:
                     if self.mlabels[0] != '':
                         ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,label=self.mlabels[i],zorder=2)
+                    else:
+                        ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,zorder=2)
+
                 else:
                     ax.scatter(b,a, c=z, s=5,cmap=plt.cm.jet,zorder=2)
 
@@ -432,7 +534,6 @@ class ModelObsPlot:
            the observation array must be one-dimensional, with the same number of lines as the model.
           Optional: see object construction above.
         Output: png figure saved in the local directory where python is running or in the path given through ftag.
-        Example:
         Example:
           from pvalstats import ModelObsPlot
           mop=ModelObsPlot(ww3gfs,obs)
@@ -583,8 +684,7 @@ class ModelObsPlot:
         plt.savefig(self.ftag+'NBiasSI.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1); del fig1, ax
 
-    def pdf(self):
-
+    def pdf(self,result="no"):
         '''
         Probability Density Plot. Observations (shaded grey) and model(s)
         Inputs:
@@ -645,4 +745,497 @@ class ModelObsPlot:
         ax.set_yscale( "log" ); plt.axis('tight');plt.ylim(ymin = 0.001);plt.ylim(ymax = np.nanmax(mmax))
         plt.savefig(self.ftag+'PDFlogscale.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1); del fig1, ax, mmax
+
+
+    def monthlystats(self,result="no"):
+
+        if (np.size(self.fmonth)!=self.obs.shape[1]):
+            raise ValueError(' Array with months should have the same length as the array of observations and model(s).')
+
+        self.fmonth=np.array(self.fmonth).astype('int')
+        import mvalstats
+        months=np.arange(1,13,1)
+        monthlyval=np.zeros((months.shape[0],self.model.shape[0],np.size(self.nerrm)),'f')*np.nan
+        for i in range(0,months.shape[0]):
+            indm=np.where((self.fmonth==months[i]) & (np.mean(self.model[:,:],axis=0)>-999) & (np.mean(self.obs[:,:],axis=0)>-999))
+            if np.size(indm)>1:
+                indm=indm[0]
+                for j in range(0,self.model.shape[0]):
+                    monthlyval[i,j,:] = mvalstats.metrics(self.model[j,indm],self.obs[0,indm])
+
+        for i in range(0,len(self.nerrm)):
+
+            fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
+            for j in range(0,self.model.shape[0]):
+                if np.size(self.mlabels)>0:
+                    if self.mlabels[0] != '':
+                        ax.plot(months,monthlyval[:,j,i],self.color[j],marker=self.marker[j],label=self.mlabels[j], linewidth=2.,zorder=2)
+                    else:
+                        ax.plot(months,monthlyval[:,j,i],self.color[j],marker=self.marker[j],linewidth=2.,zorder=2)
+
+                else:
+                    ax.plot(months,monthlyval[:,j,i],self.color[j],marker=self.marker[j],linewidth=2.,zorder=2)
+
+            ax.set_xticks(months)
+            ax.set_xlabel('Month',size=sl)
+
+            if np.size(self.mlabels)>0:
+                plt.legend(fontsize=sl-2)
+
+            if self.vaxisname != "Model and Observations":
+                ax.set_ylabel(self.nerrm[i]+" "+self.vaxisname)
+            else:
+                ax.set_ylabel(self.nerrm[i])
+
+            plt.tight_layout();plt.axis('tight')
+            ax.grid(c='dimgrey', ls='--', alpha=0.3)
+            plt.xlim(xmin = 0.9, xmax = 12.1)
+            plt.savefig(self.ftag+"MonthlyError_"+self.nerrm[i]+".png", dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+            plt.close(fig1); del fig1, ax
+
+        if result!="no":
+            print(" Returning two arrays with error_metrics and metrics_names, from ModelObsPlot.monthlystats")
+            print(" The error_metrics array has dimensions [month,models,metrics_names]")
+            return monthlyval,self.nerrm
+
+    def errxfctime(self,result="no"):
+
+        if np.size(self.fctime)<=1:
+            raise ValueError('Forecast time array must be informed.')
+
+        import mvalstats
+
+        if np.size(self.fctintervals)<=1:
+            self.fctintervals = np.unique(self.fctime)
+
+        if np.size(self.fctxt)<=1:
+            self.fctxt=[]
+            for i in range(len(self.fctintervals) - 1):
+                self.fctxt.append(f"{self.fctintervals[i]}-{self.fctintervals[i+1]}")
+
+            self.fctxt=np.array(self.fctxt)
+
+        if self.fctxt.shape[0] == (self.fctintervals.shape[0]):
+            valarr=0
+        elif self.fctxt.shape[0] == (self.fctintervals.shape[0]-1):
+            valarr=1
+        else:
+            raise ValueError('The size of fctxt must be equal to np.size(fctintervals) or np.size(fctintervals-1) ')
+
+        errm=np.zeros((self.fctxt.shape[0],self.model.shape[0],np.size(self.nerrm)),'f')*np.nan
+        for i in range(0,self.fctxt.shape[0]):
+            if valarr==1:
+                ind=np.where( (self.fctime>=self.fctintervals[i]) & (self.fctime<=self.fctintervals[i+1]) )
+            else:
+                ind=np.where(self.fctime==self.fctintervals[i])
+
+            if np.size(ind)>1:
+                ind=ind[0]
+                obs=np.array(self.obs[0,ind])
+                for j in range(0,self.model.shape[0]):
+                    errm[i,j,:] = mvalstats.metrics(self.model[j,ind],obs)
+
+                del obs
+
+            del ind
+
+        # plot
+        for i in range(0,len(self.nerrm)):
+
+            fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
+            for j in range(0,self.model.shape[0]):
+                if np.size(self.mlabels)>0:
+                    if self.mlabels[0] != '':
+                        ax.plot(self.fctxt,errm[:,j,i],self.color[j],marker=self.marker[j],label=self.mlabels[j], linewidth=2.,zorder=2)
+                    else:
+                        ax.plot(self.fctxt,errm[:,j,i],self.color[j],marker=self.marker[j],linewidth=2.,zorder=2)
+
+                else:
+                    ax.plot(self.fctxt,errm[:,j,i],self.color[j],marker=self.marker[j],linewidth=2.,zorder=2)
+
+            ax.set_xticks(self.fctxt)
+
+            if self.fctunits:
+                ax.set_xlabel('Forecast Lead Time ('+self.fctunits+')',size=sl)
+            else:
+                ax.set_xlabel('Forecast Lead Time ',size=sl)
+
+            if self.vaxisname != "Model and Observations":
+                ax.set_ylabel(self.nerrm[i]+" "+self.vaxisname)
+            else:
+                ax.set_ylabel(self.nerrm[i])
+
+            if np.size(self.mlabels)>0:
+                plt.legend(loc='best',fontsize=sl-2)
+
+            ax.grid(c='dimgrey', ls='--', alpha=0.3)
+            plt.tight_layout();plt.axis('tight')
+
+            if np.size(self.fctxticks)>1:
+                ax.set_xticks(self.fctxticks)
+                plt.xlim(xmin = np.min(self.fctxticks)*0.9, xmax = np.max(self.fctxticks)*1.01)
+
+            plt.savefig(self.ftag+"ErrXForecastTime_"+self.nerrm[i]+".png", dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+            plt.close(fig1); del fig1, ax
+
+        if result!="no":
+            print(" Returning two arrays with error_metrics and metrics_names, from ModelObsPlot.errxfctime")
+            print(" The error_metrics array has dimensions [forecastLeadTime,models,metrics_names]")
+            return errm,self.nerrm
+
+    # --- Ensemble Validation ---
+
+    # Rank Histogram (Talagrand diagram) 
+    # https://journals.ametsoc.org/view/journals/mwre/129/3/1520-0493_2001_129_0550_iorhfv_2.0.co_2.xml
+    def rankhist(self,result="no"):
+
+        from scipy.stats import rankdata
+        # remove NaN
+        ind=np.where( (np.mean(self.model,axis=0)>-999.) & (np.mean(self.obs,axis=0)>-999.) )
+        if np.size(ind)>0:
+            model=np.copy(self.model[:,ind[0]]); obs=np.copy(self.obs[0,ind[0]]); del ind
+        else:
+            raise ValueError(' No quality data available.')
+
+        combined=np.vstack((obs[np.newaxis],model))
+        ranks=np.apply_along_axis(lambda x: rankdata(x,method='min'),0,combined)
+        ties=np.sum(ranks[0]==ranks[1:], axis=0)
+        ranks=ranks[0]
+        tie=np.unique(ties)
+        for i in range(1,len(tie)):
+            index=ranks[ties==tie[i]]
+            ranks[ties==tie[i]]=[np.random.randint(index[j],index[j]+tie[i]+1,tie[i])[0] for j in range(len(index))]
+
+        result = np.histogram(ranks, bins=np.linspace(0.5, combined.shape[0]+0.5, combined.shape[0]+1))
+        # plot
+        fig1 = plt.figure(1,figsize=(6,5)); ax1 = fig1.add_subplot(111)
+        fresult=result[0]/np.sum(result[0])
+        rxaxis=range(1,len(result[0])+1)
+        plt.bar(rxaxis,fresult,color='grey', edgecolor='k')
+        # plt.ylim(ymax = 1.01, ymin = -0.01)
+        ax1.set_xticks(np.arange(1,13,1))
+        ax1.set_xlabel('Rank',size=sl); ax1.set_ylabel('Probability',size=sl)
+        plt.tight_layout(); # plt.axis('tight') 
+        plt.grid(c='grey', ls='--', alpha=0.3)
+        plt.savefig(self.ftag+'RankHistogram.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig1); del fig1, ax1, result
+
+        if result!="no":
+            print(" Returning two arrays with probabilities (y-axis) and ensemble_members+1 (x-axis), from ModelObsPlot.rankhist")
+            return fresult,rxaxis
+
+
+    def spreadxfctime(self,result="no"):
+
+        if np.size(self.fctime)<=1:
+            raise ValueError('Forecast time array must be informed.')
+
+        if self.model.shape[0]<=1:
+            raise ValueError('Forecast must have at least 2 members.')
+
+        if np.size(self.fctintervals)<=1:
+            self.fctintervals = np.unique(self.fctime)
+
+        if np.size(self.fctxt)<=1:
+            self.fctxt=[]
+            for i in range(len(self.fctintervals) - 1):
+                self.fctxt.append(f"{self.fctintervals[i]}-{self.fctintervals[i+1]}")
+
+            self.fctxt=np.array(self.fctxt)
+
+        if self.fctxt.shape[0] == (self.fctintervals.shape[0]):
+            valarr=0
+        elif self.fctxt.shape[0] == (self.fctintervals.shape[0]-1):
+            valarr=1
+        else:
+            raise ValueError('The size of fctxt must be equal to np.size(fctintervals) or np.size(fctintervals-1) ')
+
+        mspread=np.zeros((self.fctxt.shape[0]),'f')*np.nan
+        for i in range(0,self.fctxt.shape[0]):
+            if valarr==1:
+                ind=np.where( (self.fctime>=self.fctintervals[i]) & (self.fctime<=self.fctintervals[i+1]) )
+            else:
+                ind=np.where(self.fctime==self.fctintervals[i])
+
+            if np.size(ind)>1:
+                ind=ind[0]
+                # unbiased std using Bessel's correction (ddof=1)
+                mspread[i]=np.nanmean(np.nanstd(self.model[:,ind],axis=0,ddof=1))
+
+        # plot Spread
+        fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
+        ax.plot(self.fctxt,mspread,'k',marker='.',linewidth=2.,zorder=2)
+        ax.set_xticks(self.fctxt)
+        if self.fctunits:
+            ax.set_xlabel('Forecast Lead Time ('+self.fctunits+')',size=sl)
+        else:
+            ax.set_xlabel('Forecast Lead Time ',size=sl)
+
+        if self.vaxisname != "Model and Observations":
+            ax.set_ylabel("Spread "+self.vaxisname)
+        else:
+            ax.set_ylabel("Spread")
+
+        ax.grid(c='dimgrey', ls='--', alpha=0.3)
+        plt.tight_layout();plt.axis('tight')
+
+        if np.size(self.fctxticks)>1:
+            ax.set_xticks(self.fctxticks)
+            plt.xlim(xmin = np.min(self.fctxticks)*0.9, xmax = np.max(self.fctxticks)*1.01)
+
+        plt.savefig(self.ftag+"SpreadXForecastTime.png", dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig1); del fig1, ax
+
+        if result!="no":
+            print(" Returning SPREAD array, from ModelObsPlot.spreadxfctime")
+            return mspread
+
+
+    def crpsxfctime(self,result="no"):
+
+        import properscoring as ps
+
+        if np.size(self.fctime)<=1:
+            raise ValueError('Forecast time array must be informed.')
+
+        if self.model.shape[0]<=1:
+            raise ValueError('Forecast must have at least 2 members.')
+
+        if np.size(self.fctintervals)<=1:
+            self.fctintervals = np.unique(self.fctime)
+
+        if np.size(self.fctxt)<=1:
+            self.fctxt=[]
+            for i in range(len(self.fctintervals) - 1):
+                self.fctxt.append(f"{self.fctintervals[i]}-{self.fctintervals[i+1]}")
+
+            self.fctxt=np.array(self.fctxt)
+
+        if self.fctxt.shape[0] == (self.fctintervals.shape[0]):
+            valarr=0
+        elif self.fctxt.shape[0] == (self.fctintervals.shape[0]-1):
+            valarr=1
+        else:
+            raise ValueError('The size of fctxt must be equal to np.size(fctintervals) or np.size(fctintervals-1) ')
+
+        crps=np.zeros((self.fctxt.shape[0]),'f')*np.nan
+        for i in range(0,self.fctxt.shape[0]):
+            if valarr==1:
+                ind=np.where( (self.fctime>=self.fctintervals[i]) & (self.fctime<=self.fctintervals[i+1]) )
+            else:
+                ind=np.where(self.fctime==self.fctintervals[i])
+
+            if np.size(ind)>1:
+                ind=ind[0]
+                crps[i]=np.nanmean(ps.crps_ensemble( np.array(self.obs[0,ind]),self.model[:,ind].T))
+
+        # plot CRPS
+        fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
+        ax.plot(self.fctxt,crps,'k',marker='.',linewidth=2.,zorder=2)
+        ax.set_xticks(self.fctxt)
+        if self.fctunits:
+            ax.set_xlabel('Forecast Lead Time ('+self.fctunits+')',size=sl)
+        else:
+            ax.set_xlabel('Forecast Lead Time ',size=sl)
+
+        if self.vaxisname != "Model and Observations":
+            ax.set_ylabel("CRPS "+self.vaxisname)
+        else:
+            ax.set_ylabel("CRPS")
+
+        ax.grid(c='dimgrey', ls='--', alpha=0.3)
+        plt.tight_layout();plt.axis('tight')
+
+        if np.size(self.fctxticks)>1:
+            ax.set_xticks(self.fctxticks)
+            plt.xlim(xmin = np.min(self.fctxticks)*0.9, xmax = np.max(self.fctxticks)*1.01)
+
+        plt.savefig(self.ftag+"CRPSXForecastTime.png", dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig1); del fig1, ax
+
+        if result!="no":
+            print(" Returning CRPS array, from ModelObsPlot.crpsxfctime")
+            return crps
+
+    # https://www.psl.noaa.gov/people/tom.hamill/ROC_problems.pdf
+    def brierxfctime(self,threshold=None,result="no"):
+
+        from sklearn.metrics import brier_score_loss
+
+        if np.size(self.fctime)<=1:
+            raise ValueError('Forecast time array must be informed.')
+
+        if self.model.shape[0]<=1:
+            raise ValueError('Forecast must have at least 2 members.')
+
+        if np.size(self.fctintervals)<=1:
+            self.fctintervals = np.unique(self.fctime)
+
+        if np.size(self.fctxt)<=1:
+            self.fctxt=[]
+            for i in range(len(self.fctintervals) - 1):
+                self.fctxt.append(f"{self.fctintervals[i]}-{self.fctintervals[i+1]}")
+
+            self.fctxt=np.array(self.fctxt)
+
+        if self.fctxt.shape[0] == (self.fctintervals.shape[0]):
+            valarr=0
+        elif self.fctxt.shape[0] == (self.fctintervals.shape[0]-1):
+            valarr=1
+        else:
+            raise ValueError('The size of fctxt must be equal to np.size(fctintervals) or np.size(fctintervals-1) ')
+
+        if threshold==None:
+            threshold=np.nanmean(self.obs[0,:])
+
+        num_ensemble_members = int(self.model.shape[0])
+        prob_forecasts = [1/num_ensemble_members] * num_ensemble_members
+
+        brier=np.zeros((self.fctxt.shape[0]),'f')*np.nan
+        for i in range(0,self.fctxt.shape[0]):
+            if valarr==1:
+                ind=np.where( (self.fctime>=self.fctintervals[i]) & (self.fctime<=self.fctintervals[i+1]) )
+            else:
+                ind=np.where(self.fctime==self.fctintervals[i])
+
+            if np.size(ind)>1:
+                ind=ind[0]
+                if self.obs[0,ind].shape[0]>50000:
+                    sk=int(np.round(np.float(self.obs[0,ind].shape[0])/30000.,0))
+                else:
+                    sk=1
+
+                if i==0 and sk>1:
+                    print(" Calculating Brier Score for a large array, this may take some time ...")
+
+                model = self.model[:,ind][:,::sk]
+                obs = self.obs[0,ind][::sk]
+
+                true_binary=[]; binary_forecasts=[]; fprob_forecasts=[]
+                for j in range(0,obs.shape[0]):
+                    atrue_binary = 1 if obs[j] >= threshold else 0
+                    abinary_forecasts = [1 if auxv >= threshold else 0 for auxv in model[:,j]]
+                    atrue_binary = [atrue_binary]*len(abinary_forecasts)        
+                    true_binary=np.append(true_binary,atrue_binary)
+                    binary_forecasts=np.append(binary_forecasts,abinary_forecasts)
+                    fprob_forecasts=np.append(fprob_forecasts,prob_forecasts)
+                    del atrue_binary,abinary_forecasts
+
+                brier[i] = brier_score_loss(true_binary, binary_forecasts, sample_weight=fprob_forecasts)
+                del model,obs,true_binary,binary_forecasts,fprob_forecasts
+
+                if sk>1:
+                    print("   - Brier Score, Ok: "+repr(self.fctxt[i])+"  of "+repr(self.fctxt.shape[0]))
+
+            del ind
+
+        # plot brier_score
+        fig1 = plt.figure(1,figsize=(9,4)); ax = fig1.add_subplot(111)
+        ax.plot(self.fctxt,brier,'k',marker='.',linewidth=2.,zorder=2)
+        ax.set_xticks(self.fctxt)
+        if self.fctunits:
+            ax.set_xlabel('Forecast Lead Time ('+self.fctunits+')',size=sl)
+        else:
+            ax.set_xlabel('Forecast Lead Time ',size=sl)
+
+        if self.vaxisname != "Model and Observations":
+            ax.set_ylabel("Brier Score "+self.vaxisname)
+        else:
+            ax.set_ylabel("Brier Score")
+
+        ax.grid(c='dimgrey', ls='--', alpha=0.3)
+        plt.tight_layout();plt.axis('tight')
+
+        if np.size(self.fctxticks)>1:
+            ax.set_xticks(self.fctxticks)
+            plt.xlim(xmin = np.min(self.fctxticks)*0.9, xmax = np.max(self.fctxticks)*1.01)
+
+        plt.savefig(self.ftag+"BrierScoreXForecastTime.png", dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
+        plt.close(fig1); del fig1, ax
+
+        if result!="no":
+            print(" Returning brier_score array, from ModelObsPlot.brierxfctime")
+            return brier
+
+
+#    def rocaucxfctime(self,result="no"):
+
+
+# --------------------------------
+# ------ Global Map --------------
+
+def gsmooth(data,gflev=1):
+    """
+    Gaussian filter for spatial smoothness.
+    data is a 2-dimensional field. data.shape must be equal to 2.
+    gflev is the level of smoothing.    
+    """
+    from scipy.ndimage.filters import gaussian_filter
+    data=np.array(data)
+    gflev=float(gflev)
+
+    fdata1=gaussian_filter(data,gflev); fdata2=gaussian_filter(data,gflev/2)
+    fdata=np.nanmean(np.append(np.append(np.array([data]),np.array([fdata1]),axis=0),np.array([fdata2]),axis=0),axis=0)
+
+    return fdata
+    del fdata1,fdata
+
+class GlobalMapPlot:
+    def __init__(self,lat=None,lon=None,gdata=None,latmin=-85.,latmax=85.,
+        ftag=None,levels=None,palette=None,pextend="max", contcolor="lightgrey",sl=13):
+
+        self.lat = lat
+        self.lon = lon
+        self.latmin = latmin
+        self.latmax = latmax
+        self.gdata = gdata
+        self.levels = levels
+        self.pextend = pextend
+        self.contcolor = contcolor
+        self.sl = sl 
+
+        self.ftag = ftag if ftag is not None else str(os.getcwd()) + '/GlobalMap.png'
+        self.palette = palette if palette is not None else plt.cm.jet
+
+        if self.gdata is None or self.lon is None or self.lat is None:
+            raise ValueError("Missing required input arguments.")
+            return
+
+        matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl)
+        matplotlib.rc('xtick', labelsize=sl); matplotlib.rc('ytick', labelsize=sl); matplotlib.rcParams.update({'font.size': sl})
+
+    def plot(self):
+
+        if self.levels is None:
+            if self.pextend == "both":
+                aux=np.nanpercentile(np.abs(self.gdata), 99.)
+                self.levels = np.linspace(-aux,aux, 101); del aux
+            else:
+                self.levels = np.linspace(0, np.nanpercentile(self.gdata, 99.), 101)       	
+
+        plt.figure(figsize=(7, 4))
+        # ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
+        ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=180))
+        ax.set_extent([0., 360., self.latmin, self.latmax], crs=ccrs.PlateCarree())
+        gl = ax.gridlines(crs=ccrs.PlateCarree(), draw_labels=True, linewidth=0.5, color='grey', alpha=0.5, linestyle='--')
+        gl.xlabel_style = {'size': self.sl-4, 'color': 'k', 'rotation': 0}
+        gl.ylabel_style = {'size': self.sl-4, 'color': 'k', 'rotation': 0}
+        cs = ax.contourf(self.lon, self.lat, self.gdata, self.levels, cmap=self.palette, zorder=1, extend=self.pextend, transform=ccrs.PlateCarree())
+        ax.add_feature(cfeature.OCEAN, facecolor=("white"))
+        ax.add_feature(cfeature.LAND, facecolor=(self.contcolor), edgecolor='grey', linewidth=0.2, zorder=2)
+        ax.add_feature(cfeature.BORDERS, edgecolor='dimgrey', linestyle='-', linewidth=0.2, alpha=1, zorder=3)
+        ax.coastlines(resolution='110m', color='dimgrey', linewidth=0.2, linestyle='-', alpha=1, zorder=4)
+        plt.tight_layout()
+        ax = plt.gca()
+        pos = ax.get_position()
+        l, b, w, h = pos.bounds
+        cax = plt.axes([l + 0.07, b - 0.075, w - 0.12, 0.025])
+        cbar = plt.colorbar(cs, cax=cax, orientation='horizontal')
+        cbar.ax.tick_params(labelsize=self.sl-3)
+        plt.axes(ax)
+        plt.savefig(self.ftag, dpi=200, facecolor='w', edgecolor='w',
+                    orientation='portrait', format='png', transparent=False, bbox_inches='tight', pad_inches=0.1)
+        plt.close('all')
+        del ax
+
 

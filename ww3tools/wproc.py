@@ -7,6 +7,7 @@ wproc.py
 VERSION AND LAST UPDATE:
  v1.0  07/10/2023
  v1.1  07/24/2023
+ v1.2  10/11/2023
 
 PURPOSE:
  Auxiliary processing functions.
@@ -21,7 +22,8 @@ DEPENDENCIES:
 
 AUTHOR and DATE:
  07/10/2023: Ricardo M. Campos, first version.
- 07/24/2023: Ricardo M. Campos, debug orgensemblesat and improve speed. 
+ 07/24/2023: Ricardo M. Campos, debug orgensemblesat and improve processing speed. 
+ 10/11/2023: Ricardo M. Campos, new functions to support modularization.
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -33,7 +35,71 @@ import netCDF4 as nc
 import numpy as np
 import sys
 import pandas as pd
+import os
 import warnings; warnings.filterwarnings("ignore")
+
+
+def wlevconv(data_lev1=None,lev1=None,lev2=None,alpha=0.12):
+    """
+    Wind height conversion DNV-C209 standard/recommendation
+    Input:
+    - time-series (numpy array) of origin level
+    - height (meters) of origin level
+    - height (meters) of target level
+    - alpha (see DNV-C209 standard/recommendation)
+    Output:
+    - time-series converted to the target level
+
+    Example1 (4.1 m height obs data to 10-m model level):
+    lev1=4.1; lev2=10; data_lev1=10 #(m/s)
+    converted_wind = wlevconv(data_lev1,lev1,lev2)
+
+    Example2 (10-m wind from model to 3.8 m anemometer position):
+    lev1=10; lev2=3.8; data_lev1=10 #(m/s)
+    converted_wind = wlevconv(data_lev1,lev1,lev2)
+    """
+
+    if np.any(lev1)==None or np.any(lev2)==None or np.any(data_lev1)==None:
+        raise ValueError("Two levels (in meters) and one data record (wind in m/s) must be informed.")
+
+    mfactor=((lev2/lev1)**(alpha))
+    data_lev2 = (mfactor * data_lev1)
+
+    return data_lev2
+    print(' Wind conversion ok')
+
+
+def interp_nan(data,lmt=10**50):
+    '''
+    Fill NaN values with linear interpolation.
+    User can enter one or two inputs:
+      1) time-series containing NaN values to fill in
+      2) maximum number of consecutive NaN values to interpolate (to
+         avoid interpolating long segments)
+    '''
+    data=np.array(data)
+    lmt=int(lmt)
+
+    if data.ndim>1:
+        raise ValueError(' Input array with too many dimensions. Only time-series (1 dimension) allowed.')
+    else:
+        indd=np.where(data>-999.)
+        if np.size(indd)>0:
+            indd=indd[0][-1] # last valid number
+            adata=np.array(data[0:indd])
+
+            # using pandas
+            A=pd.Series(adata)
+            # B=A.interpolate(method="polynomial",order=2,limit=lmt)
+            B=A.interpolate(method="linear",limit=lmt)
+            B=np.array(B.values)
+
+            data[0:indd]=np.array(B)
+           
+            del lmt,A,B
+
+    return data
+
 
 def orgensemblesat(flist,nmb,esize='yes'):
     '''
@@ -298,13 +364,12 @@ def orgensemblesat(flist,nmb,esize='yes'):
         del df, amhs, amwnd
         print('  Ok  '+"_".join(flist[i].split('_')[0:2]).split('/')[-1]+'  for all ensemble members')
 
-
-    return fdata,fmhs,fmwnd,dfnames
     print(" Done. wproc.orgensemblesat concluded.")
+    return fdata,fmhs,fmwnd,dfnames
     # ------------------------
 
 
-# Under development: spectral interpolation function, quality control, wind speed conversion to 10m
+# Under development: spectral interpolation function, quality control
 
 
 
