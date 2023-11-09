@@ -1,0 +1,8 @@
+input:
+    obs_file: ./AltimeterAlongTrack_ww3tools_JASON3_2018010101to2018033123.nc
+    model_directory: /scratch2/NCEPDEV/marine/Saeideh.Banihashemi/GlobalDev/GEFS/Data/EP4c_1/20180221/c00/gridded/
+output:
+    file: WW3.Altimeter_20180221_2018010101to2018033123.nc
+interpolation:
+    method: nearest  # Options: 'linear' or 'nearest'
+
