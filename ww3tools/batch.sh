@@ -10,7 +10,8 @@
 
 # Load modules
 module use /scratch1/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-module load module_hera
+#module load module_hera
+module load ww3tools
 
 # Change to the script directory
 cd /scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/Tools/WW3-tools/ww3tools/pyresampletest/final/finalist/check/validation/HR1/20200919
@@ -24,5 +25,5 @@ OUTPUT_FILE='./WW3-Altimeter_interpolated_20200919.nc'
 
 # Run the Python script with paths as arguments
 python ProcSat_interpolation.py $MODEL_DATA_DIR $MODEL_DATA_PATTERN $SATELLITE_FILE $OUTPUT_FILE
-#python pp.py $MODEL_DATA_DIR $MODEL_DATA_PATTERN $SATELLITE_FILE $OUTPUT_FILE
+#python pp1.py $MODEL_DATA_DIR $MODEL_DATA_PATTERN $SATELLITE_FILE $OUTPUT_FILE
 
