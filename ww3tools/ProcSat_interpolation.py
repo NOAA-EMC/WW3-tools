@@ -20,10 +20,18 @@ Requirements:
 - scipy.interpolate: For data interpolation on regular grids.
 - pandas: For data manipulation and analysis.
 
-The script is intended for oceanographic data analysts and researchers who need to compare model output with satellite measurements for validation or study purposes. Users can modify the paths, variable names, and parameters to suit their specific datasets and requirements.
-Modules used for this code is from Jessica Meixner.
-module use /scratch1/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-module load module_hera
+The script is intended for oceanographic data analysts and researchers who need to compare model output with satellite measurements for validation or study purposes.
+In this python script 
+model_data_directory = sys.argv[1]
+model_data_pattern = sys.argv[2]
+satellite_file = sys.argv[3]
+output_file = sys.argv[4]
+are pathes for the files thay one can define in the job script.
+model_data_directory: The directory where model data files are located. For example, /scratch2/NCEPDEV/marine/Jessica.Meixner/Data/HR1/Hurricane/gfs.20200919/00/wave/gridded/.
+model_data_pattern: A pattern to match specific model data files within the directory. Example: 'gfswave.t00z.global.0p25.f*.grib2.nc' which selects files with a certain naming convention.
+satellite_file: The path to the satellite data file. Example: './AltimeterAlongTrack_ww3tools_JASON3_2020091901to2020092922.nc'.
+output_file: The path for the output file where processed results will be saved. Example: './WW3-Altimeter_interpolated_20200919.nc'.
+
 
 Author: Ghazal Mohammadpour
 email: ghazal.mohammadpour@noaa.gov
