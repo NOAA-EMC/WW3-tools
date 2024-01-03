@@ -21,7 +21,7 @@ Requirements:
 - pandas: For data manipulation and analysis.
 
 The script is intended for oceanographic data analysts and researchers who need to compare model output with satellite measurements for validation or study purposes.
-In this python script 
+In this python script
 model_data_directory = sys.argv[1]
 model_data_pattern = sys.argv[2]
 satellite_file = sys.argv[3]
@@ -62,21 +62,29 @@ if not model_data_files:
 # Sort the files to ensure they are in the correct order
 model_data_files.sort()
 
-# Load and concatenate the model data files
-model_data_list = [xr.open_dataset(file) for file in model_data_files]
-model_data_combined = xr.concat(model_data_list, dim='time')
-
-# Convert model time to UNIX time
-model_time_seconds = (model_data_combined['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
-
 # Extract forecast hours from file names and convert to integers
 fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in model_data_files]
 
-# Function to map forecast hours to satellite times
-def map_fcst_hours_to_satellite(fcst_hours, model_times, satellite_times):
-    df = pd.DataFrame({'fcst_hr': fcst_hours}, index=model_times)
-    df = df.reindex(satellite_times, method='ffill')
-    return df['fcst_hr'].values
+# Include all forecast hours without filtering
+
+fcst_hours_filtered = fcst_hours
+
+# Load and concatenate the model data files
+model_data_list = [xr.open_dataset(file) for file in model_data_files if int(re.search(r'f(\d+)', file).group(1)) in fcst_hours_filtered]
+model_data_combined = xr.concat(model_data_list, dim='time')
+
+# Convert longitudes from -180 to 180 to 0 to 360, if necessary
+model_longitudes = model_data_combined['longitude'].values
+if model_longitudes.min() < 0:
+    model_longitudes[model_longitudes < 0] += 360
+    model_data_combined = model_data_combined.assign_coords(longitude=model_longitudes)
+
+
+# Convert model time to UNIX time and ensure it's double
+model_time_seconds = np.array((model_data_combined['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
+
+# Determine the maximum model time
+max_model_time = model_time_seconds.max()
 
 # Load satellite data
 satellite_data = xr.open_dataset(satellite_file)
@@ -85,63 +93,58 @@ satellite_data = xr.open_dataset(satellite_file)
 satellite_longitudes = satellite_data['longitude'].values
 satellite_longitudes[satellite_longitudes < 0] += 360
 
-# Convert satellite time to UNIX time
-satellite_times_unix = (satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
+# Convert satellite time to UNIX time and ensure it's double
+satellite_times_unix = np.array((satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
 
-# Map forecast hours to satellite times
-mapped_fcst_hours = map_fcst_hours_to_satellite(fcst_hours, model_time_seconds, satellite_times_unix)
+# Filter satellite times to include only those within the model data time range
+filtered_satellite_times_unix = satellite_times_unix[satellite_times_unix <= max_model_time]
+
+# Filter satellite latitude and longitude arrays to match the filtered satellite times
+filtered_satellite_latitudes = satellite_data['latitude'].values[:len(filtered_satellite_times_unix)]
+filtered_satellite_longitudes = satellite_longitudes[:len(filtered_satellite_times_unix)]
 
 # Function to prepare and interpolate model data
-def prepare_and_interpolate(model_data, variable_name):
+def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times_unix):
     variable_data = model_data[variable_name].transpose('latitude', 'longitude', 'time')
     ocean_mask = ~variable_data.isnull()
     variable_data_masked = variable_data.where(ocean_mask, np.nan)
     model_grid = (variable_data.coords['latitude'].values, variable_data.coords['longitude'].values, model_time_seconds)
     interpolator = RegularGridInterpolator(model_grid, variable_data_masked.values, bounds_error=False, fill_value=np.nan)
-    satellite_points = np.array([satellite_data['latitude'].values, satellite_longitudes, satellite_times_unix]).T
+    satellite_points = np.array([satellite_latitudes, satellite_longitudes, satellite_times_unix]).T
     return interpolator(satellite_points)
 
-# Interpolate HTSGW_surface and WIND_surface
-interpolated_htsgw_surface_values = prepare_and_interpolate(model_data_combined, 'HTSGW_surface')
-interpolated_wind_surface_values = prepare_and_interpolate(model_data_combined, 'WIND_surface')
+# Perform interpolation using the filtered satellite data
+interpolated_htsgw_surface_values = prepare_and_interpolate(model_data_combined, 'HTSGW_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
+interpolated_wind_surface_values = prepare_and_interpolate(model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
 
-# Extract hs and wsp from satellite data
-hs = satellite_data['hs']
-wsp = satellite_data['wsp_cal']
+# Extract hs and wsp from satellite data, filtered by time
+hs = satellite_data['hs'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
+wsp = satellite_data['wsp_cal'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
 
-# Create DataArrays for all data
-hs_dataarray = xr.DataArray(hs.values, coords={'time': satellite_times_unix}, dims=['time'], name='hs_time_averaged_satellite')
+# Convert satellite time DataArray to UNIX timestamps
+satellite_time_unix = xr.DataArray(filtered_satellite_times_unix, dims=['time'], name='time')
+
+# Create DataArrays for all data with consistent time representation and units
+hs_dataarray = xr.DataArray(hs.values, coords={'time': satellite_time_unix}, dims=['time'], name='hs_time_averaged_satellite')
 hs_dataarray.attrs['units'] = 'm'
-
-wsp_dataarray = xr.DataArray(wsp.values, coords={'time': satellite_times_unix}, dims=['time'], name='wsp_time_averaged_satellite')
+wsp_dataarray = xr.DataArray(wsp.values, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_time_averaged_satellite')
 wsp_dataarray.attrs['units'] = 'm/s'
-
-interpolated_htsgw_surface = xr.DataArray(interpolated_htsgw_surface_values, coords={'time': satellite_times_unix}, dims=['time'], name='HTSGW_surface_interpolated')
+interpolated_htsgw_surface = xr.DataArray(interpolated_htsgw_surface_values, coords={'time': satellite_time_unix}, dims=['time'], name='HTSGW_surface_interpolated')
 interpolated_htsgw_surface.attrs['units'] = 'm'
-
-interpolated_wind_surface = xr.DataArray(interpolated_wind_surface_values, coords={'time': satellite_times_unix}, dims=['time'], name='WIND_surface_interpolated')
+interpolated_wind_surface = xr.DataArray(interpolated_wind_surface_values, coords={'time': satellite_time_unix}, dims=['time'], name='WIND_surface_interpolated')
 interpolated_wind_surface.attrs['units'] = 'm/s'
-
-fcst_hours_dataarray = xr.DataArray(mapped_fcst_hours, coords={'time': satellite_times_unix}, dims=['time'], name='fcst_hr')
-fcst_hours_dataarray.attrs['units'] = 'hours'
-
-longitude_dataarray = xr.DataArray(satellite_longitudes, coords={'time': satellite_times_unix}, dims=['time'], name='longitude')
+longitude_dataarray = xr.DataArray(filtered_satellite_longitudes, coords={'time': satellite_time_unix}, dims=['time'], name='longitude')
 longitude_dataarray.attrs['units'] = 'degrees_east'
-
-latitude_dataarray = xr.DataArray(satellite_data['latitude'].values, coords={'time': satellite_times_unix}, dims=['time'], name='latitude')
+latitude_dataarray = xr.DataArray(filtered_satellite_latitudes, coords={'time': satellite_time_unix}, dims=['time'], name='latitude')
 latitude_dataarray.attrs['units'] = 'degrees_north'
-
-time_dataarray = xr.DataArray(satellite_times_unix, dims=['time'], name='time')
-time_dataarray.attrs['units'] = 'seconds since 1970-01-01T00:00:00+00:00'
 
 # Combine into a single dataset
 interpolated_dataset = xr.Dataset({
-    'time': time_dataarray,
+    'time': satellite_time_unix,
     'HTSGW_surface_interpolated': interpolated_htsgw_surface,
     'WIND_surface_interpolated': interpolated_wind_surface,
     'hs_time_averaged_satellite': hs_dataarray,
     'wsp_time_averaged_satellite': wsp_dataarray,
-    'fcst_hr': fcst_hours_dataarray,
     'longitude': longitude_dataarray,
     'latitude': latitude_dataarray
 })
