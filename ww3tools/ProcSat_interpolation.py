@@ -24,11 +24,11 @@ meteorological and oceanographic model data.
 
 The script is intended for oceanographic data analysts and researchers who need to compare model output with satellite measurements for validation or study purposes.
 In this python script:
-    file_type = sys.argv[1].lower()  # Expecting 'grib2' or 'nc'
-    data_directory = sys.argv[2]
-    data_pattern = sys.argv[3]
-    satellite_file = sys.argv[4]
-    output_file = sys.argv[5]
+file_type = sys.argv[1].lower()  # Expecting 'grib2' or 'nc'
+data_directory = sys.argv[2]
+data_pattern = sys.argv[3]
+satellite_file = sys.argv[4]
+output_file = sys.argv[5]
 
 are pathes for the files thay one can define in the job script.
 model_data_directory: The directory where model data files are located. For example, /scratch2/NCEPDEV/marine/Jessica.Meixner/Data/HR1/Hurricane/gfs.20200919/00/wave/gridded/.
@@ -40,38 +40,37 @@ output_file: The path for the output file where processed results will be saved.
 # Function Definitions:
 
 def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, output_file):
-    """
-    Handles the interpolation of GRIB2 format model data.
+   
+Handles the interpolation of GRIB2 format model data.
     
-    This function searches for GRIB2 files in a specified directory, aligns them with satellite observation times, 
-    and interpolates the model data to the satellite data points. The output is a combined dataset in NetCDF format.
+This function searches for GRIB2 files in a specified directory, aligns them with satellite observation times, 
+and interpolates the model data to the satellite data points. The output is a combined dataset in NetCDF format.
 
-    Parameters:
-    - grib_data_directory (str): Path to the directory containing the GRIB2 files.
-    - grib_data_pattern (str): Pattern to match specific GRIB2 files within the directory.
-    - satellite_file (str): Path to the satellite data file.
-    - output_file (str): Path for the output NetCDF file.
+Parameters:
+- grib_data_directory (str): Path to the directory containing the GRIB2 files.
+- grib_data_pattern (str): Pattern to match specific GRIB2 files within the directory.
+- satellite_file (str): Path to the satellite data file.
+- output_file (str): Path for the output NetCDF file.
 
-    The function processes each GRIB file, extracting significant wave height and wind speed data, aligning them in time 
-    with satellite observations, and performing spatial interpolation. The result is saved as a NetCDF file.
-    """
-    # Function code...
+The function processes each GRIB file, extracting significant wave height and wind speed data, aligning them in time 
+with satellite observations, and performing spatial interpolation. The result is saved as a NetCDF file.
+# Function code...
 
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
-    """
-    Handles the interpolation of NetCDF format model data.
+   
+Handles the interpolation of NetCDF format model data.
     
-    Similar to 'interpolate_grib2', this function works with NetCDF format model data. It loads the data, aligns it 
-    with satellite observations, and performs the necessary interpolations. The result is a merged dataset in NetCDF format.
+Similar to 'interpolate_grib2', this function works with NetCDF format model data. It loads the data, aligns it 
+with satellite observations, and performs the necessary interpolations. The result is a merged dataset in NetCDF format.
 
-    Parameters:
-    - model_data_directory (str): Path to the directory containing the NetCDF files.
-    - model_data_pattern (str): Pattern to match specific NetCDF files within the directory.
-    - satellite_file (str): Path to the satellite data file.
-    - output_file (str): Path for the output NetCDF file.
+Parameters:
+- model_data_directory (str): Path to the directory containing the NetCDF files.
+- model_data_pattern (str): Pattern to match specific NetCDF files within the directory.
+- satellite_file (str): Path to the satellite data file.
+- output_file (str): Path for the output NetCDF file.
 
-    This function reads the NetCDF files, applies a spatial mask to handle ocean and land values, and interpolates the data 
-    to align with satellite data points. The interpolated dataset includes parameters like significant wave height and wind speed.
+This function reads the NetCDF files, applies a spatial mask to handle ocean and land values, and interpolates the data 
+to align with satellite data points. The interpolated dataset includes parameters like significant wave height and wind speed.
 
 
 Author: Ghazal Mohammadpour
@@ -102,15 +101,16 @@ def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, ou
     fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in grib_data_files]
 
     # Filter forecast hours to include only 0 to 24 hours
-    fcst_hours_filtered = [hour for hour in fcst_hours if 0 <= hour <= 24]
-
+    #fcst_hours_filtered = [hour for hour in fcst_hours if 0 <= hour <= 24]
+    fcst_hours_filtered = fcst_hours
+     
     # Function to read and process each GRIB file
     def process_grib_files(files):
         model_data_list = []
         valid_times_unix = []
 
         for file in files:
-            ds = cfgrib.open_datasets(file)
+            ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
             if len(ds) < 2:
                 raise ValueError(f"Required datasets not found in the file {file}")
 
@@ -253,7 +253,7 @@ def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, ou
     # Save the combined dataset to a NetCDF file
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
-# The rest of your script (including the main function and any other code) goes here
+#netcdf interpolator
 
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
     # Using glob to find all files in the directory that match the pattern
