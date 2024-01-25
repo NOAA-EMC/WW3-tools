@@ -78,59 +78,35 @@ email: ghazal.mohammadpour@noaa.gov
 
 """
 
+
 import sys
 import glob
 import numpy as np
 import xarray as xr
 import re
-import pandas as pd
 from scipy.interpolate import RegularGridInterpolator
 import cfgrib
+import os
 
-def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, output_file):
-    grib_data_files = glob.glob(grib_data_directory + grib_data_pattern)
 
-    if not grib_data_files:
+#GRIB2 interpolator
+
+def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file):
+    full_path = os.path.join(data_directory, data_pattern)
+    print("Full path for GRIB files:", full_path)
+
+    found_files = glob.glob(full_path)
+    if not found_files:
+        print("No files found at:", full_path)
         raise ValueError("No GRIB files found in the specified directory matching the pattern.")
 
-    grib_data_files.sort()
-    fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in grib_data_files]
-    fcst_hours_filtered = [hour for hour in fcst_hours if 24 <= hour <= 48]
+    found_files.sort()
+    fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in found_files]
+    #fcst_hours_filtered = [hour for hour in fcst_hours if 0 <= hour <= 24]
+    fcst_hours_filtered = fcst_hours
 
-    def process_grib_files(files):
-        model_data_list = []
-        valid_times_unix = []
 
-        for file in files:
-            ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
-            if len(ds) < 2:
-                raise ValueError(f"Required datasets not found in the file {file}")
-
-            ws = ds[1]['ws']
-            swh = ds[1]['swh']
-            longitude = ds[1]['longitude']
-            latitude = ds[1]['latitude']
-            time = ds[1]['time']
-            step = ds[1]['step']
-
-            valid_time = ds[1].valid_time.values
-            valid_time_unix = (valid_time - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
-            valid_times_unix.append(valid_time_unix)
-
-            data = xr.Dataset({
-                'wind_speed': ws,
-                'significant_wave_height': swh,
-                'longitude': longitude,
-                'latitude': latitude,
-                'time': time,
-                'step': step
-            })
-
-            model_data_list.append(data)
-
-        return model_data_list, valid_times_unix
-
-    filtered_grib_files = [grib_data_files[i] for i, hour in enumerate(fcst_hours) if hour in fcst_hours_filtered]
+    filtered_grib_files = [found_files[i] for i, hour in enumerate(fcst_hours) if hour in fcst_hours_filtered]
     model_data_list, valid_times_unix = process_grib_files(filtered_grib_files)
     model_data_combined = xr.concat(model_data_list, dim='time')
 
@@ -142,58 +118,110 @@ def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, ou
 
     time_mask = (satellite_times_unix >= min_model_time) & (satellite_times_unix <= max_model_time)
     filtered_satellite_times_unix = satellite_times_unix[time_mask]
-    filtered_satellite_latitudes = satellite_data['latitude'].values[time_mask]
-    filtered_satellite_longitudes = satellite_data['longitude'].values[time_mask]
 
-    def spatial_mask(satellite_latitudes, satellite_longitudes):
-        min_latitude = model_data_combined.latitude.min().values.item()
-        max_latitude = model_data_combined.latitude.max().values.item()
-        min_longitude = model_data_combined.longitude.min().values.item()
-        max_longitude = model_data_combined.longitude.max().values.item()
+    # Extract additional satellite variables
+    hs = satellite_data['hs'].values[time_mask]
+    wsp_cal = satellite_data['wsp_cal'].values[time_mask]
+    satellite_longitudes = satellite_data['longitude'].values[time_mask]
+    satellite_latitudes = satellite_data['latitude'].values[time_mask]
 
-        within_lat_bounds = (satellite_latitudes >= min_latitude) & (satellite_latitudes <= max_latitude)
-        within_lon_bounds = (satellite_longitudes >= min_longitude) & (satellite_longitudes <= max_longitude)
-        return within_lat_bounds & within_lon_bounds
+    interpolated_ws_values = prepare_and_interpolate(model_data_combined, 'wind_speed', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
+    interpolated_swh_values = prepare_and_interpolate(model_data_combined, 'significant_wave_height', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
 
-    def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times):
-        mask = spatial_mask(satellite_latitudes, satellite_longitudes)
-        valid_satellite_points = np.array([satellite_latitudes[mask], satellite_longitudes[mask], satellite_times[mask]]).T
+    # Create DataArrays for all variables
+    interpolated_ws_dataarray = xr.DataArray(interpolated_ws_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='ws_interpolated')
+    interpolated_swh_dataarray = xr.DataArray(interpolated_swh_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='swh_interpolated')
+    hs_dataarray = xr.DataArray(hs, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs')
+    wsp_cal_dataarray = xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp_cal')
+    longitude_dataarray = xr.DataArray(satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='longitude')
+    latitude_dataarray = xr.DataArray(satellite_latitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='latitude')
 
-        variable_data = model_data[variable_name]
-        if variable_data.dims != ('latitude', 'longitude', 'time'):
-            variable_data = variable_data.transpose('latitude', 'longitude', 'time')
-
-        ocean_mask = ~variable_data.isnull()
-        variable_data_masked = variable_data.where(ocean_mask, np.nan)
-
-        model_grid = (variable_data.coords['latitude'].values,
-                      variable_data.coords['longitude'].values,
-                      valid_times_unix)
-
-        interpolator = RegularGridInterpolator(model_grid, variable_data_masked.values, bounds_error=False, fill_value=np.nan)
-        interpolated_values = interpolator(valid_satellite_points)
-
-        return interpolated_values, satellite_times[mask]
-
-    interpolated_ws_values, filtered_times_for_interpolation_ws = prepare_and_interpolate(model_data_combined, 'wind_speed', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
-    interpolated_swh_values, filtered_times_for_interpolation_swh = prepare_and_interpolate(model_data_combined, 'significant_wave_height', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
-
-    interpolated_ws_dataarray = xr.DataArray(interpolated_ws_values, coords={'time': filtered_times_for_interpolation_ws}, dims=['time'], name='ws_interpolated')
-    interpolated_swh_dataarray = xr.DataArray(interpolated_swh_values, coords={'time': filtered_times_for_interpolation_swh}, dims=['time'], name='swh_interpolated')
-
+    # Combine all DataArrays into a single Dataset
     interpolated_dataset = xr.Dataset({
         'ws_interpolated': interpolated_ws_dataarray,
-        'swh_interpolated': interpolated_swh_dataarray
+        'swh_interpolated': interpolated_swh_dataarray,
+        'hs': hs_dataarray,
+        'wsp_cal': wsp_cal_dataarray,
+        'longitude': longitude_dataarray,
+        'latitude': latitude_dataarray
     })
-
-    interpolated_dataset['hs'] = xr.DataArray(satellite_data['hs'].values[time_mask], coords={'time': filtered_satellite_times_unix}, dims=['time'], attrs={'_FillValue': np.nan, 'units': 'm'})
-    interpolated_dataset['wsp_cal'] = xr.DataArray(satellite_data['wsp_cal'].values[time_mask], coords={'time': filtered_satellite_times_unix}, dims=['time'], attrs={'_FillValue': np.nan, 'units': 'm/s'})
-    interpolated_dataset['longitude'] = xr.DataArray(filtered_satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], attrs={'_FillValue': np.nan, 'units': 'degrees_east'})
-    interpolated_dataset['latitude'] = xr.DataArray(filtered_satellite_latitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], attrs={'_FillValue': np.nan, 'units': 'degrees_north'})
 
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
-#netcdf interpolator.
+def process_grib_files(files):
+    model_data_list = []
+    valid_times_unix = []
+
+    for file in files:
+        ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
+        if len(ds) < 2:
+            raise ValueError(f"Required datasets not found in the file {file}")
+
+        ws = ds[1]['ws'] if 'ws' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
+        swh = ds[1]['swh'] if 'swh' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
+        longitude = ds[1]['longitude']
+        latitude = ds[1]['latitude']
+        time = ds[1]['time']
+        step = ds[1]['step']
+
+        valid_time = ds[1].valid_time.values
+        valid_time_unix = (valid_time - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
+        valid_times_unix.append(valid_time_unix)
+
+        data = xr.Dataset({
+            'wind_speed': ws,
+            'significant_wave_height': swh,
+            'longitude': longitude,
+            'latitude': latitude,
+            'time': time,
+            'step': step
+        })
+
+        model_data_list.append(data)
+
+    return model_data_list, valid_times_unix
+
+def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times, valid_times_unix):
+    mask = spatial_mask(satellite_latitudes, satellite_longitudes, model_data)
+    valid_satellite_points = np.array([satellite_latitudes[mask], satellite_longitudes[mask], satellite_times[mask]]).T
+
+    variable_data = model_data[variable_name]
+    if variable_data.dims != ('latitude', 'longitude', 'time'):
+        variable_data = variable_data.transpose('latitude', 'longitude', 'time')
+
+    ocean_mask = ~variable_data.isnull()
+    variable_data_masked = variable_data.where(ocean_mask, np.nan)
+
+    model_grid = (variable_data.coords['latitude'].values,
+                  variable_data.coords['longitude'].values,
+                  valid_times_unix)
+
+    if valid_satellite_points.size == 0:
+        return np.full((len(satellite_times),), np.nan)
+
+    interpolator = RegularGridInterpolator(model_grid, variable_data_masked.values, bounds_error=False, fill_value=np.nan)
+    interpolated_values = interpolator(valid_satellite_points)
+
+    full_interpolated_values = np.full((len(satellite_times),), np.nan)
+    full_interpolated_values[mask] = interpolated_values
+
+    return full_interpolated_values
+
+def spatial_mask(satellite_latitudes, satellite_longitudes, model_data):
+    min_latitude = model_data.latitude.min().values.item()
+    max_latitude = model_data.latitude.max().values.item()
+    min_longitude = model_data.longitude.min().values.item()
+    max_longitude = model_data.longitude.max().values.item()
+
+    within_lat_bounds = (satellite_latitudes >= min_latitude) & (satellite_latitudes <= max_latitude)
+    within_lon_bounds = (satellite_longitudes >= min_longitude) & (satellite_longitudes <= max_longitude)
+    return within_lat_bounds & within_lon_bounds
+
+
+
+#NETCDF interpolator
+
+
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
     # Using glob to find all files in the directory that match the pattern
     model_data_files = glob.glob(model_data_directory + model_data_pattern)
@@ -207,7 +235,8 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
 
     # Extract forecast hours from file names and convert to integers
     fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in model_data_files]
-    fcst_hours_filtered = [hour for hour in fcst_hours if 144 <= hour <= 168]
+    #fcst_hours_filtered = [hour for hour in fcst_hours if 144 <= hour <= 168]
+    fcst_hours_filtered = fcst_hours
 
     # Load and concatenate the model data files
     model_data_list = [xr.open_dataset(file) for file in model_data_files if int(re.search(r'f(\d+)', file).group(1)) in fcst_hours_filtered]
@@ -309,6 +338,9 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
 
 
 
+
+
+
 def main():
     # Command-line arguments
     file_type = sys.argv[1].lower()  # Expecting 'grib2' or 'nc'
@@ -316,6 +348,13 @@ def main():
     data_pattern = sys.argv[3]
     satellite_file = sys.argv[4]
     output_file = sys.argv[5]
+
+
+    print(f"File type: {file_type}")
+    print(f"Data directory: {data_directory}")
+    print(f"Data pattern: {data_pattern}")
+    print(f"Satellite file: {satellite_file}")
+    print(f"Output file: {output_file}")
 
     # Call the appropriate function based on file type
     if file_type == 'grib2':
@@ -327,3 +366,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
