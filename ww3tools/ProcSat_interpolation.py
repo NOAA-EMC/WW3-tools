@@ -58,7 +58,7 @@ with satellite observations, and performing spatial interpolation. The result is
 
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
 
-Handles the interpolation of NetCDF format model data.
+Handles the interpolation of NetCDF and Grib2 format model data.User shoul be able to define this in the job script.  
 
 Similar to 'interpolate_grib2', this function works with NetCDF format model data. It loads the data, aligns it
 with satellite observations, and performs the necessary interpolations. The result is a merged dataset in NetCDF format.
