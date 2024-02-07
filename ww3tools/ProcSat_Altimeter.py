@@ -359,7 +359,6 @@ def savesat(AODN,wconfig,altsel):
     # Save netcdf
     ncfile = nc.Dataset(fname+".nc", "w", format=wconfig['fnetcdf']) 
     ncfile.history=hmsg
-   # ncfile.satellite_name = altsel
     # create  dimensions.
     ncfile.createDimension('time' , len(AODN['TIME']))
     ncfile.createDimension('sname' , 1 )
