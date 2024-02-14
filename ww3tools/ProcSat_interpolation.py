@@ -1,83 +1,36 @@
-
 """
-This script processes oceanographic model data and satellite time avaraged observations, aligning and interpolating them for comparison and analysis. It is specifically designed to work with gridded model output and satellite data, focusing on significant wave height (HTSGW,swh) and wind speed (WIND,ws) parameters.
 
-Key Steps:
-1. Data Loading: The script loads model data from a specified directory, where the files are expected to follow a naming pattern. It also loads satellite data from a given file.
+# This Python script is designed for processing and interpolating oceanographic model data and satellite
+# time-averaged observations, focusing on significant wave height (HTSGW, swh) and wind speed (WIND, ws) parameters.
+# It supports handling data in both GRIB2 and NetCDF formats, aligning model outputs with satellite observations
+# to facilitate comparison and analysis for oceanographic research.
 
-2. Time Alignment: Both model and satellite data times are converted to UNIX time for consistent time referencing. The script extracts forecast hours from model filenames and aligns them with satellite observation times.
+# The script performs several key operations:
+# 1. Data Loading: It loads model data from a specified directory based on a naming pattern and satellite data from a given file.
+# 2. Time Alignment: Converts model and satellite data times to UNIX time for consistent time referencing and aligns them.
+# 3. Data Preparation and Interpolation: Applies an ocean mask to model data and interpolates it to match satellite observation points.
+# 4. Data Merging: Combines interpolated model data with satellite observations into a single xarray Dataset.
+# 5. Output: Saves the combined dataset as a NetCDF file for further analysis or comparison studies.
 
-3. Data Preparation and Interpolation: The model data is prepared by applying an ocean mask to handle land values. Interpolation is then performed using a regular grid interpolator, aligning the model data with the satellite data points.
+# For the NetCDF data interpolation, the process involves:
+# - Reading the model data from NetCDF files according to a specified pattern.
+# - Aligning model data times with satellite observation times by converting all times to a common UNIX format.
+# - Applying a spatial mask to filter out land data points and focus on oceanic areas for interpolation.
+# - Using a RegularGridInterpolator for spatially interpolating model data (wind speed and significant wave height) to the satellite observation points.
+# - Creating a comprehensive dataset that merges interpolated model data with the original satellite observations, ensuring that all data shares a common temporal and spatial frame of reference.
+# - Saving this merged dataset as a new NetCDF file, ready for analysis, visualization, or further study.
 
-4. Data Merging: The interpolated model data and the satellite observations are combined into a single xarray Dataset. This includes significant wave height and wind speed parameters from both sources, as well as the aligned forecast hours.
+# Requirements:
+# - xarray: For handling data arrays and NetCDF files.
+# - numpy: For numerical operations.
+# - glob: For matching file path patterns.
+# - re: For regular expression operations.
+# - scipy.interpolate: For performing data interpolation.
+# - pandas: For data manipulation.
+# - cfgrib: For reading GRIB files.
 
-5. Output: The final combined dataset is saved as a NetCDF file, which can be used for further analysis, visualization, or comparison studies.
+# This script is intended for use by oceanographic data analysts and researchers who need to compare model output with satellite measurements.
 
-Requirements:
-- xarray: For handling NetCDF files and data arrays.
-- numpy: For numerical operations.
-- glob: For file path pattern matching.
-- re: For regular expression operations.
-- scipy.interpolate: For data interpolation on regular grids.
-- pandas: For data manipulation and analysis.
--cfgrib: cfgrib is a Python library that provides an interface for reading GRIB (GRIdded Binary) files, which are a common format for storing and distributing
-meteorological and oceanographic model data.
-
-The script is intended for oceanographic data analysts and researchers who need to compare model output with satellite measurements for validation or study purposes.
-In this python script:
-file_type = sys.argv[1].lower()  # Expecting 'grib2' or 'nc'
-data_directory = sys.argv[2]
-data_pattern = sys.argv[3]
-satellite_file = sys.argv[4]
-output_file = sys.argv[5]
-
-are pathes for the files thay one can define in the job script.
-model_data_directory: The directory where model data files are located. For example, /scratch2/NCEPDEV/marine/Jessica.Meixner/Data/HR1/Hurricane/gfs.20200919/00/wave/gridded/.
-model_data_pattern: A pattern to match specific model data files within the directory. Example: 'gfswave.t00z.global.0p25.f*.grib2.nc' which selects files with a certain naming convention.
-satellite_file: The path to the satellite data file. Example: './AltimeterAlongTrack_ww3tools_JASON3_2020091901to2020092922.nc'.
-output_file: The path for the output file where processed results will be saved. Example: './WW3-Altimeter_interpolated_20200919.nc'.
-
-
-# Function Definitions:
-
-def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, output_file, satellite_name, ic_time):
-
-Handles the interpolation of GRIB2 format model data.
-
-This function searches for GRIB2 files in a specified directory, aligns them with satellite observation times,
-and interpolates the model data to the satellite data points. The output is a combined dataset in NetCDF format.
-
-Parameters:
-- grib_data_directory (str): Path to the directory containing the GRIB2 files.
-- grib_data_pattern (str): Pattern to match specific GRIB2 files within the directory.
-- satellite_file (str): Path to the satellite data file.
-- output_file (str): Path for the output NetCDF file.
-
-The function processes each GRIB file, extracting significant wave height and wind speed data, aligning them in time
-with satellite observations, and performing spatial interpolation. The result is saved as a NetCDF file.
-# Function code...
-
-def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
-
-Handles the interpolation of NetCDF format model data.
-
-Similar to 'interpolate_grib2', this function works with NetCDF format model data. It loads the data, aligns it
-with satellite observations, and performs the necessary interpolations. The result is a merged dataset in NetCDF format.
-
-Parameters:
-- model_data_directory (str): Path to the directory containing the NetCDF files.
-- model_data_pattern (str): Pattern to match specific NetCDF files within the directory.
-- satellite_file (str): Path to the satellite data file.
-- output_file (str): Path for the output NetCDF file.
-
-This function reads the NetCDF files, applies a spatial mask to handle ocean and land values, and interpolates the data
-to align with satellite data points. The interpolated dataset includes parameters like significant wave height and wind speed.
-
-
-Author: Ghazal Mohammadpour
-email: ghazal.mohammadpour@noaa.gov
-
-"""
 import sys
 import glob
 import numpy as np
@@ -88,23 +41,88 @@ import cfgrib
 import os
 import pandas as pd
 
+# Function to interpolate GRIB2 format model data
+def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, output_file, satellite_name, ic_time):
+    
+    Interpolates GRIB2 format model data to satellite observation points and merges them into a NetCDF file.
+
+    Parameters:
+    - grib_data_directory (str): Directory containing GRIB2 files.
+    - grib_data_pattern (str): Pattern to match GRIB2 files.
+    - satellite_file (str): Satellite data file path.
+    - output_file (str): Output NetCDF file path.
+    - satellite_name (str): Name of the satellite for data labeling.
+    
+
+    # Implementation details here...
+    pass
+
+# Function to interpolate NetCDF format model data
+def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
+   
+    Interpolates NetCDF format model data to satellite observation points and merges them into a NetCDF file.
+
+    Parameters:
+    - model_data_directory (str): Directory containing NetCDF files.
+    - model_data_pattern (str): Pattern to match NetCDF files.
+    - satellite_file (str): Satellite data file path.
+    - output_file (str): Output NetCDF file path.
+
+    This function performs the following steps:
+    - Reads and concatenates model data from multiple NetCDF files based on the provided pattern.
+    - Converts time data to UNIX format for both model and satellite datasets to ensure time alignment.
+    - Applies a spatial mask to select oceanic areas, filtering out data points over land.
+    - Interpolates model data to the geographic and temporal points of satellite observations using a RegularGridInterpolator.
+    - Merges the interpolated model data with satellite observations, ensuring consistency in time and space.
+    - Saves the merged dataset as a new NetCDF file, providing a comprehensive view of model predictions and actual satellite measurements.
+   
+    # Implementation details here...
+    pass
+
+def main():
+    # Parse command-line arguments
+    file_type = sys.argv[1].lower()  # 'grib2' or 'nc'
+    data_directory = sys.argv[2]
+    data_pattern = sys.argv[3]
+    satellite_file = sys.argv[4]
+    output_file = sys.argv[5]
+    model_name = sys.argv[6] 
+
+    # Process based on file type
+    if file_type == 'grib2':
+        interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, satellite_name, ic_time)
+    elif file_type == 'nc':
+        interpolate_netcdf(data_directory, data_pattern, satellite_file, output_file)
+    else:
+        print("Invalid file type specified. Use 'grib2' or 'nc'.")
+
+if __name__ == "__main__":
+    main()
+
+# Author: Ghazal Mohammadpour
+# Email: ghazal.mohammadpour@noaa.gov
+# This script modification ensures alignment with the provided requirements and specifications for processing oceanographic model and satellite data.
+
+
+"""
+
+import sys
+import glob
+import numpy as np
+import xarray as xr
+import re
+from scipy.interpolate import RegularGridInterpolator
+import cfgrib
+import os
+import pandas as pd
 
 # Function to extract reference times from a GRIB file
 def extract_reference_times(file):
-    # Open the GRIB file with cfgrib
     ds = cfgrib.open_dataset(file, backend_kwargs={'indexpath': ''})
-
-    # Check if the dataset is correctly loaded
     if ds is None:
         raise ValueError(f"No dataset found in the file {file}")
-
-    # Extract 'time' and 'valid_time' from the dataset
     time = ds.coords['time'].values
-    valid_time = ds.coords['valid_time'].values if 'valid_time' in ds.coords else None
-
-    # Convert 'time' and 'valid_time' to a more standard format if necessary
-    Initial_Condition = time.item() if time.size == 1 else time
-    return Initial_Condition
+    return time.item() if time.size == 1 else time
 
 def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, model_name):
     full_path = os.path.join(data_directory, data_pattern)
@@ -117,15 +135,15 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
 
     found_files.sort()
     fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in found_files]
-    fcst_hours_filtered = fcst_hours
+    filtered_grib_files = [found_files[i] for i, hour in enumerate(fcst_hours) if hour in fcst_hours]
 
-    filtered_grib_files = [found_files[i] for i, hour in enumerate(fcst_hours) if hour in fcst_hours_filtered]
     model_data_list, valid_times_unix = process_grib_files(filtered_grib_files)
     model_data_combined = xr.concat(model_data_list, dim='time')
 
     satellite_data = xr.open_dataset(satellite_file)
     satellite_times_unix = np.array((satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
 
+#    satellite_name = satellite_data.attrs.get('satellite_name', "unknown_satellite")
     if 'sat_name' in satellite_data.variables:
         satellite_name = satellite_data['sat_name'].values[0]
     elif 'satellite_name' in satellite_data.attrs:
@@ -139,7 +157,6 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
     time_mask = (satellite_times_unix >= min_model_time) & (satellite_times_unix <= max_model_time)
     filtered_satellite_times_unix = satellite_times_unix[time_mask]
 
-    # Extract satellite data and create DataArrays
     hs = satellite_data['hs'].values[time_mask]
     wsp_cal = satellite_data['wsp_cal'].values[time_mask]
     satellite_longitudes = satellite_data['longitude'].values[time_mask]
@@ -147,7 +164,6 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
     hs_cal = satellite_data['hs_cal'].values[time_mask]
     wsp = satellite_data['wsp'].values[time_mask]
 
-    # DataArray for satellite times
     time_dataarray = xr.DataArray(filtered_satellite_times_unix, dims=['time'], name='time', attrs={
         'standard_name': 'time',
         'units': 'seconds since 1970-01-01 00:00:00',
@@ -155,79 +171,52 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
         'axis': 'T'
     })
 
-    interpolated_ws_values = prepare_and_interpolate(model_data_combined, 'wind_speed', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
-    interpolated_swh_values = prepare_and_interpolate(model_data_combined, 'significant_wave_height', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
+    interpolated_ws_values, model_times_ws = prepare_and_interpolate(model_data_combined, 'wind_speed', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
+    interpolated_swh_values, model_times_swh = prepare_and_interpolate(model_data_combined, 'significant_wave_height', satellite_latitudes, satellite_longitudes, filtered_satellite_times_unix, valid_times_unix)
 
-    future_time = np.full(interpolated_ws_values.shape, np.nan, dtype='float64')
-
-
-    for i, ws_val in enumerate(interpolated_ws_values):
-        if not np.isnan(ws_val):  # If ws_interpolated value is not NaN
-            # Assign the corresponding Unix timestamp to future_time
-            future_time[i] = filtered_satellite_times_unix[i]
-          
-
-    # Create and combine DataArrays into a Dataset
     interpolated_dataset = xr.Dataset({
         'time': time_dataarray,
-        'ws_interpolated': xr.DataArray(interpolated_ws_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='ws_interpolated'),
-        'swh_interpolated': xr.DataArray(interpolated_swh_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='swh_interpolated'),
-        'hs': xr.DataArray(hs, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs'),
-        'wsp_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp_cal'),
-        'longitude': xr.DataArray(satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='longitude'),
-        'latitude': xr.DataArray(satellite_latitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='latitude'),
-        'hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs_cal'),
-        'wsp': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp'),
-        'fcst_time': xr.DataArray(future_time, dims=['time'], name='future_time').assign_attrs(units='seconds') 
+        'ws_interpolated': xr.DataArray(interpolated_ws_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='ws_interpolated').assign_attrs(units='m'),
+        'swh_interpolated': xr.DataArray(interpolated_swh_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='swh_interpolated').assign_attrs(units='m'),
+        'hs': xr.DataArray(hs, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs').assign_attrs(units='m'),
+        'wsp_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp_cal').assign_attrs(units='m/s'),
+        'longitude': xr.DataArray(satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='longitude').assign_attrs(units='degree_east'),
+        'latitude': xr.DataArray(satellite_latitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='latitude').assign_attrs(units='degree_north'),
+        'hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs_cal').assign_attrs(units='m'),
+        'wsp': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp').assign_attrs(units='m/s'),
+        'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='model_time_swh').assign_attrs(units='seconds'),
     })
 
-
-    # Set global attributes
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['model_name'] = model_name
-    # Extract and set the initial condition time from the first GRIB file
-    initial_condition_time = extract_reference_times(found_files[0])
-    # Convert from nanoseconds to seconds
-    initial_condition_time_in_seconds = int(initial_condition_time) // 10**9
-    interpolated_dataset.attrs['initial_condition_time'] = str(initial_condition_time_in_seconds)
+    initial_condition_time = extract_reference_times(filtered_grib_files[0])
+    interpolated_dataset.attrs['initial_condition_time'] = str(int(initial_condition_time) // 10**9)
 
-    # Save to NetCDF
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
-
-#Read Grib2 files
 def process_grib_files(files):
     model_data_list = []
     valid_times_unix = []
 
     for file in files:
         ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
-        if len(ds) < 2:
-            raise ValueError(f"Required datasets not found in the file {file}")
-
         ws = ds[1]['ws'] if 'ws' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
         swh = ds[1]['swh'] if 'swh' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
-        longitude = ds[1]['longitude']
-        latitude = ds[1]['latitude']
-        time = ds[1]['time']
-        step = ds[1]['step']
-
-        valid_time = ds[1].valid_time.values
-        valid_time_unix = (valid_time - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
-        valid_times_unix.append(valid_time_unix)
+        valid_time_unix = (ds[1].valid_time.values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
 
         data = xr.Dataset({
             'wind_speed': ws,
             'significant_wave_height': swh,
-            'longitude': longitude,
-            'latitude': latitude,
-            'time': time,
-            'step': step
+            'longitude': ds[1]['longitude'],
+            'latitude': ds[1]['latitude'],
+            'time': ds[1]['time'],
+            'step': ds[1]['step']
         })
 
         model_data_list.append(data)
+        valid_times_unix.append(valid_time_unix.item())
 
-    return model_data_list, valid_times_unix
+    return model_data_list, np.array(valid_times_unix)
 
 def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times, valid_times_unix):
     mask = spatial_mask(satellite_latitudes, satellite_longitudes, model_data)
@@ -237,23 +226,28 @@ def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, sate
     if variable_data.dims != ('latitude', 'longitude', 'time'):
         variable_data = variable_data.transpose('latitude', 'longitude', 'time')
 
-    ocean_mask = ~variable_data.isnull()
-    variable_data_masked = variable_data.where(ocean_mask, np.nan)
-
     model_grid = (variable_data.coords['latitude'].values,
                   variable_data.coords['longitude'].values,
                   valid_times_unix)
 
-    if valid_satellite_points.size == 0:
-        return np.full((len(satellite_times),), np.nan)
-
-    interpolator = RegularGridInterpolator(model_grid, variable_data_masked.values, bounds_error=False, fill_value=np.nan)
+    interpolator = RegularGridInterpolator(model_grid, variable_data.values, bounds_error=False, fill_value=np.nan)
     interpolated_values = interpolator(valid_satellite_points)
 
-    full_interpolated_values = np.full((len(satellite_times),), np.nan)
+    # Calculate model times for interpolated values based on satellite times and the model's valid times
+    model_times_for_interpolated_values = np.searchsorted(valid_times_unix, satellite_times[mask], side='right') - 1
+    model_times_for_interpolated_values = valid_times_unix[model_times_for_interpolated_values]
+
+    # Set NaN in model_time_swh and model_time_ws where ws_interpolated is NaN
+    nan_indices = np.isnan(interpolated_values)
+    model_times_for_interpolated_values[nan_indices] = np.nan
+
+    full_interpolated_values = np.full(len(satellite_times), np.nan)
     full_interpolated_values[mask] = interpolated_values
 
-    return full_interpolated_values
+    full_model_times = np.full(len(satellite_times), np.nan)
+    full_model_times[mask] = model_times_for_interpolated_values
+
+    return full_interpolated_values, full_model_times
 
 def spatial_mask(satellite_latitudes, satellite_longitudes, model_data):
     min_latitude = model_data.latitude.min().values.item()
@@ -267,8 +261,8 @@ def spatial_mask(satellite_latitudes, satellite_longitudes, model_data):
 
 
 
-#NETCDF interpolator
 
+# NETCDF interpolator
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file, model_name):
     # Using glob to find all files in the directory that match the pattern
     model_data_files = glob.glob(model_data_directory + model_data_pattern)
@@ -280,7 +274,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Sort the files to ensure they are in the correct order
     model_data_files.sort()
 
-
     def extract_reference_times(file_path):
         ds = xr.open_dataset(file_path)
         reference_time = ds.time.attrs['reference_time']
@@ -288,6 +281,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         ds.close()  # Close the dataset after extraction
         return reference_time, reference_date
 
+    model_reference_time_unix = extract_reference_times(model_data_files[0])[0]  #added
 
     # Load and concatenate the model data files
     model_data_list = [xr.open_dataset(file) for file in model_data_files]
@@ -304,6 +298,9 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     model_time_seconds = np.array((model_data_combined['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
     max_model_time = model_time_seconds.max()
 
+    # Defining model_times correctly for use in interpolation
+    model_times = model_time_seconds
+
     # Load satellite data
     satellite_data = xr.open_dataset(satellite_file)
     satellite_longitudes = satellite_data['longitude'].values
@@ -313,7 +310,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     filtered_satellite_latitudes = satellite_data['latitude'].values[:len(filtered_satellite_times_unix)]
     filtered_satellite_longitudes = satellite_longitudes[:len(filtered_satellite_times_unix)]
 
-
     # Attempt to read the satellite name from the attributes or a variable
     if 'sat_name' in satellite_data.variables:
         satellite_name = satellite_data['sat_name'].values[0]  # Assuming it's stored as a variable
@@ -321,7 +317,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         satellite_name = satellite_data.attrs['satellite_name']  # Assuming it's stored as an attribute
     else:
         satellite_name = "UnknownSatellite"  # Default name if not found
-
 
     # Define the Model's Spatial Bounds
     min_latitude = model_data_combined['latitude'].min()
@@ -340,31 +335,50 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         within_lon_bounds = (satellite_longitudes >= min_lon_val) & (satellite_longitudes <= max_lon_val)
         return within_lat_bounds & within_lon_bounds
 
-    # Function to prepare and interpolate model data
-    def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times_unix):
+    def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times_unix, valid_times_unix):
         mask = spatial_mask(satellite_latitudes, satellite_longitudes)
         valid_satellite_points = np.array([satellite_latitudes[mask], satellite_longitudes[mask], satellite_times_unix[mask]]).T
 
-        variable_data = model_data[variable_name].transpose('latitude', 'longitude', 'time')
-        ocean_mask = ~variable_data.isnull()
-        variable_data_masked = variable_data.where(ocean_mask, np.nan)
-        model_grid = (variable_data.coords['latitude'].values, variable_data.coords['longitude'].values, model_time_seconds)
-        interpolator = RegularGridInterpolator(model_grid, variable_data_masked.values, bounds_error=False, fill_value=np.nan)
+        variable_data = model_data[variable_name]
+        # Ensure the data is in the correct dimension order
+        if variable_data.dims != ('latitude', 'longitude', 'time'):
+            variable_data = variable_data.transpose('latitude', 'longitude', 'time')
 
+        model_grid = (variable_data.coords['latitude'].values,
+                      variable_data.coords['longitude'].values,
+                      valid_times_unix)
+
+        interpolator = RegularGridInterpolator(model_grid, variable_data.values, bounds_error=False, fill_value=np.nan)
         interpolated_values = interpolator(valid_satellite_points)
-        full_interpolated_values = np.full(satellite_latitudes.shape, np.nan)
+
+        # Handle model times for interpolated values based on satellite times
+        model_times_for_interpolated_values = np.searchsorted(valid_times_unix, satellite_times_unix[mask], side='right') - 1
+        model_times_for_interpolated_values = valid_times_unix[model_times_for_interpolated_values]
+
+        # Apply NaN where interpolated values are NaN
+        nan_indices = np.isnan(interpolated_values)
+        model_times_for_interpolated_values[nan_indices] = np.nan
+
+        full_interpolated_values = np.full(len(satellite_times_unix), np.nan)
         full_interpolated_values[mask] = interpolated_values
 
-        return full_interpolated_values
+        full_model_times = np.full(len(satellite_times_unix), np.nan)
+        full_model_times[mask] = model_times_for_interpolated_values
 
-    # Perform interpolation using the modified function
-    interpolated_htsgw_surface_values = prepare_and_interpolate(model_data_combined, 'HTSGW_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
-    interpolated_wind_surface_values = prepare_and_interpolate(model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix)
+        return full_interpolated_values, full_model_times
+
+    # Interpolate for each variable
+    interpolated_htsgw_surface_values, interpolated_htsgw_surface_times = prepare_and_interpolate(
+        model_data_combined, 'HTSGW_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix, model_time_seconds)
+
+    interpolated_wind_surface_values, interpolated_wind_surface_times = prepare_and_interpolate(
+        model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix, model_time_seconds)
 
     fcst_hr = np.full_like(interpolated_wind_surface_values, np.nan, dtype='float64')
+
     for i, value in enumerate(interpolated_wind_surface_values):
         if not np.isnan(value):
-            fcst_hr[i] = filtered_satellite_times_unix[i] 
+            fcst_hr[i] = filtered_satellite_times_unix[i]
 
     reference_time, reference_date = extract_reference_times(model_data_files[0])
 
@@ -401,8 +415,8 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     hs_cal_dataarray.attrs['units'] = 'm'
     wsp_cal_dataarray = xr.DataArray(wsp_cal.values, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_cal_time_averaged_satellite')
     wsp_dataarray.attrs['units'] = 'm/s'
-    future_time_dataarray = xr.DataArray(fcst_hr, dims=['time'], name='fcst_time').assign_attrs(units='seconds')
-           
+    fcst_hr_dataarray = xr.DataArray(interpolated_wind_surface_times, coords={'time': satellite_time_unix}, dims=['time'], name='fcst_time').assign_attrs(units='seconds') #fcst_hr
+
 
     # Combine into a single dataset / 'time': satellite_time_unix
     interpolated_dataset = xr.Dataset({
@@ -415,7 +429,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         'latitude': latitude_dataarray,
         'hs_cal_time_averaged_satellite':hs_cal_dataarray,
         'wsp_cal_time_averaged_satellite':wsp_dataarray,
-        'fcst_hr': future_time_dataarray
+        'fcst_hr': fcst_hr_dataarray
     })
 
     # Before saving your dataset, add the reference times as attributes
@@ -423,12 +437,10 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     interpolated_dataset.attrs['reference_time'] = reference_time
     base_output_filename = "ProcessedData"  # You might want to make this more specific or pass it as an argument
     interpolated_dataset.attrs['model_name'] = model_name
+
     # Save the combined dataset to a NetCDF file
-    output_filename = f"{base_output_filename}_{satellite_name}_{reference_date}.nc"  # Adjusted to use reference_date 
+    output_filename = f"{base_output_filename}_{satellite_name}_{reference_date}.nc"  # Adjusted to use reference_date
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
-
-
-
 
 
 
@@ -441,7 +453,6 @@ def main():
     satellite_file = sys.argv[4]
     output_file = sys.argv[5]
     model_name = sys.argv[6]  # New argument for satellite name
- 
 
     print(f"File type: {file_type}")
     print(f"Data directory: {data_directory}")
@@ -449,7 +460,6 @@ def main():
     print(f"Satellite file: {satellite_file}")
     print(f"Output file: {output_file}")
     print(f"model name: {model_name}")
-
 
     # Call the appropriate function based on file type
     if file_type == 'grib2':
@@ -461,6 +471,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-
 
 
