@@ -381,22 +381,22 @@ def savesat(AODN,wconfig,altsel):
     vfwndcal.long_name = 'calibrated_wind_speed'
 
     #Add additional variables that are used in creation of the file
-    vdlim = ncfile.createVariable('dlim',np.dtype('int16'),('sname')
+    vdlim = ncfile.createVariable('dlim',np.dtype('int16'),('sname'))
     vdlim.long_name = 'MaxDistForAveraging'
     vdlim.units = 'm'
     vdlim[:] = np.array(wconfig['dlim'])
 
-    vmaxti = ncfile.createVariable('maxti',np.dtype('int16'),('sname')
+    vmaxti = ncfile.createVariable('maxti',np.dtype('int16'),('sname'))
     vmaxti.long_name = 'MaxTimeDistForAveraging'
     vmaxti.units = 'seconds'
     vmaxti[:] = np.array(wconfig['maxti'])
 
-    vtstep = ncfile.createVariable('tstep',np.dtype('int16'),('sname')
+    vtstep = ncfile.createVariable('tstep',np.dtype('int16'),('sname'))
     vtstep.long_name = 'time_step'
     vtstep.units = 'seconds'
     vtstep[:] = np.array(time_step)
 
-    vqcvar = ncfile.createVariable('qc_var',np.dtype('int16'),('sname')
+    vqcvar = ncfile.createVariable('qc_var',np.dtype('int16'),('sname'))
     vqcvar.long_name = 'QCvar'
     vqcvar[:] = np.array(wconfig['qc'])
     if wconfig['qc']!=0:
