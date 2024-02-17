@@ -374,6 +374,62 @@ def savesat(AODN,wconfig,altsel):
     vflat.units = 'degrees_north' ; vflon.units = 'degrees_east'
     vfwnd.units = 'm/s' ; vfwndcal.units = 'm/s'
     vfhs.units = 'm'; vfhscal.units = 'm'
+    # Add Details
+    vfhs.long_name = 'sigificant_wave_height'
+    vfhscal.long_name = 'calibrated_sigificant_wave_height'
+    vfwnd.long_name = 'wind_speed'
+    vfwndcal.long_name = 'calibrated_wind_speed'
+
+    #Add additional variables that are used in creation of the file
+    vdlim = ncfile.createVariable('dlim',np.dtype('int16'),('sname')
+    vdlim.long_name = 'MaxDistForAveraging'
+    vdlim.units = 'm'
+    vdlim[:] = np.array(wconfig['dlim'])
+
+    vmaxti = ncfile.createVariable('maxti',np.dtype('int16'),('sname')
+    vmaxti.long_name = 'MaxTimeDistForAveraging'
+    vmaxti.units = 'seconds'
+    vmaxti[:] = np.array(wconfig['maxti'])
+
+    vtstep = ncfile.createVariable('tstep',np.dtype('int16'),('sname')
+    vtstep.long_name = 'time_step'
+    vtstep.units = 'seconds'
+    vtstep[:] = np.array(time_step)
+
+    vqcvar = ncfile.createVariable('qc_var',np.dtype('int16'),('sname')
+    vqcvar.long_name = 'QCvar'
+    vqcvar[:] = np.array(wconfig['qc'])
+    if wconfig['qc']!=0:
+        vmindepth = ncfile.createVariable('qc_mindepth',np.dtype('float32'),('sname'))
+        vmindepth.long_name = 'Minimum_Depth_QCvar'
+        vmindepth.units = 'm'
+        vmindepth[:] = np.array(wconfig['mindepth'])
+
+        vmindist = ncfile.createVariable('qc_mindist',np.dtype('float32'),('sname'))
+        vmindist.long_name = 'Minimum_Distance_From_Coast_QCvar'
+        vmindist.units = 'm'
+        vmindist[:] = np.array(wconfig['minfc'])
+
+        vhsmin = ncfile.createVariable('qc_hsmin',np.dtype('float32'),('sname'))
+        vhsmin.long_name = 'Minimum_HS_QCvar'
+        vhsmin.units = 'm'
+        vhsmin[:] = np.array(wconfig['hsmin'])
+
+        vhsmax = ncfile.createVariable('qc_hsmax',np.dtype('float32'),('sname'))
+        vhsmax.long_name = 'Maximum_HS_QCvar'
+        vhsmax.units = 'm'
+        vhsmax[:] = np.array(wconfig['hsmax'])
+
+        vwspmin = ncfile.createVariable('qc_wspmin',np.dtype('float32'),('sname'))
+        vwspmin.long_name = 'Minimum_WindSpeed_QCvar'
+        vwspmin.units = 'm/s'
+        vwspmin[:] = np.array(wconfig['wspmin'])
+
+        vwspmax = ncfile.createVariable('qc_wspmax',np.dtype('float32'),('sname'))
+        vwspmax.long_name = 'Maximum_WindSpeed_QCvar'
+        vwspmax.units = 'm/s'
+        vwspmax[:] = np.array(wconfig['wspmax'])
+
     # Allocate Data
     vsname[:] = np.array(altsel).astype('str')
     vflat[:] = np.array(AODN['LATITUDE']); vflon[:] = np.array(AODN['LONGITUDE'])
@@ -382,7 +438,7 @@ def savesat(AODN,wconfig,altsel):
     vfwnd[:] = np.array(AODN['WSPD']); vfwndcal[:] = np.array(AODN['WSPD_CAL'])
     ncfile.close()
     print(' ')
-    print("netcdf ok: "+fname+".nc")
+    print("netcdf output: "+fname+".nc")
 
     del vft, vfst, vflat, vflon, vfhs,vfhscal, vfwnd, vfwndcal
 
@@ -390,7 +446,7 @@ def savesat(AODN,wconfig,altsel):
         AODN.iloc[:, 2:] = AODN.iloc[:, 2:].round(3)
         AODN.to_csv(fname+".csv", index=False)
 
-    print("text file ok: "+fname+".csv")
+    print("text file output: "+fname+".csv")
 
 
 if __name__ == "__main__":
