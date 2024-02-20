@@ -133,6 +133,10 @@ def along_track(AODN,atime,wconfig):
                     swspcal = np.append(swspcal,np.nanmean(AODN['WSPD_CAL'][indt[indseg]]))
                     # print(repr(t)+" "+repr(i))
                     i=i+1
+    swdepth = np.array(swdepth)
+    swdistcoast = np.array(swdistcoast)
+    shs = np.array(shs)
+    swsp = np.array(swsp)
 
     if wconfig['qc']==0:
         indq = np.where( (stime>=adatemin) & (stime<=adatemax) )
@@ -462,6 +466,10 @@ if __name__ == "__main__":
     # read and organize AODN altimeter data for the mission and domain of interest
     AODN = wread.aodn_altimeter(altsel,wconfig,datemin,datemax)
     # AODN.to_csv(wconfig['path_out']+"AODN_altimeterSelection_"+datemin+"to"+datemax+".csv", index=False)
+    if AODN.empty:
+        print(f"No data available for {altsel} satellite in the specified time range: {datemin} to {datemax}.")
+        print("Please enter a time range covered by the satellite.")
+        sys.exit(1)
 
     # date interval in seconds since 1970, user selection
     adatemin= np.double(timegm( time.strptime(datemin, '%Y%m%d%H')))
@@ -470,7 +478,11 @@ if __name__ == "__main__":
 
     if wconfig['tspace']==2:
         AODN_ALONGTRACK = along_track(AODN,atime,wconfig)
-        savesat(AODN_ALONGTRACK,wconfig,altsel)
+        if not AODN_ALONGTRACK.empty:
+            savesat(AODN_ALONGTRACK,wconfig,altsel)
+        else:
+            print(f"No processed data available for {altsel} in the specified time range after processing.")
+            sys.exit(1)
 
     elif wconfig['tspace']==1:
         AODN_GRID = gridded(AODN,atime,wconfig)
