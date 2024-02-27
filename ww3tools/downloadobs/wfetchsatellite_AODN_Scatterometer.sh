@@ -27,7 +27,7 @@
 #  So if you want to download the whole database, you have to run
 #   this code for each satellite and hemisphere.
 #  Examples (from linux/terminal command line):
-#   nohup ./wfetchsatellite_AODN_Scatterometer.sh RAPIDSCAT /media/data/observations/satellite/scatterometer/AODN_scat/RAPIDSCAT S >> nohup_RAPIDSCAT_HS.out 2>&1 &
+#   nohup bash wfetchsatellite_AODN_Scatterometer.sh RAPIDSCAT /media/data/observations/satellite/scatterometer/AODN_scat/RAPIDSCAT S >> nohup_RAPIDSCAT_HS.out 2>&1 &
 #
 # OUTPUT:
 #  multiple AODN satellite data (netcdf format) saved in the given 

@@ -26,7 +26,7 @@
 #  So if you want to download the whole database, you have to run
 #   this code for each satellite and hemisphere.
 #  Examples (from linux/terminal command line):
-#   nohup ./wfetchsatellite_AODN_Altimeter.sh TOPEX /media/data/observations/satellite/altimeter/AODN_altm/TOPEX S >> nohup_TOPEX_HS.out 2>&1 &
+#   nohup bash wfetchsatellite_AODN_Altimeter.sh TOPEX /media/data/observations/satellite/altimeter/AODN_altm/TOPEX S >> nohup_TOPEX_HS.out 2>&1 &
 #
 # OUTPUT:
 #  multiple AODN satellite data (netcdf format) saved in the given 
