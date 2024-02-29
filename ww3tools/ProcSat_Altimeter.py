@@ -397,7 +397,7 @@ def savesat(AODN,wconfig,altsel):
         vmindist = ncfile.createVariable('qc_mindist',np.dtype('float32'),('sname'))
         vmindist.long_name = 'Minimum_Distance_From_Coast_QCvar'
         vmindist.units = 'm'
-        vmindist[:] = np.array(wconfig['minfc'])
+        vmindist[:] = np.array(wconfig['mindfc'])
 
         vhsmin = ncfile.createVariable('qc_hsmin',np.dtype('float32'),('sname'))
         vhsmin.long_name = 'Minimum_HS_QCvar'
