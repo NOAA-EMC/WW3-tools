@@ -115,6 +115,7 @@ from scipy.interpolate import RegularGridInterpolator
 import cfgrib
 import os
 import pandas as pd
+import argparse
 
 # Function to extract reference times from a GRIB file
 def extract_reference_times(file):
@@ -446,13 +447,24 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
 
 
 def main():
-    # Command-line arguments
-    file_type = sys.argv[1].lower()  # Expecting 'grib2' or 'nc'
-    data_directory = sys.argv[2]
-    data_pattern = sys.argv[3]
-    satellite_file = sys.argv[4]
-    output_file = sys.argv[5]
-    model_name = sys.argv[6]  # New argument for satellite name
+
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-t', '--typefile', help="Type of Model File, 'grib2' or 'nc'",required=True)
+    ap.add_argument('-d', '--datadir', help="Data Directory for Model Files", required=True)
+    ap.add_argument('-p', '--pattern', help="Pattern of Model Files", required=True)
+    ap.add_argument('-s', '--satfile', help="Satellite File", required=True)
+    ap.app_argument('-o', '--outfile', help="Name of Output File", required=True)
+    ap.add_argument('-m', '--model', help="String Identifier of Model", required=True)
+
+    MyArgs = ap.parse_args()
+
+    file_type = MyArgs.typefile
+    data_directory = MyArgs.datadir
+    data_pattern = MyArgs.pattern
+    satellite_file = MyArgs.satfile 
+    output_file = MyArgs.outfile
+    model_name = MyArgs.model
 
     print(f"File type: {file_type}")
     print(f"Data directory: {data_directory}")
