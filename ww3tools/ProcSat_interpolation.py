@@ -177,14 +177,14 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
 
     interpolated_dataset = xr.Dataset({
         'time': time_dataarray,
-        'ws_interpolated': xr.DataArray(interpolated_ws_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='ws_interpolated').assign_attrs(units='m'),
-        'swh_interpolated': xr.DataArray(interpolated_swh_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='swh_interpolated').assign_attrs(units='m'),
-        'hs': xr.DataArray(hs, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs').assign_attrs(units='m'),
-        'wsp_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp_cal').assign_attrs(units='m/s'),
-        'longitude': xr.DataArray(satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='longitude').assign_attrs(units='degree_east'),
         'latitude': xr.DataArray(satellite_latitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='latitude').assign_attrs(units='degree_north'),
-        'hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='hs_cal').assign_attrs(units='m'),
-        'wsp': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='wsp').assign_attrs(units='m/s'),
+        'longitude': xr.DataArray(satellite_longitudes, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='longitude').assign_attrs(units='degree_east'),
+        'swh_interpolated': xr.DataArray(interpolated_swh_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='model_hs').assign_attrs(units='m'),
+        'ws_interpolated': xr.DataArray(interpolated_ws_values, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='model_wnd').assign_attrs(units='m'),
+        'hs': xr.DataArray(hs, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_hs').assign_attrs(units='m'),
+        'hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_hs_cal').assign_attrs(units='m'),
+        'wsp': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd').assign_attrs(units='m/s'),
+        'wsp_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd_cal').assign_attrs(units='m/s'),
         'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='model_time_swh').assign_attrs(units='seconds'),
     })
 
