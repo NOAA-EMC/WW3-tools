@@ -79,25 +79,26 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Implementation details here...
     pass
 
-def main():
-    # Parse command-line arguments
-    file_type = sys.argv[1].lower()  # 'grib2' or 'nc'
-    data_directory = sys.argv[2]
-    data_pattern = sys.argv[3]
-    satellite_file = sys.argv[4]
-    output_file = sys.argv[5]
-    model_name = sys.argv[6] 
 
-    # Process based on file type
-    if file_type == 'grib2':
-        interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, satellite_name, ic_time)
-    elif file_type == 'nc':
-        interpolate_netcdf(data_directory, data_pattern, satellite_file, output_file)
-    else:
-        print("Invalid file type specified. Use 'grib2' or 'nc'.")
 
-if __name__ == "__main__":
-    main()
+usage: ProcSat_interpolation.py [-h] -t TYPEFILE -d DATADIR -p PATTERN -s SATFILE -o OUTDIR -f FILEOUT -m MODEL
+
+options:
+  -h, --help            show this help message and exit
+  -t TYPEFILE, --typefile TYPEFILE
+                        Type of Model File, 'grib2' or 'nc'
+  -d DATADIR, --datadir DATADIR
+                        Data Directory for Model Files
+  -p PATTERN, --pattern PATTERN
+                        Pattern of Model Files
+  -s SATFILE, --satfile SATFILE
+                        Satellite File
+  -o OUTDIR, --outdir OUTDIR
+                        Directory Path for Output
+  -f FILEOUT, --fileout FILEOUT
+                        Name of Output File
+  -m MODEL, --model MODEL
+                        String Identifier of Model
 
 # Author: Ghazal Mohammadpour
 # Email: ghazal.mohammadpour@noaa.gov
@@ -454,7 +455,8 @@ def main():
     ap.add_argument('-d', '--datadir', help="Data Directory for Model Files", required=True)
     ap.add_argument('-p', '--pattern', help="Pattern of Model Files", required=True)
     ap.add_argument('-s', '--satfile', help="Satellite File", required=True)
-    ap.app_argument('-o', '--outfile', help="Name of Output File", required=True)
+    ap.add_argument('-o', '--outdir', help="Directory Path for Output", required=True)
+    ap.add_argument('-f', '--fileout', help="Name of Output File", required=True) 
     ap.add_argument('-m', '--model', help="String Identifier of Model", required=True)
 
     MyArgs = ap.parse_args()
@@ -462,16 +464,24 @@ def main():
     file_type = MyArgs.typefile
     data_directory = MyArgs.datadir
     data_pattern = MyArgs.pattern
-    satellite_file = MyArgs.satfile 
-    output_file = MyArgs.outfile
+    satellite_file = MyArgs.satfile
+    path_out = MyArgs.outdir
+    outfilename = MyArgs.fileout
     model_name = MyArgs.model
 
     print(f"File type: {file_type}")
     print(f"Data directory: {data_directory}")
     print(f"Data pattern: {data_pattern}")
     print(f"Satellite file: {satellite_file}")
-    print(f"Output file: {output_file}")
-    print(f"model name: {model_name}")
+    print(f"Output directory: {path_out}")
+    print(f"Output file: {outfilename}")
+    print(f"Model name: {model_name}")
+
+    #create path_out directory if it does not exist: 
+    if not os.path.isdir(path_out):
+        os.makedirs(path_out)
+
+    output_file=path_out+outfilename
 
     # Call the appropriate function based on file type
     if file_type == 'grib2':
