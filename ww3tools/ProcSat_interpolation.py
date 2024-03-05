@@ -186,13 +186,16 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
         'obs_hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_hs_cal').assign_attrs(units='m'),
         'obs_wnd': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd').assign_attrs(units='m/s'),
         'obs_wnd_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd_cal').assign_attrs(units='m/s'),
-        'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='fcst_hr').assign_attrs(units='seconds'),
+        'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='fcst_hr').assign_attrs(units='hours'),
     })
 
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['model_name'] = model_name
     initial_condition_time = extract_reference_times(filtered_grib_files[0])
-    interpolated_dataset.attrs['initial_condition_time'] = str(int(initial_condition_time) // 10**9)
+    initial_condition_time_unix = int(initial_condition_time) // 10**9
+    fcst_hr2 = (interpolated_dataset['fcst_hr'].values - initial_condition_time_unix) / 3600
+    interpolated_dataset['fcst_hr'] = xr.DataArray(fcst_hr2, dims=['time'], name='fcst_hr2').assign_attrs(description="Forecast hour relative to initial condition time", units='hours')
+    interpolated_dataset.attrs['initial_condition_time'] =f"{str(int(initial_condition_time_unix))} seconds since 1970-01-01 00:00:00"
 
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
@@ -377,6 +380,8 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix, model_time_seconds)
 
     fcst_hr = np.full_like(interpolated_wind_surface_values, np.nan, dtype='float64')
+    fcst_hr2_ws = (interpolated_wind_surface_times - model_reference_time_unix) / 3600
+    print(fcst_hr2_ws)
 
     for i, value in enumerate(interpolated_wind_surface_values):
         if not np.isnan(value):
@@ -417,7 +422,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     hs_cal_dataarray.attrs['units'] = 'm'
     wsp_cal_dataarray = xr.DataArray(wsp_cal.values, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_cal_time_averaged_satellite')
     wsp_dataarray.attrs['units'] = 'm/s'
-    fcst_hr_dataarray = xr.DataArray(interpolated_wind_surface_times, coords={'time': satellite_time_unix}, dims=['time'], name='fcst_time').assign_attrs(units='seconds') #fcst_hr
+    fcst_hr_dataarray = xr.DataArray(fcst_hr2_ws, coords={'time': satellite_time_unix}, dims=['time'], name='fcst_time').assign_attrs(units='hours') #fcst_hr
 
 
     # Combine into a single dataset / 'time': satellite_time_unix
@@ -437,6 +442,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Before saving your dataset, add the reference times as attributes
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['reference_time'] = reference_time
+    interpolated_dataset.attrs['reference_time'] = f"{reference_time} seconds since 1970-01-01 00:00:00"
     base_output_filename = "ProcessedData"  # You might want to make this more specific or pass it as an argument
     interpolated_dataset.attrs['model_name'] = model_name
 
