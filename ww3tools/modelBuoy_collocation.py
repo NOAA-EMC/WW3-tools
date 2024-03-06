@@ -108,7 +108,7 @@ fnetcdf="NETCDF4"
 
 # Paths
 # ndbcp="/data/buoys/NDBC/wparam"
-ndbcp="/work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam"
+ndbcp="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam"
 # Copernicus buoys
 # copernp="/data/buoys/Copernicus/wtimeseries"
 copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
@@ -122,7 +122,7 @@ if len(sys.argv) >= 2 :
 	# # import os; os.system("ls -d $PWD/*tab.nc > ww3list.txt &")
 	wlist=np.atleast_1d(np.loadtxt(sys.argv[1],dtype=str))
 	ftag=str(sys.argv[1]).split('list')[1].split('.txt')[0]
-	print(' Reading ww3 list '+str(sys.argv[1]))
+	print(' Reading ww3 list '+ str(sys.argv[1]))
 	print(' Tag '+ftag)
 if len(sys.argv) >= 3:
 	forecastds=int(sys.argv[2])
@@ -168,6 +168,7 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 		if str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
 			result = wread.bull_tar(wlist[i])
 
+		print("Result keys:", result.keys())
 		at=result['time']
 		fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
 		if i==0:
@@ -282,14 +283,6 @@ elif str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 
 					stname=np.append(stname,astname); del astname
 
-				funits=f.variables['time'].units
-				if str(funits).split(' ')[0] == 'seconds':
-					tincr=1
-				elif str(funits).split(' ')[0] == 'hours':
-					tincr=3600
-				elif str(funits).split(' ')[0] == 'days':
-					tincr=24*3600
-
 			ahs = np.array(f.variables['hs'][:,:]).T
 
 			if 'th1m' in f.variables.keys():
@@ -320,9 +313,7 @@ elif str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 			else:
 				atm = np.array(np.copy(ahs*nan))
 
-			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','')
-			at = np.array(f.variables['time'][:]*tincr + timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
-
+			at = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
 			f.close(); del f
 			fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
 			if t==0:
@@ -368,7 +359,7 @@ for b in range(0,np.size(stname)):
 	ahs=[]
 	try:
 
-		ahs=[];atm=[];atp=[];adm=[];atime=[]
+		ahs=[];atm=[];adm=[];atime=[]
 		for y in yrange:
 
 			f=nc.Dataset(ndbcp+"/"+stname[b]+"h"+repr(y)+".nc")
@@ -385,7 +376,7 @@ for b in range(0,np.size(stname)):
 				atm = np.array(np.copy(ahs*nan))	
 
 			if 'dominant_wpd' in f.variables.keys():
-				atp = np.append(atp,f.variables['dominant_wpd'][:,0,0])
+				atp = np.append(atm,f.variables['dominant_wpd'][:,0,0])
 			else:
 				atp = np.array(np.copy(ahs*nan))			
 			
