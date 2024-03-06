@@ -108,10 +108,10 @@ fnetcdf="NETCDF4"
 
 # Paths
 # ndbcp="/data/buoys/NDBC/wparam"
-ndbcp="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam"
+ndbcp="/work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam"
 # Copernicus buoys
 # copernp="/data/buoys/Copernicus/wtimeseries"
-copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
+#copernp="/work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries"
 print('  ')
 
 # Options of including grid and cyclone information
@@ -122,7 +122,7 @@ if len(sys.argv) >= 2 :
 	# # import os; os.system("ls -d $PWD/*tab.nc > ww3list.txt &")
 	wlist=np.atleast_1d(np.loadtxt(sys.argv[1],dtype=str))
 	ftag=str(sys.argv[1]).split('list')[1].split('.txt')[0]
-	print(' Reading ww3 list '+ str(sys.argv[1]))
+	print(' Reading ww3 list '+str(sys.argv[1]))
 	print(' Tag '+ftag)
 if len(sys.argv) >= 3:
 	forecastds=int(sys.argv[2])
@@ -168,7 +168,6 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 		if str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
 			result = wread.bull_tar(wlist[i])
 
-		print("Result keys:", result.keys())
 		at=result['time']
 		fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
 		if i==0:
@@ -283,6 +282,14 @@ elif str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 
 					stname=np.append(stname,astname); del astname
 
+				funits=f.variables['time'].units
+				if str(funits).split(' ')[0] == 'seconds':
+					tincr=1
+				elif str(funits).split(' ')[0] == 'hours':
+					tincr=3600
+				elif str(funits).split(' ')[0] == 'days':
+					tincr=24*3600
+
 			ahs = np.array(f.variables['hs'][:,:]).T
 
 			if 'th1m' in f.variables.keys():
@@ -313,7 +320,9 @@ elif str(wlist[0]).split('/')[-1].split('.')[-1]=='nc':
 			else:
 				atm = np.array(np.copy(ahs*nan))
 
-			at = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+			ftunits=str(f.variables['time'].units).split('since')[1][1::].replace('T',' ').replace('+00:00','')
+			at = np.array(f.variables['time'][:]*tincr + timegm( strptime(ftunits,'%Y-%m-%d %H:%M:%S') )).astype('double')
+
 			f.close(); del f
 			fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
 			if t==0:
@@ -351,184 +360,112 @@ btp=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 bdm=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 bdp=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 lat=np.zeros(np.size(stname),'f')*np.nan; lon=np.zeros(np.size(stname),'f')*np.nan
+bwind_spd = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+
 # help reading NDBC buoys, divided by year
 yrange=np.array(np.arange(time.gmtime(mtime.min())[0],time.gmtime(mtime.min())[0]+1,1)).astype('int')
 # loop buoys
 for b in range(0,np.size(stname)):
+    ahs=[]
+    try:
+        ahs=[];atm=[];adm=[];atime=[]
+        for y in yrange:
+            f=nc.Dataset(ndbcp+"/"+stname[b]+"h"+repr(y)+".nc")
+            if 'wave_height' in f.variables.keys():
+                ahs = np.append(ahs,f.variables['wave_height'][:,0,0])
+            elif 'hs' in f.variables.keys():
+                ahs = np.append(ahs,f.variables['hs'][:,0,0])
+            elif 'swh' in f.variables.keys():
+                ahs = np.append(ahs,f.variables['swh'][:,0,0])
 
-	ahs=[]
-	try:
+            if 'average_wpd' in f.variables.keys():
+                atm = np.append(atm,f.variables['average_wpd'][:,0,0])
+            else:
+                atm = np.array(np.copy(ahs*nan))
 
-		ahs=[];atm=[];adm=[];atime=[]
-		for y in yrange:
+            if 'dominant_wpd' in f.variables.keys():
+                atp = np.append(atm,f.variables['dominant_wpd'][:,0,0])
+            else:
+                atp = np.array(np.copy(ahs*nan))
 
-			f=nc.Dataset(ndbcp+"/"+stname[b]+"h"+repr(y)+".nc")
-			if 'wave_height' in f.variables.keys():
-				ahs = np.append(ahs,f.variables['wave_height'][:,0,0])
-			elif 'hs' in f.variables.keys():
-				ahs = np.append(ahs,f.variables['hs'][:,0,0])
-			elif 'swh' in f.variables.keys():			
-				ahs = np.append(ahs,f.variables['swh'][:,0,0])
+            if 'mean_wave_dir' in f.variables.keys():
+                adm = np.append(adm,f.variables['mean_wave_dir'][:,0,0])
+            else:
+                adm = np.array(np.copy(ahs*nan))
 
-			if 'average_wpd' in f.variables.keys():		
-				atm = np.append(atm,f.variables['average_wpd'][:,0,0])
-			else:
-				atm = np.array(np.copy(ahs*nan))	
+            if 'latitude' in f.variables.keys():
+                lat[b] = f.variables['latitude'][:]
+            elif 'LATITUDE' in f.variables.keys():
+                lat[b] = f.variables['LATITUDE'][:]
+            else:
+                lat[b] = nan
 
-			if 'dominant_wpd' in f.variables.keys():
-				atp = np.append(atm,f.variables['dominant_wpd'][:,0,0])
-			else:
-				atp = np.array(np.copy(ahs*nan))			
-			
-			if 'mean_wave_dir' in f.variables.keys():
-				adm = np.append(adm,f.variables['mean_wave_dir'][:,0,0])
-			else:
-				adm = np.array(np.copy(ahs*nan))
+            if 'longitude' in f.variables.keys():
+                lon[b] = f.variables['longitude'][:]
+            elif 'LONGITUDE' in f.variables.keys():
+                lon[b] = f.variables['LONGITUDE'][:]
+            else:
+                lon[b] = nan
+            # This block is no longer directly under an 'else', so it's a separate check.
+            if 'wind_spd' in f.variables.keys():
+                awind_spd = np.append(awind_spd, f.variables['wind_spd'][:, 0, 0])
+            else:
+                awind_spd = nan
 
-			if 'latitude' in f.variables.keys():
-				lat[b] = f.variables['latitude'][:]
-			elif 'LATITUDE' in f.variables.keys():
-				lat[b] = f.variables['LATITUDE'][:]
-			else:
-				lat[b] = nan
+            atime = np.append(atime,np.array(f.variables['time'][:]).astype('double'))
 
-			if 'longitude' in f.variables.keys():		
-				lon[b] = f.variables['longitude'][:]
-			elif 'LONGITUDE' in f.variables.keys():		
-				lon[b] = f.variables['LONGITUDE'][:]
-			else:
-				lon[b] = nan
+            f.close(); del f
 
-			atime = np.append(atime,np.array(f.variables['time'][:]).astype('double'))
+        adp = adm*np.nan # no peak direction available in this format
 
-			f.close(); del f
+    except:
+        ahs=[]
 
-		adp = adm*np.nan # no peak direction available in this format
+    if np.size(ahs)>0:
+        # First layer of simple quality-control
+        indq=np.where((ahs>30.)|(ahs<0.0))
+        if np.size(indq)>0:
+            ahs[indq]=np.nan; del indq
 
-	except:
-		try:
-			f=nc.Dataset(copernp+"/GL_TS_MO_"+stname[b]+".nc")
-			if 'VHM0' in f.variables.keys():
-				ahs = np.nanmean(f.variables['VHM0'][:,:],axis=1)
-			elif 'VAVH' in f.variables.keys():
-				ahs = np.nanmean(f.variables['VAVH'][:,:],axis=1)
-			elif 'VGHS' in f.variables.keys():				
-				ahs = np.nanmean(f.variables['VGHS'][:,:],axis=1)						
-			elif 'significant_swell_wave_height' in f.variables.keys():
-				ahs = np.nanmean(f.variables['significant_swell_wave_height'][:,:],axis=1)
-			elif 'sea_surface_significant_wave_height' in f.variables.keys():
-				ahs = np.nanmean(f.variables['sea_surface_significant_wave_height'][:,:],axis=1)
-			elif 'SWHT' in f.variables.keys():
-				ahs = np.nanmean(f.variables['SWHT'][:,:],axis=1)
-			elif 'wave_height_h1d3' in f.variables.keys():
-				ahs = np.nanmean(f.variables['wave_height_h1d3'][:,:],axis=1)
-			elif 'spectral_significant_wave_height' in f.variables.keys():
-				ahs = np.nanmean(f.variables['spectral_significant_wave_height'][:,:],axis=1)
+        indq=np.where((atm>40.)|(atm<0.0))
+        if np.size(indq)>0:
+            atm[indq]=np.nan; del indq
 
-			if 'VTM02' in f.variables.keys():
-				atm = np.nanmean(f.variables['VTM02'][:,:],axis=1)
-			elif 'VGTA' in f.variables.keys():
-				atm = np.nanmean(f.variables['VGTA'][:,:],axis=1)
-			else:
-				atm = ahs*nan
+        indq=np.where((atp>40.)|(atp<0.0))
+        if np.size(indq)>0:
+            atp[indq]=np.nan; del indq
 
-			if 'VTPK' in f.variables.keys():
-				atp = np.nanmean(f.variables['VTPK'][:,:],axis=1)
-			elif 'dominant_wave_period' in f.variables.keys():
-				atp = np.nanmean(f.variables['dominant_wave_period'][:,:],axis=1)
-			elif 'sea_surface_wave_period_at_spectral_density_maximum' in f.variables.keys():
-				atp = np.nanmean(f.variables['sea_surface_wave_period_at_spectral_density_maximum'][:,:],axis=1)
-			else:
-				atp = ahs*nan
+        indq=np.where((adm>360.)|(adm<-180.))
+        if np.size(indq)>0:
+            adm[indq]=np.nan; del indq
 
-			if 'VMDR' in f.variables.keys():	
-				adm = np.nanmean(f.variables['VMDR'][:,:],axis=1)
-			else:
-				adm = ahs*nan
+        indq=np.where((adp>360.)|(adp<-180.))
+        if np.size(indq)>0:
+            adp[indq]=np.nan; del indq
 
-			if 'LATITUDE' in f.variables.keys():
-				lat[b] = np.nanmean(f.variables['LATITUDE'][:])
-			elif 'latitude' in f.variables.keys():
-				lat[b] = np.nanmean(f.variables['latitude'][:])
-			elif 'LAT' in f.variables.keys():
-				lat[b] = np.nanmean(f.variables['LAT'][:])
-			elif 'lat' in f.variables.keys():
-				lat[b] = np.nanmean(f.variables['lat'][:])
-			else:
-				lat[b] = nan
+        c=0
+        for t in range(0,np.size(mtime)):
+            indt=np.where(np.abs(atime-mtime[t])<1800.)
+            if np.size(indt)>0:
+                if np.any(ahs[indt[0]].mask==False):
+                    bhs[b,t] = np.nanmean(ahs[indt[0]][ahs[indt[0]].mask==False])
+                    c=c+1
+                if np.any(atm[indt[0]].mask==False):
+                    btm[b,t] = np.nanmean(atm[indt[0]][atm[indt[0]].mask==False])
+                if np.any(atp[indt[0]].mask==False):
+                    btp[b,t] = np.nanmean(atp[indt[0]][atp[indt[0]].mask==False])
+                if np.any(adm[indt[0]].mask==False):
+                    bdm[b,t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask==False])
+                if np.any(adp[indt[0]].mask==False):
+                    bdp[b,t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask==False])
+                if np.any(awind_spd[indt[0]].mask == False):
+                    bwind_spd[b, t] = np.nanmean(awind_spd[indt[0]][awind_spd[indt[0]].mask == False])
 
-			if 'LONGITUDE' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['LONGITUDE'][:])
-			elif 'LON' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['LON'][:])
-			elif 'LONG' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['LONG'][:])
-			elif 'longitude' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['longitude'][:])
-			elif 'lon' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['lon'][:])
-			elif 'long' in f.variables.keys():
-				lon[b] = np.nanmean(f.variables['long'][:])
-			else:
-				lon[b] = nan
+                del indt
 
-			adp = ahs*nan # no peak direction available in this format
+        print("   station "+stname[b]+"  ok")
+        del ahs
 
-			if 'TIME' in f.variables.keys():
-				atime = np.array(f.variables['TIME'][:]*24*3600 + timegm( strptime('195001010000', '%Y%m%d%H%M') )).astype('double')
-			elif 'time' in f.variables.keys():			
-				atime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime('195001010000', '%Y%m%d%H%M') )).astype('double')
-
-			f.close(); del f
-		except:
-			ahs=[]
-
-	
-	if np.size(ahs)>0:
-
-		# First layer of simple quality-control
-		indq=np.where((ahs>30.)|(ahs<0.0))
-		if np.size(indq)>0:
-			ahs[indq]=np.nan; del indq
-
-		indq=np.where((atm>40.)|(atm<0.0))
-		if np.size(indq)>0:
-			atm[indq]=np.nan; del indq
-
-		indq=np.where((atp>40.)|(atp<0.0))
-		if np.size(indq)>0:
-			atp[indq]=np.nan; del indq
-
-		indq=np.where((adm>360.)|(adm<-180.))
-		if np.size(indq)>0:
-			adm[indq]=np.nan; del indq
-
-		indq=np.where((adp>360.)|(adp<-180.))
-		if np.size(indq)>0:
-			adp[indq]=np.nan; del indq
-
-		c=0
-		for t in range(0,np.size(mtime)):
-			indt=np.where(np.abs(atime-mtime[t])<1800.)
-			if np.size(indt)>0:
-				if np.any(ahs[indt[0]].mask==False):
-					bhs[b,t] = np.nanmean(ahs[indt[0]][ahs[indt[0]].mask==False])
-					c=c+1
-				if np.any(atm[indt[0]].mask==False):
-					btm[b,t] = np.nanmean(atm[indt[0]][atm[indt[0]].mask==False])
-				if np.any(atp[indt[0]].mask==False):
-					btp[b,t] = np.nanmean(atp[indt[0]][atp[indt[0]].mask==False])
-				if np.any(adm[indt[0]].mask==False):
-					bdm[b,t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask==False])
-				if np.any(adp[indt[0]].mask==False):
-					bdp[b,t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask==False])
-
-				del indt
-
-		# print("counted "+repr(c)+" at "+stname[b])
-
-	print("   station "+stname[b]+"  ok")
-	del ahs
 
 print('  ')
 # Simple quality-control (range)
