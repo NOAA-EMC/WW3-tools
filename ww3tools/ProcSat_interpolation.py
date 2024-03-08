@@ -117,6 +117,8 @@ import cfgrib
 import os
 import pandas as pd
 import argparse
+import numpy as np
+
 
 # Function to extract reference times from a GRIB file
 def extract_reference_times(file):
@@ -145,7 +147,6 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
     satellite_data = xr.open_dataset(satellite_file)
     satellite_times_unix = np.array((satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
 
-#    satellite_name = satellite_data.attrs.get('satellite_name', "unknown_satellite")
     if 'sat_name' in satellite_data.variables:
         satellite_name = satellite_data['sat_name'].values[0]
     elif 'satellite_name' in satellite_data.attrs:
@@ -193,19 +194,17 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
     interpolated_dataset.attrs['model_name'] = model_name
     initial_condition_time = extract_reference_times(filtered_grib_files[0])
     initial_condition_time_unix = int(initial_condition_time) // 10**9
-   # interpolated_dataset.attrs['initial_condition_time'] = str(int(initial_condition_time) // 10**9)
-#    fcst_hr2 = (interpolated_dataset['fcst_hr'].values - initial_condition_time_unix) / 3600
-#    fcst_hr2 = (filtered_satellite_times_unix - initial_condition_time_unix) / 3600
     ws_not_nan_mask = ~np.isnan(interpolated_ws_values)
     fcst_hr2 = np.full_like(interpolated_ws_values, np.nan)  # Initialize with NaN
     fcst_hr2[ws_not_nan_mask] = (filtered_satellite_times_unix[ws_not_nan_mask] - initial_condition_time_unix) / 3600  # Calculate only for valid ws
 
 
-
     interpolated_dataset['fcst_hr'] = xr.DataArray(fcst_hr2, dims=['time'], name='fcst_hr2').assign_attrs(description="Forecast hour relative to initial condition time", units='hours')
-    interpolated_dataset.attrs['initial_condition_time'] =f"{str(int(initial_condition_time_unix))} seconds since 1970-01-01 00:00:00"
+    interpolated_dataset.attrs['initial_condition_time'] = float(initial_condition_time_unix)
 
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
+
+
 
 def process_grib_files(files):
     model_data_list = []
@@ -295,6 +294,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         return reference_time, reference_date
 
     model_reference_time_unix = extract_reference_times(model_data_files[0])[0]  #added
+    reference_time_unix = extract_reference_times(model_data_files[0])[0]  # Returns Unix timestamp as integer or float
 
     # Load and concatenate the model data files
     model_data_list = [xr.open_dataset(file) for file in model_data_files]
@@ -452,7 +452,9 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Before saving your dataset, add the reference times as attributes
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['reference_time'] = reference_time
-    interpolated_dataset.attrs['reference_time'] = f"{reference_time} seconds since 1970-01-01 00:00:00"
+#    interpolated_dataset.attrs['reference_time'] = f"{reference_time} seconds since 1970-01-01 00:00:00"
+    interpolated_dataset.attrs['reference_time'] = reference_time_unix  # Store as numeric value
+    interpolated_dataset.attrs['reference_time_units'] = "seconds since 1970-01-01 00:00:00"  # Specify units separately
     base_output_filename = "ProcessedData"  # You might want to make this more specific or pass it as an argument
     interpolated_dataset.attrs['model_name'] = model_name
 
