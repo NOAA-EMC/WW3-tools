@@ -43,7 +43,7 @@ import pandas as pd
 
 # Function to interpolate GRIB2 format model data
 def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, output_file, satellite_name, ic_time):
-    
+
     Interpolates GRIB2 format model data to satellite observation points and merges them into a NetCDF file.
 
     Parameters:
@@ -52,14 +52,14 @@ def interpolate_grib2(grib_data_directory, grib_data_pattern, satellite_file, ou
     - satellite_file (str): Satellite data file path.
     - output_file (str): Output NetCDF file path.
     - satellite_name (str): Name of the satellite for data labeling.
-    
+
 
     # Implementation details here...
     pass
 
 # Function to interpolate NetCDF format model data
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file):
-   
+
     Interpolates NetCDF format model data to satellite observation points and merges them into a NetCDF file.
 
     Parameters:
@@ -75,7 +75,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     - Interpolates model data to the geographic and temporal points of satellite observations using a RegularGridInterpolator.
     - Merges the interpolated model data with satellite observations, ensuring consistency in time and space.
     - Saves the merged dataset as a new NetCDF file, providing a comprehensive view of model predictions and actual satellite measurements.
-   
+
     # Implementation details here...
     pass
 
@@ -186,14 +186,22 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
         'obs_hs_cal': xr.DataArray(hs_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_hs_cal').assign_attrs(units='m'),
         'obs_wnd': xr.DataArray(wsp, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd').assign_attrs(units='m/s'),
         'obs_wnd_cal': xr.DataArray(wsp_cal, coords={'time': filtered_satellite_times_unix}, dims=['time'], name='obs_wnd_cal').assign_attrs(units='m/s'),
-        'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='fcst_hr').assign_attrs(units='hours'),
+        'fcst_hr': xr.DataArray(model_times_swh, dims=['time'], name='fcst_hr').assign_attrs(units='seconds'),
     })
 
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['model_name'] = model_name
     initial_condition_time = extract_reference_times(filtered_grib_files[0])
     initial_condition_time_unix = int(initial_condition_time) // 10**9
-    fcst_hr2 = (interpolated_dataset['fcst_hr'].values - initial_condition_time_unix) / 3600
+   # interpolated_dataset.attrs['initial_condition_time'] = str(int(initial_condition_time) // 10**9)
+#    fcst_hr2 = (interpolated_dataset['fcst_hr'].values - initial_condition_time_unix) / 3600
+#    fcst_hr2 = (filtered_satellite_times_unix - initial_condition_time_unix) / 3600
+    ws_not_nan_mask = ~np.isnan(interpolated_ws_values)
+    fcst_hr2 = np.full_like(interpolated_ws_values, np.nan)  # Initialize with NaN
+    fcst_hr2[ws_not_nan_mask] = (filtered_satellite_times_unix[ws_not_nan_mask] - initial_condition_time_unix) / 3600  # Calculate only for valid ws
+
+
+
     interpolated_dataset['fcst_hr'] = xr.DataArray(fcst_hr2, dims=['time'], name='fcst_hr2').assign_attrs(description="Forecast hour relative to initial condition time", units='hours')
     interpolated_dataset.attrs['initial_condition_time'] =f"{str(int(initial_condition_time_unix))} seconds since 1970-01-01 00:00:00"
 
@@ -379,9 +387,11 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     interpolated_wind_surface_values, interpolated_wind_surface_times = prepare_and_interpolate(
         model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix, model_time_seconds)
 
-    fcst_hr = np.full_like(interpolated_wind_surface_values, np.nan, dtype='float64')
-    fcst_hr2_ws = (interpolated_wind_surface_times - model_reference_time_unix) / 3600
-    print(fcst_hr2_ws)
+    fcst_hr2_ws = np.full_like(interpolated_wind_surface_values, np.nan, dtype='float64')
+   # fcst_hr2_ws = (interpolated_wind_surface_times - model_reference_time_unix) / 3600
+    valid_indices = ~np.isnan(interpolated_wind_surface_values)
+    fcst_hr2_ws[valid_indices] = (filtered_satellite_times_unix[valid_indices] - model_reference_time_unix) / 3600 
+    fcst_hr = np.full_like(filtered_satellite_times_unix, np.nan, dtype='float64')
 
     for i, value in enumerate(interpolated_wind_surface_values):
         if not np.isnan(value):
@@ -462,7 +472,7 @@ def main():
     ap.add_argument('-p', '--pattern', help="Pattern of Model Files", required=True)
     ap.add_argument('-s', '--satfile', help="Satellite File", required=True)
     ap.add_argument('-o', '--outdir', help="Directory Path for Output", required=True)
-    ap.add_argument('-f', '--fileout', help="Name of Output File", required=True) 
+    ap.add_argument('-f', '--fileout', help="Name of Output File", required=True)
     ap.add_argument('-m', '--model', help="String Identifier of Model", required=True)
 
     MyArgs = ap.parse_args()
@@ -483,7 +493,7 @@ def main():
     print(f"Output file: {outfilename}")
     print(f"Model name: {model_name}")
 
-    #create path_out directory if it does not exist: 
+    #create path_out directory if it does not exist:
     if not os.path.isdir(path_out):
         os.makedirs(path_out)
 
