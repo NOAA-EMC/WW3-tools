@@ -27,7 +27,7 @@
 #  So if you want to download the whole database, you have to run
 #   this code for each satellite and hemisphere.
 #  Examples (from linux/terminal command line):
-#   nohup bash wfetchsatellite_AODN_Scatterometer.sh RAPIDSCAT /media/data/observations/satellite/scatterometer/AODN_scat/RAPIDSCAT S >> nohup_RAPIDSCAT_HS.out 2>&1 &
+#   nohup bash wfetchsatellite_AODN_Scatterometer.sh METOP-A /media/data/observations/satellite/scatterometer/AODN_scat/METOPA S >> nohup_METOPA_HS.out 2>&1 &
 #
 # OUTPUT:
 #  multiple AODN satellite data (netcdf format) saved in the given 
@@ -66,7 +66,6 @@ for lon in `seq -f "%03g" 0 20 340`; do
           wait $!
           sleep 1
           echo IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
-          find $DIR -empty -type f -delete
         fi
       done
     done
