@@ -26,32 +26,17 @@ PURPOSE:
   https://ars.els-cdn.com/content/image/1-s2.0-S0273117721000594-gr1_lrg.jpg
 
 USAGE:
- This program processes one satellite mission per run, entered as 
-  argument (only the ID, sys.argv), Select only one:
-  JASON3,JASON2,CRYOSAT2,JASON1,HY2,SARAL,SENTINEL3A,ENVISAT,ERS1,ERS2,GEOSAT,GFO,TOPEX,SENTINEL3B,CFOSAT
- Altimeters must have been previously downloaded (see wfetchsatellite_AODN_Altimeter.sh)
- User must inform if wants to target the model space (tspace=1) or the satellite
-  space (tspace=2) in ww3tools.yaml.
- Quality control can be selected or excluded in ww3tools.yaml, and user
-  can modify satellite quality control parameters in ww3tools.yaml as well.
- The path where AODN altimeter data is located must be informed in ww3tools.yaml
- The output path where the results are saved must be informed in ww3tools.yaml
- INPUT ARGUMENTS are (the first one is mandatory):
- (1) satellite name
- (2) initial date ('YYYYMMDDHH')
- (3) final date ('YYYYMMDDHH')
- (4) time-step for the time array of results
- (5) ww3 grid output sample file or gridInfo.nc
+ This program processes one satellite mission per run, use -h to obtain detailed 
+ information. This program assumes altimeter data has previously been downloaded, 
+ see wfetchsatellite_AODN_Altimeter.sh for more information. 
 
- The ww3tools.yaml file must be saved (or symbolic link) in the same dir.
- Example (from linux terminal command line):
-   nohup python3 ProcSat_Altimeter.py JASON3 2018010100 209010100 3600 >> nohup_ProcSat_Altimeter_JASON3.out 2>&1 &
+ Many values are specified via a yaml file, such as if the target is model space 
+ (tspace=1) or satellite space (tspace=2). Quality control options are also set
+ via the yaml file. The path to staelite data and other arguments are set in the 
+ yaml file. 
 
 OUTPUT:
- netcdf file Altimeter_*.nc containing the processed altimeter data
- hs: significant wave height, Ku or Ka altimeter band.
- wnd: 10-meter wind speed.
- 'cal' means calibrated by IMOS-AODN.
+ netcdf and csv file in output directory specified in input yaml file. 
 
 DEPENDENCIES:
  See setup.py and the imports below.
@@ -91,7 +76,7 @@ from calendar import timegm
 import wread
 import sys
 import warnings; warnings.filterwarnings("ignore")
-
+import argparse
 
 def along_track(AODN,atime,wconfig):
     '''
@@ -354,6 +339,10 @@ def savesat(AODN,wconfig,altsel):
     datein = datetime.utcfromtimestamp(AODN['TIME'].iloc[0]).strftime('%Y%m%d%H')
     datefin = datetime.utcfromtimestamp(AODN['TIME'].iloc[-1]).strftime('%Y%m%d%H')
 
+    #create path_out directory if it does not exist: 
+    if not os.path.isdir(wconfig['path_out']):
+        os.makedirs(wconfig['path_out'])
+
     fname=wconfig['path_out']+"Altimeter"+smethod+"_"+wconfig['ftag']+"_"+altsel+"_"+datein+"to"+datefin
 
     # Save netcdf
@@ -378,6 +367,62 @@ def savesat(AODN,wconfig,altsel):
     vflat.units = 'degrees_north' ; vflon.units = 'degrees_east'
     vfwnd.units = 'm/s' ; vfwndcal.units = 'm/s'
     vfhs.units = 'm'; vfhscal.units = 'm'
+    # Add Details
+    vfhs.long_name = 'sigificant_wave_height'
+    vfhscal.long_name = 'calibrated_sigificant_wave_height'
+    vfwnd.long_name = 'wind_speed'
+    vfwndcal.long_name = 'calibrated_wind_speed'
+
+    #Add additional variables that are used in creation of the file
+    vdlim = ncfile.createVariable('dlim',np.dtype('int16'),('sname'))
+    vdlim.long_name = 'MaxDistForAveraging'
+    vdlim.units = 'm'
+    vdlim[:] = np.array(wconfig['dlim'])
+
+    vmaxti = ncfile.createVariable('maxti',np.dtype('int16'),('sname'))
+    vmaxti.long_name = 'MaxTimeDistForAveraging'
+    vmaxti.units = 'seconds'
+    vmaxti[:] = np.array(wconfig['maxti'])
+
+    vtstep = ncfile.createVariable('tstep',np.dtype('int16'),('sname'))
+    vtstep.long_name = 'time_step'
+    vtstep.units = 'seconds'
+    vtstep[:] = np.array(time_step)
+
+    vqcvar = ncfile.createVariable('qc_var',np.dtype('int16'),('sname'))
+    vqcvar.long_name = 'QCvar'
+    vqcvar[:] = np.array(wconfig['qc'])
+    if wconfig['qc']!=0:
+        vmindepth = ncfile.createVariable('qc_mindepth',np.dtype('float32'),('sname'))
+        vmindepth.long_name = 'Minimum_Depth_QCvar'
+        vmindepth.units = 'm'
+        vmindepth[:] = np.array(wconfig['mindepth'])
+
+        vmindist = ncfile.createVariable('qc_mindist',np.dtype('float32'),('sname'))
+        vmindist.long_name = 'Minimum_Distance_From_Coast_QCvar'
+        vmindist.units = 'm'
+        vmindist[:] = np.array(wconfig['mindfc'])
+
+        vhsmin = ncfile.createVariable('qc_hsmin',np.dtype('float32'),('sname'))
+        vhsmin.long_name = 'Minimum_HS_QCvar'
+        vhsmin.units = 'm'
+        vhsmin[:] = np.array(wconfig['hsmin'])
+
+        vhsmax = ncfile.createVariable('qc_hsmax',np.dtype('float32'),('sname'))
+        vhsmax.long_name = 'Maximum_HS_QCvar'
+        vhsmax.units = 'm'
+        vhsmax[:] = np.array(wconfig['hsmax'])
+
+        vwspmin = ncfile.createVariable('qc_wspmin',np.dtype('float32'),('sname'))
+        vwspmin.long_name = 'Minimum_WindSpeed_QCvar'
+        vwspmin.units = 'm/s'
+        vwspmin[:] = np.array(wconfig['wspmin'])
+
+        vwspmax = ncfile.createVariable('qc_wspmax',np.dtype('float32'),('sname'))
+        vwspmax.long_name = 'Maximum_WindSpeed_QCvar'
+        vwspmax.units = 'm/s'
+        vwspmax[:] = np.array(wconfig['wspmax'])
+
     # Allocate Data
     vsname[:] = np.array(altsel).astype('str')
     vflat[:] = np.array(AODN['LATITUDE']); vflon[:] = np.array(AODN['LONGITUDE'])
@@ -386,7 +431,7 @@ def savesat(AODN,wconfig,altsel):
     vfwnd[:] = np.array(AODN['WSPD']); vfwndcal[:] = np.array(AODN['WSPD_CAL'])
     ncfile.close()
     print(' ')
-    print("netcdf ok: "+fname+".nc")
+    print("netcdf output: "+fname+".nc")
 
     del vft, vfst, vflat, vflon, vfhs,vfhscal, vfwnd, vfwndcal
 
@@ -394,33 +439,34 @@ def savesat(AODN,wconfig,altsel):
         AODN.iloc[:, 2:] = AODN.iloc[:, 2:].round(3)
         AODN.to_csv(fname+".csv", index=False)
 
-    print("text file ok: "+fname+".csv")
+    print("text file output: "+fname+".csv")
 
 
 if __name__ == "__main__":
 
     # start time
     start = timeit.default_timer()
+
+    ap = argparse.ArgumentParser()
+    ap.add_argument('-s', '--satelite', help="Satelite Name, one of JASON3,JASON2,CRYOSAT2,JASON1,HY2,SARAL,SENTINEL3A,ENVISAT,ERS1,ERS2,GEOSAT,GFO,TOPEX,SENTINEL3B,CFOSAT",required=True) 
+    ap.add_argument('-i', '--initdate', help="Initial Date (YYYYMMDDHH)", default='1985010100')
+    ap.add_argument('-e', '--enddate', help="Final Date (YYYYMMDDHH)", default=datetime.utcnow().strftime("%Y%m%d%H"))
+    ap.add_argument('-t', '--timestep', help="time step (in seconds) to build the final time array (regular)", default=float(3600.))
+    ap.add_argument('-y', '--yaml', help="WW3 tools yaml file", default='ww3tools.yaml') 
+
+    MyArgs = ap.parse_args()
+    
     # WW3-tools configuration file
-    wconfig=wread.readconfig('ww3tools.yaml')
+    wconfig=wread.readconfig(MyArgs.yaml)
 
-    # Default date interval
-    datemin='1985010100'; datemax = datetime.utcnow().strftime("%Y%m%d%H")
+    # Set Satelite 
+    altsel = MyArgs.satelite
+    # Set date interval
+    datemin = MyArgs.initdate
+    datemax = MyArgs.enddate
     # Default time step (in seconds) to build the final time array (regular)
-    time_step=float(3600.)
-    ww3grid=None
-    # Read input arguments
-    if len(sys.argv) < 2 :
-        sys.exit(' At least 1 argument (satellite mission) must be entered.')
-    if len(sys.argv) >= 2 :
-        altsel=str(sys.argv[1]) # selection of the altimeter mission, see sdname below
-    if len(sys.argv) >= 3 :
-        datemin=str(sys.argv[2]) # initial date (YYYYMMDDHH)
-    if len(sys.argv) >= 4 :
-        datemax=str(sys.argv[3]) # final date (YYYYMMDDHH)
-    if len(sys.argv) >= 5 :
-        time_step=float(sys.argv[4]) # time step (in seconds) to build the final time array (regular)
-
+    time_step=np.double(MyArgs.timestep)
+    
     # read and organize AODN altimeter data for the mission and domain of interest
     AODN = wread.aodn_altimeter(altsel,wconfig,datemin,datemax)
     # AODN.to_csv(wconfig['path_out']+"AODN_altimeterSelection_"+datemin+"to"+datemax+".csv", index=False)
