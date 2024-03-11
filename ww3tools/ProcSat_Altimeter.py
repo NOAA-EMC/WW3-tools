@@ -354,6 +354,10 @@ def savesat(AODN,wconfig,altsel):
     datein = datetime.utcfromtimestamp(AODN['TIME'].iloc[0]).strftime('%Y%m%d%H')
     datefin = datetime.utcfromtimestamp(AODN['TIME'].iloc[-1]).strftime('%Y%m%d%H')
 
+    #create path_out directory if it does not exist: 
+    if not os.path.isdir(wconfig['path_out']):
+        os.makedirs(wconfig['path_out'])
+
     fname=wconfig['path_out']+"Altimeter"+smethod+"_"+wconfig['ftag']+"_"+altsel+"_"+datein+"to"+datefin
 
     # Save netcdf
