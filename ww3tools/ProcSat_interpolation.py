@@ -144,6 +144,12 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
     model_data_list, valid_times_unix = process_grib_files(filtered_grib_files)
     model_data_combined = xr.concat(model_data_list, dim='time')
 
+    # Added longitude conversion
+    model_longitudes = model_data_combined.longitude.values
+    if np.any(model_longitudes < 0):  # Check if any longitudes are negative
+        model_longitudes[model_longitudes < 0] += 360
+        model_data_combined = model_data_combined.assign_coords(longitude=(model_longitudes))
+
     satellite_data = xr.open_dataset(satellite_file)
     satellite_times_unix = np.array((satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
 
@@ -201,6 +207,7 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
 
     interpolated_dataset['fcst_hr'] = xr.DataArray(fcst_hr2, dims=['time'], name='fcst_hr2').assign_attrs(description="Forecast hour relative to initial condition time", units='hours')
     interpolated_dataset.attrs['initial_condition_time'] = float(initial_condition_time_unix)
+    interpolated_dataset.attrs['reference_time_units'] = "seconds since 1970-01-01 00:00:00"  # Specify units separately
 
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
@@ -310,6 +317,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Convert model time to UNIX time and ensure it's double
     model_time_seconds = np.array((model_data_combined['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
     max_model_time = model_time_seconds.max()
+    min_model_time = model_time_seconds.min()  #added
 
     # Defining model_times correctly for use in interpolation
     model_times = model_time_seconds
@@ -319,9 +327,13 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     satellite_longitudes = satellite_data['longitude'].values
     satellite_longitudes[satellite_longitudes < 0] += 360
     satellite_times_unix = np.array((satellite_data['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
-    filtered_satellite_times_unix = satellite_times_unix[satellite_times_unix <= max_model_time]
-    filtered_satellite_latitudes = satellite_data['latitude'].values[:len(filtered_satellite_times_unix)]
-    filtered_satellite_longitudes = satellite_longitudes[:len(filtered_satellite_times_unix)]
+    # Apply both min and max time filters for consistency with GRIB2 section
+    time_mask = (satellite_times_unix >= min_model_time) & (satellite_times_unix <= max_model_time)
+    filtered_satellite_times_unix = satellite_times_unix[time_mask]
+    filtered_satellite_latitudes = satellite_data['latitude'].values[time_mask]
+    filtered_satellite_longitudes = satellite_longitudes[time_mask]
+
+
 
     # Attempt to read the satellite name from the attributes or a variable
     if 'sat_name' in satellite_data.variables:
@@ -329,7 +341,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     elif 'satellite_name' in satellite_data.attrs:
         satellite_name = satellite_data.attrs['satellite_name']  # Assuming it's stored as an attribute
     else:
-        satellite_name = "UnknownSatellite"  # Default name if not found
+        satellite_name = "unknown_satellite"  # Default name if not found
 
     # Define the Model's Spatial Bounds
     min_latitude = model_data_combined['latitude'].min()
@@ -337,19 +349,19 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     min_longitude = model_data_combined['longitude'].min()
     max_longitude = model_data_combined['longitude'].max()
 
-    # Function to create and apply a spatial mask
-    def spatial_mask(satellite_latitudes, satellite_longitudes):
-        min_lat_val = min_latitude.values.item()
-        max_lat_val = max_latitude.values.item()
-        min_lon_val = min_longitude.values.item()
-        max_lon_val = max_longitude.values.item()
+
+    def spatial_mask(satellite_latitudes, satellite_longitudes,model_data_combined):
+        min_lat_val = model_data_combined['latitude'].min().values.item()
+        max_lat_val = model_data_combined['latitude'].max().values.item()
+        min_lon_val = model_data_combined['longitude'].min().values.item()
+        max_lon_val = model_data_combined['longitude'].max().values.item()
 
         within_lat_bounds = (satellite_latitudes >= min_lat_val) & (satellite_latitudes <= max_lat_val)
         within_lon_bounds = (satellite_longitudes >= min_lon_val) & (satellite_longitudes <= max_lon_val)
         return within_lat_bounds & within_lon_bounds
 
     def prepare_and_interpolate(model_data, variable_name, satellite_latitudes, satellite_longitudes, satellite_times_unix, valid_times_unix):
-        mask = spatial_mask(satellite_latitudes, satellite_longitudes)
+        mask = spatial_mask(satellite_latitudes, satellite_longitudes, model_data_combined) 
         valid_satellite_points = np.array([satellite_latitudes[mask], satellite_longitudes[mask], satellite_times_unix[mask]]).T
 
         variable_data = model_data[variable_name]
@@ -388,7 +400,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         model_data_combined, 'WIND_surface', filtered_satellite_latitudes, filtered_satellite_longitudes, filtered_satellite_times_unix, model_time_seconds)
 
     fcst_hr2_ws = np.full_like(interpolated_wind_surface_values, np.nan, dtype='float64')
-   # fcst_hr2_ws = (interpolated_wind_surface_times - model_reference_time_unix) / 3600
     valid_indices = ~np.isnan(interpolated_wind_surface_values)
     fcst_hr2_ws[valid_indices] = (filtered_satellite_times_unix[valid_indices] - model_reference_time_unix) / 3600 
     fcst_hr = np.full_like(filtered_satellite_times_unix, np.nan, dtype='float64')
@@ -407,7 +418,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
 
     # Convert satellite time DataArray to UNIX timestamps
     satellite_time_unix = xr.DataArray(filtered_satellite_times_unix, dims=['time'], name='time')
-
+    
     time_dataarray = xr.DataArray(filtered_satellite_times_unix, dims=['time'], name='time', attrs={
         'standard_name': 'time',
         'units': 'seconds since 1970-01-01 00:00:00',
@@ -438,28 +449,26 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Combine into a single dataset / 'time': satellite_time_unix
     interpolated_dataset = xr.Dataset({
         'time': time_dataarray,
-        'HTSGW_surface_interpolated': interpolated_htsgw_surface,
-        'WIND_surface_interpolated': interpolated_wind_surface,
-        'hs_time_averaged_satellite': hs_dataarray,
-        'wsp_time_averaged_satellite': wsp_dataarray,
+        'model_hs': interpolated_htsgw_surface,
+        'model_wnd': interpolated_wind_surface,
+        'obs_hs': hs_dataarray,
+        'obs_wnd': wsp_dataarray,
         'longitude': longitude_dataarray,
         'latitude': latitude_dataarray,
-        'hs_cal_time_averaged_satellite':hs_cal_dataarray,
-        'wsp_cal_time_averaged_satellite':wsp_dataarray,
+        'obs_hs_cal':hs_cal_dataarray,
+        'obs_wnd_cal':wsp_dataarray,
         'fcst_hr': fcst_hr_dataarray
     })
 
     # Before saving your dataset, add the reference times as attributes
     interpolated_dataset.attrs['satellite_name'] = satellite_name
-    interpolated_dataset.attrs['reference_time'] = reference_time
-#    interpolated_dataset.attrs['reference_time'] = f"{reference_time} seconds since 1970-01-01 00:00:00"
-    interpolated_dataset.attrs['reference_time'] = reference_time_unix  # Store as numeric value
+    interpolated_dataset.attrs['initial_condition_time'] = reference_time
     interpolated_dataset.attrs['reference_time_units'] = "seconds since 1970-01-01 00:00:00"  # Specify units separately
-    base_output_filename = "ProcessedData"  # You might want to make this more specific or pass it as an argument
+    base_output_filename = "ProcessedData"  
     interpolated_dataset.attrs['model_name'] = model_name
 
     # Save the combined dataset to a NetCDF file
-    output_filename = f"{base_output_filename}_{satellite_name}_{reference_date}.nc"  # Adjusted to use reference_date
+    output_filename = f"{base_output_filename}_{satellite_name}_{reference_date}.nc"  
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
 
