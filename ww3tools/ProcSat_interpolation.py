@@ -118,30 +118,53 @@ import os
 import pandas as pd
 import argparse
 import numpy as np
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
-# Function to extract reference times from a GRIB file
-def extract_reference_times_grib(file):
+# Function to process_grib_files from a GRIB file
+def process_grib_files(file):  
     ds = cfgrib.open_dataset(file, backend_kwargs={'indexpath': ''})
     if ds is None:
         raise ValueError(f"No dataset found in the file {file}")
     time = ds.coords['time'].values
     return time.item() if time.size == 1 else time
 
-def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, model_name):
-    full_path = os.path.join(data_directory, data_pattern)
-    print("Full path for GRIB files:", full_path)
+def extract_reference_times_grib(files):
+    model_data_list = []
+    valid_times_unix = []
 
-    found_files = glob.glob(full_path)
+    for file in files:
+        ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
+        ws = ds[1]['ws'] if 'ws' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
+        swh = ds[1]['swh'] if 'swh' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
+        valid_time_unix = (ds[1].valid_time.values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
+
+        valid_times_unix.append(valid_time_unix.item())  # Append valid time
+
+        data = xr.Dataset({
+            'wind_speed': ws,
+            'significant_wave_height': swh,
+            'longitude': ds[1]['longitude'],
+            'latitude': ds[1]['latitude'],
+            'time': ds[1]['time'],
+            'step': ds[1]['step']
+        })
+
+        model_data_list.append(data)
+
+    return model_data_list, np.array(valid_times_unix)
+
+def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, model_name):
+    found_files = glob.glob(os.path.join(data_directory, data_pattern))
     if not found_files:
-        print("No files found at:", full_path)
+        print("No files found at:", found_files)
         raise ValueError("No GRIB files found in the specified directory matching the pattern.")
 
     found_files.sort()
-    fcst_hours = [int(re.search(r'f(\d+)', file).group(1)) for file in found_files]
-    filtered_grib_files = [found_files[i] for i, hour in enumerate(fcst_hours) if hour in fcst_hours]
+    filtered_grib_files = found_files
 
-    model_data_list, valid_times_unix = process_grib_files(filtered_grib_files)
+    model_data_list, valid_times_unix = extract_reference_times_grib(filtered_grib_files)
     model_data_combined = xr.concat(model_data_list, dim='time')
 
     # Added longitude conversion
@@ -199,11 +222,10 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
 
     interpolated_dataset.attrs['satellite_name'] = satellite_name
     interpolated_dataset.attrs['model_name'] = model_name
-    initial_condition_time = extract_reference_times_grib(filtered_grib_files[0])
+    initial_condition_time = process_grib_files(filtered_grib_files[0])
     initial_condition_time_unix = int(initial_condition_time) // 10**9
     fcst_hr2 = np.full_like(interpolated_ws_values, np.nan)  # Initialize with NaN
     valid_indices = ~np.isnan(interpolated_ws_values)
-   # fcst_hr2 = np.full_like(interpolated_ws_values, np.nan)  # Initialize with NaN
     fcst_hr2[valid_indices] = (filtered_satellite_times_unix[valid_indices] - initial_condition_time_unix) / 3600  # Calculate only for valid ws
 
 
@@ -213,45 +235,21 @@ def interpolate_grib2(data_directory, data_pattern, satellite_file, output_file,
 
     interpolated_dataset.to_netcdf(output_file, format='NETCDF4')
 
+def spatial_mask(satellite_latitudes, satellite_longitudes,model_data):
+    min_lat_val = model_data['latitude'].min().values.item()
+    max_lat_val = model_data['latitude'].max().values.item()
+    min_lon_val = model_data['longitude'].min().values.item()
+    max_lon_val = model_data['longitude'].max().values.item()
 
-
-def process_grib_files(files):
-    model_data_list = []
-    valid_times_unix = []
-
-    for file in files:
-        ds = cfgrib.open_datasets(file, backend_kwargs={'indexpath': ''})
-        ws = ds[1]['ws'] if 'ws' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
-        swh = ds[1]['swh'] if 'swh' in ds[1] else xr.full_like(ds[1]['latitude'], np.nan, dtype=np.float32)
-        valid_time_unix = (ds[1].valid_time.values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')
-
-        data = xr.Dataset({
-            'wind_speed': ws,
-            'significant_wave_height': swh,
-            'longitude': ds[1]['longitude'],
-            'latitude': ds[1]['latitude'],
-            'time': ds[1]['time'],
-            'step': ds[1]['step']
-        })
-
-        model_data_list.append(data)
-        valid_times_unix.append(valid_time_unix.item())
-
-    return model_data_list, np.array(valid_times_unix)
-
-    within_lat_bounds = (satellite_latitudes >= min_latitude) & (satellite_latitudes <= max_latitude)
-    within_lon_bounds = (satellite_longitudes >= min_longitude) & (satellite_longitudes <= max_longitude)
+    within_lat_bounds = (satellite_latitudes >= min_lat_val) & (satellite_latitudes <= max_lat_val)
+    within_lon_bounds = (satellite_longitudes >= min_lon_val) & (satellite_longitudes <= max_lon_val)
     return within_lat_bounds & within_lon_bounds
-
-
 
 
 # NETCDF interpolator
 def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file, output_file, model_name):
     # Using glob to find all files in the directory that match the pattern
-   # model_data_files = glob.glob(model_data_directory + model_data_pattern)
     model_data_files = glob.glob(os.path.join(model_data_directory, model_data_pattern))
-
     # Check if any files are found
     if not model_data_files:
         raise ValueError("No files found in the specified directory matching the pattern.")
@@ -266,8 +264,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
         ds.close()  # Close the dataset after extraction
         return reference_time, reference_date
 
-    model_reference_time_unix = extract_reference_times_netcdf(model_data_files[0])[0]  #added
-    reference_time_unix = extract_reference_times_netcdf(model_data_files[0])[0]  # Returns Unix timestamp as integer or float
+    model_reference_time_unix, reference_time_unix = extract_reference_times_netcdf(model_data_files[0])
 
     # Load and concatenate the model data files
     model_data_list = [xr.open_dataset(file) for file in model_data_files]
@@ -283,7 +280,7 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Convert model time to UNIX time and ensure it's double
     model_time_seconds = np.array((model_data_combined['time'].values - np.datetime64('1970-01-01T00:00:00')) / np.timedelta64(1, 's')).astype('double')
     max_model_time = model_time_seconds.max()
-    min_model_time = model_time_seconds.min()  #added
+    min_model_time = model_time_seconds.min()  
 
     # Defining model_times correctly for use in interpolation
     model_times = model_time_seconds
@@ -298,7 +295,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     filtered_satellite_times_unix = satellite_times_unix[time_mask]
     filtered_satellite_latitudes = satellite_data['latitude'].values[time_mask]
     filtered_satellite_longitudes = satellite_longitudes[time_mask]
-
 
 
     # Attempt to read the satellite name from the attributes or a variable
@@ -321,7 +317,6 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     valid_indices = ~np.isnan(interpolated_wind_surface_values)
     fcst_hr2[valid_indices] = (filtered_satellite_times_unix[valid_indices] - model_reference_time_unix) / 3600
 
-
     fcst_hr = np.full_like(filtered_satellite_times_unix, np.nan, dtype='float64')
     for i, value in enumerate(interpolated_wind_surface_values):
         if not np.isnan(value):
@@ -330,10 +325,11 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     reference_time, reference_date = extract_reference_times_netcdf(model_data_files[0])
 
     # Extract hs and wsp from satellite data, filtered by time
-    hs = satellite_data['hs'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
-    wsp_cal = satellite_data['wsp_cal'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
-    hs_cal = satellite_data['hs_cal'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
-    wsp = satellite_data['wsp'].sel(time=satellite_data['time'].values[satellite_times_unix <= max_model_time])
+    hs = satellite_data['hs'].values[time_mask]
+    wsp_cal = satellite_data['wsp_cal'].values[time_mask]
+    hs_cal = satellite_data['hs_cal'].values[time_mask]
+    wsp = satellite_data['wsp'].values[time_mask]
+
 
     # Convert satellite time DataArray to UNIX timestamps
     satellite_time_unix = xr.DataArray(filtered_satellite_times_unix, dims=['time'], name='time')
@@ -346,9 +342,9 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     })
 
     # Create DataArrays for all data with consistent time representation and units
-    hs_dataarray = xr.DataArray(hs.values, coords={'time': satellite_time_unix}, dims=['time'], name='hs_time_averaged_satellite')
+    hs_dataarray = xr.DataArray(hs, coords={'time': satellite_time_unix}, dims=['time'], name='hs_time_averaged_satellite')
     hs_dataarray.attrs['units'] = 'm'
-    wsp_dataarray = xr.DataArray(wsp.values, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_time_averaged_satellite')
+    wsp_dataarray = xr.DataArray(wsp, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_time_averaged_satellite')
     wsp_dataarray.attrs['units'] = 'm/s'
     interpolated_htsgw_surface = xr.DataArray(interpolated_htsgw_surface_values, coords={'time': satellite_time_unix}, dims=['time'], name='HTSGW_surface_interpolated')
     interpolated_htsgw_surface.attrs['units'] = 'm'
@@ -358,9 +354,9 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     longitude_dataarray.attrs['units'] = 'degrees_east'
     latitude_dataarray = xr.DataArray(filtered_satellite_latitudes, coords={'time': satellite_time_unix}, dims=['time'], name='latitude')
     latitude_dataarray.attrs['units'] = 'degrees_north'
-    hs_cal_dataarray = xr.DataArray(hs_cal.values, coords={'time': satellite_time_unix}, dims=['time'], name='hs_cal_time_averaged_satellite')
+    hs_cal_dataarray = xr.DataArray(hs_cal, coords={'time': satellite_time_unix}, dims=['time'], name='hs_cal_time_averaged_satellite')
     hs_cal_dataarray.attrs['units'] = 'm'
-    wsp_cal_dataarray = xr.DataArray(wsp_cal.values, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_cal_time_averaged_satellite')
+    wsp_cal_dataarray = xr.DataArray(wsp_cal, coords={'time': satellite_time_unix}, dims=['time'], name='wsp_cal_time_averaged_satellite')
     wsp_dataarray.attrs['units'] = 'm/s'
     fcst_hr_dataarray = xr.DataArray(fcst_hr2, coords={'time': satellite_time_unix}, dims=['time'], name='fcst_time').assign_attrs(units='hours') #fcst_hr
 
@@ -475,13 +471,10 @@ def main():
     if file_type == 'grib2':
         interpolate_grib2(data_directory, data_pattern, satellite_file, output_file, model_name)
     elif file_type == 'nc':
-        interpolate_netcdf(data_directory, data_pattern, satellite_file, output_file, model_name)
+        interpolate_netcdf(data_directory,data_pattern, satellite_file, output_file, model_name)
     else:
         raise ValueError("Invalid file type specified. Please use 'grib2' or 'nc'.")
 
 if __name__ == "__main__":
     main()
-
-
-
 
