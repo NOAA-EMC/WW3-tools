@@ -821,7 +821,8 @@ def bull(*args):
         sys.exit(' Too many inputs')
 
     # confirm format
-    if str(fname).split('/')[-1].split('.')[-1]=='bull':
+    if 'bull' in str(fname).split('/')[-1]:
+
         print("  reading ww3 bull file ...")
         at=[]; adate=[]; ahs=[]; atp=[]; adp=[]
         stname=str(fname).split('/')[-1].split('.')[-2]
@@ -974,7 +975,8 @@ def bull_tar(*args):
         sys.exit(' Too many inputs')
 
     # confirm file format
-    if fname.split('/')[-1].split('.')[-1]=='bull_tar':
+    if ('bull' in str(fname).split('/')[-1]) and ('tar' in str(fname).split('/')[-1]):
+
         print("  reading ww3 bull_tar file ...")
         import tarfile
         stname=[]
@@ -986,7 +988,77 @@ def bull_tar(*args):
         else:
             at=[]; adate=[]; alat=[]; alon=[]
 
-            if 'gfs' in str(fname).split('/')[-1]:
+            # GEFS specific format
+            if 'gefs' in str(fname).split('/')[-1]:
+                iauxhs=[10,15];iauxtp=[28,33]
+                
+                for t in range(0,np.size(tar.getmembers())):
+                    # station names
+                    stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
+
+                    try:
+                        tfile=tar.extractfile(tar.getmembers()[t]); lines = tfile.readlines()
+                    except:
+                        print("   Cannot open "+tar.getmembers()[t].name)
+                    else:
+                        # lat / lon
+                        auxpos=str(lines[1]).replace("b'","").split('(')[1].split('N')
+                        alat=np.append(alat,np.float(auxpos[0]))
+                        alon=np.append(alon,np.float(auxpos[1].split('W')[0]))
+
+                        if t==0:
+                            # time array ----
+                            auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
+                            auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[10:12]+'00', '%Y%m%d %H%M') ))
+                            year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
+                            pday=0
+                            for j in range(9,np.size(lines)-8):
+                                auxlines = str(lines[j]).replace("b'","")
+                                day=int(auxlines[2:4]); hour=int(auxlines[5:7]); del auxlines
+                                if day<pday:
+                                    if month<12:
+                                        month=month+1
+                                    else:
+                                        month=1; year=year+1
+
+                                at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
+                                pday=np.copy(day)
+
+                            del hour,day,month,year
+                            for j in range(0,at.shape[0]):
+                                adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
+
+                            # --------
+                            ahs=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                            atp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
+
+                        auxhs=[]; auxtp=[]
+                        for j in range(9,np.size(lines)-8):
+                            auxlines = str(lines[j]).replace("b'","")
+                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
+                                auxhs=np.append(auxhs,np.float(auxlines[iauxhs[0]:iauxhs[1]]))
+                                auxtp=np.append(auxtp,np.float(auxlines[iauxtp[0]:iauxtp[1]]))
+                            else:
+                                auxhs=np.append(auxhs,np.nan)
+                                auxtp=np.append(auxtp,np.nan)
+
+                            del auxlines
+
+                        if ahs.shape[1]==auxhs.shape[0]:
+                            ahs[t,:]=np.array(auxhs)
+                            atp[t,:]=np.array(auxtp)
+                        else:
+                            print("   Time duration of "+tar.getmembers()[t]+" (in "+fname+") do not match the other stations. Mantained NaN.")
+    
+                        del auxhs,auxtp,tfile,lines
+
+                # build dictionary            
+                result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
+                'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
+                'hs':np.array(ahs),'tp':np.array(atp)}
+
+            # GFS, HAFS, and other formats
+            else:
                 iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
 
                 for t in range(0,np.size(tar.getmembers())):
@@ -1082,74 +1154,6 @@ def bull_tar(*args):
                 'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
 
                 del adp
-
-            elif 'gefs' in str(fname).split('/')[-1]:
-                iauxhs=[10,15];iauxtp=[28,33]
-                
-                for t in range(0,np.size(tar.getmembers())):
-                    # station names
-                    stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
-
-                    try:
-                        tfile=tar.extractfile(tar.getmembers()[t]); lines = tfile.readlines()
-                    except:
-                        print("   Cannot open "+tar.getmembers()[t].name)
-                    else:
-                        # lat / lon
-                        auxpos=str(lines[1]).replace("b'","").split('(')[1].split('N')
-                        alat=np.append(alat,np.float(auxpos[0]))
-                        alon=np.append(alon,np.float(auxpos[1].split('W')[0]))
-
-                        if t==0:
-                            # time array ----
-                            auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
-                            auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[10:12]+'00', '%Y%m%d %H%M') ))
-                            year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
-                            pday=0
-                            for j in range(9,np.size(lines)-8):
-                                auxlines = str(lines[j]).replace("b'","")
-                                day=int(auxlines[2:4]); hour=int(auxlines[5:7]); del auxlines
-                                if day<pday:
-                                    if month<12:
-                                        month=month+1
-                                    else:
-                                        month=1; year=year+1
-
-                                at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
-                                pday=np.copy(day)
-
-                            del hour,day,month,year
-                            for j in range(0,at.shape[0]):
-                                adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
-
-                            # --------
-                            ahs=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                            atp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-
-                        auxhs=[]; auxtp=[]
-                        for j in range(9,np.size(lines)-8):
-                            auxlines = str(lines[j]).replace("b'","")
-                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[iauxhs[0]:iauxhs[1]]))
-                                auxtp=np.append(auxtp,np.float(auxlines[iauxtp[0]:iauxtp[1]]))
-                            else:
-                                auxhs=np.append(auxhs,np.nan)
-                                auxtp=np.append(auxtp,np.nan)
-
-                            del auxlines
-
-                        if ahs.shape[1]==auxhs.shape[0]:
-                            ahs[t,:]=np.array(auxhs)
-                            atp[t,:]=np.array(auxtp)
-                        else:
-                            print("   Time duration of "+tar.getmembers()[t]+" (in "+fname+") do not match the other stations. Mantained NaN.")
-    
-                        del auxhs,auxtp,tfile,lines
-
-                # build dictionary            
-                result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
-                'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
-                'hs':np.array(ahs),'tp':np.array(atp)}
 
             print("   Model data read, "+fname+", bull_tar format.")
             return result
