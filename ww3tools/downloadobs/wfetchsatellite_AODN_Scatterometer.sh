@@ -29,6 +29,8 @@
 #  Examples (from linux/terminal command line):
 #   nohup bash wfetchsatellite_AODN_Scatterometer.sh METOP-A /media/data/observations/satellite/scatterometer/AODN_scat/METOPA S >> nohup_METOPA_HS.out 2>&1 &
 #
+# when updating the database, consider: rsync --size-only --update source target
+#
 # OUTPUT:
 #  multiple AODN satellite data (netcdf format) saved in the given 
 #   directory.
@@ -62,10 +64,11 @@ for lon in `seq -f "%03g" 0 20 340`; do
         test -f $DIR/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
         TE=$?
         if [ "$TE" -eq 1 ]; then
-          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+          wget -l1 -H -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
           wait $!
           sleep 1
           echo IMOS_SRS-Surface-Waves_M_Wind-${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
+          find $DIR -empty -type f -delete
         fi
       done
     done

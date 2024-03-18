@@ -831,78 +831,8 @@ def bull(*args):
         except:
             sys.exit('   Cannot open '+fname)
         else:
-
-            if 'gfs' in str(fname).split('/')[-1]:
-                iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
-
-                # lat / lon
-                auxpos=str(lines[0]).replace("b'","").split('(')[1]
-                if auxpos[5]=='N':
-                    alat=np.float(auxpos[0:5])
-                else:
-                    alat=-1.*np.float(auxpos[0:5])
-
-                if auxpos[13]=='E':
-                    alon=np.float(auxpos[7:13])
-                else:
-                    alon=-1.*np.float(auxpos[7:13])
-
-                # time ----
-                auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
-                auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
-                year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
-                pday=0
-                for j in range(7,np.size(lines)-8):
-                    day=int(lines[j][3:5]); hour=int(lines[j][6:8])
-                    if day<pday:
-                        if month<12:
-                            month=month+1
-                        else:
-                            month=1; year=year+1
-
-                    at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
-                    pday=np.copy(day)
-
-                del hour,day,month,year
-                for j in range(0,at.shape[0]):
-                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
-                # --------
-
-                for j in range(7,np.size(lines)-8):
-                    if len(lines[j][iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                        ahs=np.append(ahs,np.float(lines[j][10:15]))
-                        auxhs=np.array([np.float(lines[j][iauxhs[0]:iauxhs[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-                                auxhs=np.append(auxhs,np.float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
-
-                        auxtp=np.array([np.float(lines[j][iauxtp[0]:iauxtp[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-                                auxtp=np.append(auxtp,np.float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
-
-                        auxdp=np.array([np.float(lines[j][iauxdp[0]:iauxdp[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-                                auxdp=np.append(auxdp,np.float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
-
-                        indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
-                        atp=np.append(atp,np.float(auxtp[indaux]))
-                        adp=np.append(adp,np.float(auxdp[indaux]))
-                        del indaux,auxhs,auxtp,auxdp
-                    else:
-                        ahs=np.append(ahs,np.nan)
-                        atp=np.append(atp,np.nan)
-                        adp=np.append(adp,np.nan)
-
-                # build dictionary
-                result={'latitude':alat,'longitude':alon,'station_name':stname,
-                'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
-                'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
-
-                del adp
-
-            elif 'gefs' in str(fname).split('/')[-1]:
+            # GEFS specific format
+            if 'gefs' in str(fname).split('/')[-1]:
                 iauxhs=[10,15];iauxtp=[28,33]
 
                 # lat / lon
@@ -944,6 +874,85 @@ def bull(*args):
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'latitude':alat,'longitude':alon,'station_name':stname,                
                 'hs':np.array(ahs),'tp':np.array(atp)}
+
+            # GFS, HAFS, and other formats
+            else:
+                iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
+
+                # lat / lon
+                auxpos=str(lines[0]).replace("b'","").split('(')[1]
+                if auxpos[5]=='N':
+                    alat=np.float(auxpos[0:5])
+                else:
+                    alat=-1.*np.float(auxpos[0:5])
+
+                if auxpos[13]=='E':
+                    alon=np.float(auxpos[7:13])
+                else:
+                    alon=-1.*np.float(auxpos[7:13])
+
+                # time ----
+                auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
+                auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
+                year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
+                pday=0
+                for j in range(7,np.size(lines)-8):
+                    day=int(lines[j][3:5]); hour=int(lines[j][6:8])
+                    if day<pday:
+                        if month<12:
+                            month=month+1
+                        else:
+                            month=1; year=year+1
+
+                    at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
+                    pday=np.copy(day)
+
+                del hour,day,month,year
+                for j in range(0,at.shape[0]):
+                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
+                # --------
+
+                for j in range(7,np.size(lines)-8):
+                    if len(lines[j][10:].replace(' ',''))>0:
+                        ahs=np.append(ahs,np.float(lines[j][10:15]))
+
+                        # aux... is organizing the partitions. Ready for future versions (not included yet)
+                        auxhs=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
+                                auxhs=np.append(auxhs,np.float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                            else:
+                                auxhs=np.append(auxhs,np.nan)
+
+                        auxtp=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
+                                auxtp=np.append(auxtp,np.float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                            else:
+                                auxtp=np.append(auxtp,np.nan)
+
+                        auxdp=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
+                                auxdp=np.append(auxdp,np.float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                            else:
+                                auxdp=np.append(auxdp,np.nan)
+
+                        indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
+                        atp=np.append(atp,np.float(auxtp[indaux]))
+                        adp=np.append(adp,np.float(auxdp[indaux]))
+                        del indaux,auxhs,auxtp,auxdp
+                    else:
+                        ahs=np.append(ahs,np.nan)
+                        atp=np.append(atp,np.nan)
+                        adp=np.append(adp,np.nan)
+
+                # build dictionary
+                result={'latitude':alat,'longitude':alon,'station_name':stname,
+                'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
+                'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
+
+                del adp
 
             print("   Model data read, "+fname+", bull format.")
             return result
