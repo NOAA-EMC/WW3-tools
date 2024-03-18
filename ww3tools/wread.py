@@ -235,7 +235,7 @@ def tseriesnc_ndbc(fname=None,anh=None):
                     print('Information about the Anemometer height, for wind speed conversion to 10m, could not be obtained.')
                 else:
                     if "Anemometer height" in html:
-                        anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+                        anh=float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
                     else:
                         print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found.')
                         anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
@@ -324,14 +324,14 @@ def tseriestxt_ndbc(fname=None,anh=None):
                 html = html_bytes.decode("utf-8")
                 auxlatlon=html.split('payload')[1][16:33]
                 if 'S' in auxlatlon:
-                    blat=-np.float(auxlatlon[0:6])
+                    blat=-float(auxlatlon[0:6])
                 else:
-                    blat=np.float(auxlatlon[0:6])
+                    blat=float(auxlatlon[0:6])
 
                 if 'W' in auxlatlon:
-                    blon=-np.float(auxlatlon[8:16])
+                    blon=-float(auxlatlon[8:16])
                 else:
-                    blon=np.float(auxlatlon[8:16])    
+                    blon=float(auxlatlon[8:16])    
 
             except:
                 if anh==None:
@@ -343,7 +343,7 @@ def tseriestxt_ndbc(fname=None,anh=None):
             else:
                 if anh==None:
                     if "Anemometer height" in html:
-                        anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+                        anh=float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
                     else:
                         print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found. Assuming 4.0 meters.')
                         anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
@@ -838,8 +838,8 @@ def bull(*args):
 
                 # lat / lon
                 auxpos=str(lines[1]).split('(')[1].split('N')
-                alat=np.float(auxpos[0])
-                alon=np.float(auxpos[1].split('W')[0])
+                alat=float(auxpos[0])
+                alon=float(auxpos[1].split('W')[0])
 
                 # time ----
                 auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
@@ -865,8 +865,8 @@ def bull(*args):
                 ahs=[]; atp=[]
                 for j in range(9,np.size(lines)-8):
                     if len(lines[j][iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                        ahs=np.append(ahs,np.float(lines[j][iauxhs[0]:iauxhs[1]]))
-                        atp=np.append(atp,np.float(lines[j][iauxtp[0]:iauxtp[1]]))
+                        ahs=np.append(ahs,float(lines[j][iauxhs[0]:iauxhs[1]]))
+                        atp=np.append(atp,float(lines[j][iauxtp[0]:iauxtp[1]]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         atp=np.append(atp,np.nan)
@@ -883,14 +883,14 @@ def bull(*args):
                 # lat / lon
                 auxpos=str(lines[0]).replace("b'","").split('(')[1]
                 if auxpos[5]=='N':
-                    alat=np.float(auxpos[0:5])
+                    alat=float(auxpos[0:5])
                 else:
-                    alat=-1.*np.float(auxpos[0:5])
+                    alat=-1.*float(auxpos[0:5])
 
                 if auxpos[13]=='E':
-                    alon=np.float(auxpos[7:13])
+                    alon=float(auxpos[7:13])
                 else:
-                    alon=-1.*np.float(auxpos[7:13])
+                    alon=-1.*float(auxpos[7:13])
 
                 # time ----
                 auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
@@ -914,34 +914,34 @@ def bull(*args):
                 # --------
 
                 for j in range(7,np.size(lines)-8):
-                    if len(lines[j][10:].replace(' ',''))>0:
-                        ahs=np.append(ahs,np.float(lines[j][10:15]))
+                    if len(lines[j][10:15].replace(' ',''))>0:
+                        ahs=np.append(ahs,float(lines[j][10:15]))
 
                         # aux... is organizing the partitions. Ready for future versions (not included yet)
                         auxhs=[]
                         for k in range(0,4):        
                             if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-                                auxhs=np.append(auxhs,np.float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                                auxhs=np.append(auxhs,float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
                             else:
                                 auxhs=np.append(auxhs,np.nan)
 
                         auxtp=[]
                         for k in range(0,4):        
                             if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-                                auxtp=np.append(auxtp,np.float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                                auxtp=np.append(auxtp,float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
                             else:
                                 auxtp=np.append(auxtp,np.nan)
 
                         auxdp=[]
                         for k in range(0,4):        
                             if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-                                auxdp=np.append(auxdp,np.float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                                auxdp=np.append(auxdp,float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
                             else:
                                 auxdp=np.append(auxdp,np.nan)
 
                         indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
-                        atp=np.append(atp,np.float(auxtp[indaux]))
-                        adp=np.append(adp,np.float(auxdp[indaux]))
+                        atp=np.append(atp,float(auxtp[indaux]))
+                        adp=np.append(adp,float(auxdp[indaux]))
                         del indaux,auxhs,auxtp,auxdp
                     else:
                         ahs=np.append(ahs,np.nan)
@@ -1003,8 +1003,8 @@ def bull_tar(*args):
                     else:
                         # lat / lon
                         auxpos=str(lines[1]).replace("b'","").split('(')[1].split('N')
-                        alat=np.append(alat,np.float(auxpos[0]))
-                        alon=np.append(alon,np.float(auxpos[1].split('W')[0]))
+                        alat=np.append(alat,float(auxpos[0]))
+                        alon=np.append(alon,float(auxpos[1].split('W')[0]))
 
                         if t==0:
                             # time array ----
@@ -1036,8 +1036,8 @@ def bull_tar(*args):
                         for j in range(9,np.size(lines)-8):
                             auxlines = str(lines[j]).replace("b'","")
                             if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[iauxhs[0]:iauxhs[1]]))
-                                auxtp=np.append(auxtp,np.float(auxlines[iauxtp[0]:iauxtp[1]]))
+                                auxhs=np.append(auxhs,float(auxlines[iauxhs[0]:iauxhs[1]]))
+                                auxtp=np.append(auxtp,float(auxlines[iauxtp[0]:iauxtp[1]]))
                             else:
                                 auxhs=np.append(auxhs,np.nan)
                                 auxtp=np.append(auxtp,np.nan)
@@ -1074,14 +1074,14 @@ def bull_tar(*args):
                         # lat / lon
                         auxpos=str(lines[0]).replace("b'","").split('(')[1]
                         if auxpos[5]=='N':
-                            alat=np.append(alat,np.float(auxpos[0:5]))
+                            alat=np.append(alat,float(auxpos[0:5]))
                         else:
-                            alat=np.append(alat,-1.*np.float(auxpos[0:5]))
+                            alat=np.append(alat,-1.*float(auxpos[0:5]))
 
                         if auxpos[13]=='E':
-                            alon=np.append(alon,np.float(auxpos[7:13]))
+                            alon=np.append(alon,float(auxpos[7:13]))
                         else:
-                            alon=np.append(alon,-1.*np.float(auxpos[7:13]))
+                            alon=np.append(alon,-1.*float(auxpos[7:13]))
 
                         if t==0:                
                             # time array ----
@@ -1113,26 +1113,36 @@ def bull_tar(*args):
                         auxhs=[]; auxtp=[]; auxdp=[]
                         for j in range(7,np.size(lines)-8):
                             auxlines = str(lines[j]).replace("b'","")
-                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[10:15]))
-                                fuxhs=np.array([np.float(auxlines[iauxhs[0]:iauxhs[1]])])
-                                for k in range(1,4):        
+                            if len(auxlines[10:15].replace(' ',''))>0:
+                                auxhs=np.append(auxhs,float(auxlines[10:15]))
+                                fuxhs=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-                                        fuxhs=np.append(fuxhs,np.float(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                                        fuxhs=np.append(fuxhs,float(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                                    else:
+                                        fuxhs=np.append(fuxhs,np.nan)
 
-                                fuxtp=np.array([np.float(auxlines[iauxtp[0]:iauxtp[1]])])
-                                for k in range(1,4):        
+                                fuxtp=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-                                        fuxtp=np.append(fuxtp,np.float(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                                        fuxtp=np.append(fuxtp,float(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                                    else:
+                                        fuxtp=np.append(fuxtp,np.nan)
 
-                                fuxdp=np.array([np.float(auxlines[iauxdp[0]:iauxdp[1]])])
-                                for k in range(1,4):        
+                                fuxdp=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-                                        fuxdp=np.append(fuxdp,np.float(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                                        fuxdp=np.append(fuxdp,float(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                                    else:
+                                        fuxdp=np.append(fuxdp,np.nan)
 
-                                indaux=np.nanmin(np.where(fuxhs==np.nanmax(fuxhs))[0])
-                                auxtp=np.append(auxtp,np.float(fuxtp[indaux]))
-                                auxdp=np.append(auxdp,np.float(fuxdp[indaux]))
+                                if np.nanmean(fuxhs)>-999:
+                                    indaux=np.nanmin(np.where(fuxhs==np.nanmax(fuxhs))[0])
+                                else:
+                                    indaux=0
+
+                                auxtp=np.append(auxtp,float(fuxtp[indaux]))
+                                auxdp=np.append(auxdp,float(fuxdp[indaux]))
                                 del indaux,fuxhs,fuxtp,fuxdp
                             else:
                                 auxhs=np.append(auxhs,np.nan)
@@ -1192,9 +1202,9 @@ def ts(*args):
                     adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                     if len(lines[j])>0:
-                        ahs=np.append(ahs,np.float(lines[j][13:18]))
-                        ahspr=np.append(ahspr,np.float(lines[j][19:25]))
-                        atp=np.append(atp,np.float(lines[j][27:32]))
+                        ahs=np.append(ahs,float(lines[j][13:18]))
+                        ahspr=np.append(ahspr,float(lines[j][19:25]))
+                        atp=np.append(atp,float(lines[j][27:32]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         ahspr=np.append(ahspr,np.nan)
@@ -1216,14 +1226,14 @@ def ts(*args):
                     adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                     if len(lines[j])>0:
-                        ahs=np.append(ahs,np.float(lines[j][22:28]))
-                        al=np.append(al,np.float(lines[j][31:35]))
-                        atr=np.append(atr,np.float(lines[j][37:42]))
-                        adir=np.append(adir,np.float(lines[j][44:49]))
-                        aspr=np.append(aspr,np.float(lines[j][50:56]))
-                        atp=np.append(atp,np.float(lines[j][57:64]))
-                        ap_dir=np.append(ap_dir,np.float(lines[j][66:71]))
-                        ap_spr=np.append(ap_spr,np.float(lines[j][72:78]))
+                        ahs=np.append(ahs,float(lines[j][22:28]))
+                        al=np.append(al,float(lines[j][31:35]))
+                        atr=np.append(atr,float(lines[j][37:42]))
+                        adir=np.append(adir,float(lines[j][44:49]))
+                        aspr=np.append(aspr,float(lines[j][50:56]))
+                        atp=np.append(atp,float(lines[j][57:64]))
+                        ap_dir=np.append(ap_dir,float(lines[j][66:71]))
+                        ap_spr=np.append(ap_spr,float(lines[j][72:78]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         al=np.append(al,np.nan)
@@ -1300,9 +1310,9 @@ def station_tar(*args):
                     for j in range(0,np.size(lines)):
                         auxlines = str(lines[j]).replace("b'","")
                         if len(lines[j])>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[13:18]))
-                                auxhspr=np.append(auxhspr,np.float(auxlines[19:25]))
-                                auxtp=np.append(auxtp,np.float(auxlines[27:32]))
+                                auxhs=np.append(auxhs,float(auxlines[13:18]))
+                                auxhspr=np.append(auxhspr,float(auxlines[19:25]))
+                                auxtp=np.append(auxtp,float(auxlines[27:32]))
                         else:
                             auxhs=np.append(auxhs,np.nan)
                             auxhspr=np.append(auxhspr,np.nan)
@@ -1487,7 +1497,7 @@ def spec_ww3(*args):
                 if aux<0:
                     aux=aux+360.
                 
-                d1sp[t,il]=np.float(aux)
+                d1sp[t,il]=float(aux)
                 del a,b,aux
 
     # build dictionary            
