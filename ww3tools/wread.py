@@ -939,7 +939,11 @@ def bull(*args):
                             else:
                                 auxdp=np.append(auxdp,np.nan)
 
-                        indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
+                        if np.nanmin(auxhs)>-999:
+                            indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
+                        else:
+                            indaux=0
+
                         atp=np.append(atp,float(auxtp[indaux]))
                         adp=np.append(adp,float(auxdp[indaux]))
                         del indaux,auxhs,auxtp,auxdp
@@ -1136,7 +1140,7 @@ def bull_tar(*args):
                                     else:
                                         fuxdp=np.append(fuxdp,np.nan)
 
-                                if np.nanmean(fuxhs)>-999:
+                                if np.nanmin(fuxhs)>-999:
                                     indaux=np.nanmin(np.where(fuxhs==np.nanmax(fuxhs))[0])
                                 else:
                                     indaux=0
