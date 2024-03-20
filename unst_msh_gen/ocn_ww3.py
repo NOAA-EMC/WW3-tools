@@ -6,7 +6,7 @@
 
 # The DEM file used below can be found at:	
 # https://github.com/dengwirda/dem/releases/tag/v0.1.1
-
+import argparse
 import numpy as np
 import netCDF4 as nc
 
@@ -17,6 +17,20 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import connected_components
 
 from spacing import *
+
+# Create the parser
+parser = argparse.ArgumentParser(description="Run mesh gen with specific region settings.")
+
+# Add an argument for the black_sea option
+parser.add_argument('--black_sea', type=int, default=3,
+                    help='Set the region mode: 1 no black-sea, 2 black-sea detached, 3 black-sea with connections. Default is 3.')
+
+# Parse the command-line arguments
+args = parser.parse_args()
+
+# Use args.black_sea to access the black_sea value
+
+
 
 ISOLATED = 30000.  # min surface area [km^2]
 
@@ -49,10 +63,10 @@ def create_msh():
     # solve |dh/dx| constraints in spacing
     jigsawpy.cmd.marche(opts, spac)
     
-    opts.mesh_file = "mesh_100km.msh"
+    opts.mesh_file = "mesh_50km_nobc.msh"
     
     opts.hfun_scal = "absolute"
-    opts.hfun_hmax = +100.           # uniform at 30.km
+    opts.hfun_hmax = +50.           # uniform at 30.km
     opts.mesh_dims = +2             # 2-dim. simplexes
     opts.optm_iter = +64
     opts.optm_cost = "skew-cos"
@@ -64,10 +78,10 @@ def create_siz():
 
 #-- create mesh spacing function for the globe
 
-    hmax = 100.0 # maximum spacing [km]
-    hshr = 100  # shoreline spacing
+    hmax = 50.0 # maximum spacing [km]
+    hshr = 50  # shoreline spacing
     nwav = 400.  # number of cells per sqrt(g*H)
-    hmin = 100.0  # minimum spacing
+    hmin = 50.0  # minimum spacing
     dhdx = 0.1  # allowable spacing gradient
 
     data = nc.Dataset(
@@ -305,7 +319,7 @@ def filter_wet(mesh, mask):
     return mask
 
 
-def filter_ocn():
+def filter_ocn(black_sea=args.black_sea):
 
 #-- use the remapped elev. to keep ocean cells
 
@@ -320,7 +334,13 @@ def filter_ocn():
     caspian_lat_max = 50.0
     caspian_lon_min = 44.5
     caspian_lon_max = 55.5
-
+    
+    # Define the black Sea region
+    blacksea_lat_min = 40 
+    blacksea_lat_max = 47.25
+    blacksea_lon_min = 26.15
+    blacksea_lon_max = 41.5
+    
    # Define the additional region1
     additional_lat_min = 39.95
     additional_lat_max = 40.6
@@ -339,7 +359,7 @@ def filter_ocn():
     additional_lon_min3 = 28.9
     additional_lon_max3 = 29.1
     
-
+    """
 # Print the elevations in the additional region
     additional_elev = elev[np.logical_and.reduce((
         mesh.smids[:, 1] >= additional_lat_min,
@@ -370,7 +390,7 @@ def filter_ocn():
     print("Elevations in the additional region3:")
     print(additional_elev3)
 
-
+    """
 
     # zssh, to cull elev. against
     surf = np.zeros(elev.shape, dtype=np.float32)
@@ -382,37 +402,46 @@ def filter_ocn():
         mesh.smids[:, 0] >= caspian_lon_min,
         mesh.smids[:, 0] <= caspian_lon_max
     ))
-
-# Define the additional specified region
-    additional_region = np.logical_and.reduce((
-        mesh.smids[:, 1] >= additional_lat_min,
-        mesh.smids[:, 1] <= additional_lat_max,
-        mesh.smids[:, 0] >= additional_lon_min,
-        mesh.smids[:, 0] <= additional_lon_max
+    
+    blacksea_region = np.logical_and.reduce((
+        mesh.smids[:, 1] >= blacksea_lat_min,
+        mesh.smids[:, 1] <= blacksea_lat_max,
+        mesh.smids[:, 0] >= blacksea_lon_min,
+        mesh.smids[:, 0] <= blacksea_lon_max
     ))
     
-# Define the additional specified region2
-    additional_region2 = np.logical_and.reduce((
-        mesh.smids[:, 1] >= additional_lat_min2,
-        mesh.smids[:, 1] <= additional_lat_max2,
-        mesh.smids[:, 0] >= additional_lon_min2,
-        mesh.smids[:, 0] <= additional_lon_max2
-    ))  
+        # Activate regions based on black_sea option
+    if black_sea == 1:  # Caspian and Black Sea
+        surf[caspian_region] = -9999.0
+        surf[blacksea_region] = -9999.0
+    elif black_sea == 2:  # Only Caspian Sea
+        surf[caspian_region] = -9999.0
+    elif black_sea == 3:  # All except Black Sea
+        surf[caspian_region] = -9999.0
+        # Additional regions
+        additional_region = np.logical_and.reduce((
+            mesh.smids[:, 1] >= additional_lat_min,
+            mesh.smids[:, 1] <= additional_lat_max,
+            mesh.smids[:, 0] >= additional_lon_min,
+            mesh.smids[:, 0] <= additional_lon_max
+        ))
+        surf[additional_region] = 200.
 
-# Define the additional specified region3
-    additional_region3 = np.logical_and.reduce((
-        mesh.smids[:, 1] >= additional_lat_min3,
-        mesh.smids[:, 1] <= additional_lat_max3,
-        mesh.smids[:, 0] >= additional_lon_min3,
-        mesh.smids[:, 0] <= additional_lon_max3
-    ))
+        additional_region2 = np.logical_and.reduce((
+            mesh.smids[:, 1] >= additional_lat_min2,
+            mesh.smids[:, 1] <= additional_lat_max2,
+            mesh.smids[:, 0] >= additional_lon_min2,
+            mesh.smids[:, 0] <= additional_lon_max2
+        ))
+        surf[additional_region2] = 300.
 
-
-# Update the surf array with different values for each region
-    surf[caspian_region] = -9999.0
-    surf[additional_region] = 200.
-    surf[additional_region2] = 300.
-    surf[additional_region3] = 400.
+        additional_region3 = np.logical_and.reduce((
+            mesh.smids[:, 1] >= additional_lat_min3,
+            mesh.smids[:, 1] <= additional_lat_max3,
+            mesh.smids[:, 0] >= additional_lon_min3,
+            mesh.smids[:, 0] <= additional_lon_max3
+        ))
+        surf[additional_region3] = 400.
         
     keep = elev <= surf  # only keep tri with wet elev
    
@@ -489,9 +518,9 @@ if (__name__ == "__main__"):
     point = jigsawpy.R3toS2(geom.radii, point)  # to [lon,lat] in deg
     point*= 180. / np.pi
     depth = np.reshape(-1*mesh.value, (mesh.value.size, 1))
-    depth[depth < 0] = 50
+    #depth[depth < 0] = 50
     point = np.hstack((point, depth))  # append elev. as 3rd coord.
     cells = [("triangle", mesh.tria3["index"])]
     tri_data=cells[0][1]+1
-    write_gmsh_mesh("100km_ocnp2d.ww3", point, tri_data)
-    
+    write_gmsh_mesh("50km_nobc.ww3", point, tri_data)
+   
