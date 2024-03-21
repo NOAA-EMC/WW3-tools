@@ -14,22 +14,20 @@ This tool is under active development, with future work focused on variable unst
         scipy
 	packaging
 	netcdf4
-3- get the DEM:
+
+3- clone the repo
+        $git clone https://github.com/NOAA-EMC/WW3-tools
+	$cd WW3-tools/unst_msh_gen
+
+3- get the DEM and make sure it is in the WW3-tools/unst_msh_gen directory
 	$wget https://github.com/dengwirda/dem/releases/download/v0.1.1/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.zip
-4- unzip the DEM 
+4- unzip the DEMi 
 	unzip *.zip
  
 
 
 ## Usage
-1- clone the repo
-	$mkdir meshgen
-	$cd meshgen
-	$git clone https://github.com/AliS-Noaa/WW3-tools/tree/add-unst-mesh-gen
-2- get the DEM:
-        $wget https://github.com/dengwirda/dem/releases/download/v0.1.1/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.zip
-        $unzip *.zip
-3- run the script:
+5- run the script inside of WW3-tools/unst_msh_gen:
 	$python3 ocn_ww3.p --black_sea [option]
 		
 		option=  3: default which will have the Black Sea and the connections.
