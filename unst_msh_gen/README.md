@@ -24,8 +24,6 @@ This tool is under active development, with future work focused on variable unst
 4- unzip the DEMi 
 	unzip *.zip
  
-
-
 ## Usage
 5- run the script inside of WW3-tools/unst_msh_gen:
 	$python3 ocn_ww3.p --black_sea [option]
@@ -35,6 +33,17 @@ This tool is under active development, with future work focused on variable unst
 			 1: will exclude the Black sea
 
 NOTE: the output will be gmsh format which will be used by WW3.
+
+NOTE: for different resolution (uniform) in km, you should change the following:
+	opts.hfun_hmax
+	hmax
+	hshr
+	hmin
+
+NOTE: The output mesh will have -180:180 longitude, you can convert this by unisg ShiftMesh.py script, to 0:360 longitude.
+	input_file_path: your jigsaw mesh in gmsh format with -18:180 long
+	output_file_path: shifted mesh in gmsh format with 0:360 long
+
 
 ## Contributing
 This is ongoing effort with the great help of Darren Engwirda, JIGSAW developer.
