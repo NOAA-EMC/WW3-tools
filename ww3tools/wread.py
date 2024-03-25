@@ -1236,8 +1236,7 @@ def spec_ww3(*args):
 
 #added a function to read the txt files
 
-def read_text_file(fname_txtfile, stname):
-    sk = 1
+def read_text_file(fname_txtfile):
     try:
         # Attempt to open and read the file name from the txt file
         with open(fname_txtfile, 'r') as f:
@@ -1250,138 +1249,182 @@ def read_text_file(fname_txtfile, stname):
     except Exception as e:
         sys.exit(f'Error reading txt file: {str(e)}')
 
-    print("Filename:", fname)
-    print("Station Name:", stname)
-    print("sk:", sk)
-
     results = {}
+    stname = []
 
-    fp = open(fname)
-    nt = fp.read().count(stname)
-    fp.close()
+    try:
+        tar = tarfile.open(fname, "r:gz")  # Open the tar file
 
-    if nt >= 1:
-        # Open file and read the first parameters
-        fp = open(fname)
-        cabc = fp.readline().strip().split()
-        nf = int(cabc[3])  # number of frequencies
-        nd = int(cabc[4])  # number of directions
-        npo = int(cabc[5])  # number of point outputs
+        for t in range(0, len(tar.getmembers())):
+            # Station names
 
-        freq = np.zeros(nf, 'f')
-        dire = np.zeros(nd, 'f')
-        dspec = np.zeros((nt, nf, nd), 'f')
-        adire = np.zeros(dire.shape)
-        adspec = np.zeros(dspec.shape)
-        ntime = np.zeros((nt), 'd')
+            stname.append(str(tar.getmembers()[t].name).split('/')[-1].split('.')[-2])
 
-        # Frequencies --------------------
-        ncf = int(np.floor(nf/8))
-        rncf = int(np.round(8*((float(nf)/8)-ncf)))
-        k = 0
-        for i in range(0, ncf):
-            line = fp.readline()
-            line = line.strip().split()
-            for j in range(0, 8):
-                freq[k] = float(line[j])
-                k = k+1
-
-        if rncf > 0:
-            line = fp.readline()
-            line = line.strip().split()
-            for i in range(0, rncf):
-                freq[k] = float(line[i])
-                k = k+1
-
-        # DF in frequency (dfreq)
-        dfreq = np.zeros(freq.shape[0], 'f')
-        for i in range(0, freq.shape[0]):
-            if i == 0 or i == (freq.shape[0]-1):
-                dfreq[i] = freq[i]*(1 + (((freq[-1]/freq[-2])-1)/2)) - freq[i]
+            try:
+                fp = tar.extractfile(tar.getmembers()[t])
+                if fp is None:
+                    raise ValueError("File is empty or cannot be extracted.")
+                lines = fp.readlines()
+                nt=len(lines)
+            except Exception as e:
+                print("Cannot open " + tar.getmembers()[t].name)
+                print("Error:", str(e))
+                continue
             else:
-                dfreq[i] = freq[i]*(freq[-1]/freq[-2]) - freq[i]
+                if nt == 0:
+                    print("No lines to read in file:", tar.getmembers()[t].name)
+                    continue
+            for line in lines:
+               line = line.strip().decode()
 
-        # Directions ---------------------
-        ncd = int(np.floor(nd/7))
-        rncd = int(np.round(7*((float(nd)/7)-ncd)))
-        k = 0
-        for i in range(0, ncd):
-            line = fp.readline()
-            line = line.strip().split()
-            for j in range(0, 7):
-                dire[k] = float(line[j])*180/np.pi
-                k = k+1
+            if nt >= 1:
+                # Open file and read the first parameters
+                fp = tar.extractfile(tar.getmembers()[t])
+                cabc = fp.readline().strip().split()
+                nf = int(cabc[3])  # number of frequencies
+                nd = int(cabc[4])  # number of directions
+                npo = int(cabc[5])  # number of point outputs
 
-        if rncd > 0:
-            line = fp.readline()
-            line = line.strip().split()
-            for i in range(0, rncd):
-                dire[k] = float(line[i])*180/np.pi
-                k = k+1
+                freq = np.zeros(nf, 'f')
+                dire = np.zeros(nd, 'f')
+                dspec = np.zeros((nt, nf, nd), 'f')
+                adire = np.zeros(dire.shape)
+                adspec = np.zeros(dspec.shape)
+                ntime = np.zeros((nt), 'd')
 
-        nl = int(np.floor((nf*nd)/7.))
-        rnl = int(np.round(7*((float(nf*nd)/7)-nl)))
-        auxs = np.zeros((nf*nd), 'f')
-        wnds = np.zeros((nt), 'f')
-        wndd = np.zeros((nt), 'f')
-        for t in range(0, nt):
+                # Frequencies --------------------
+                ncf = int(np.floor(nf/8))
+                rncf = int(np.round(8*((float(nf)/8)-ncf)))
+                k = 0
+                for i in range(0, ncf):
+                    line = fp.readline()
+                    line = line.strip().split()
+                    for j in range(0, 8):
+                        freq[k] = float(line[j])
+                        k = k+1
 
-            cabc = fp.readline().strip().split()[0]
-            ntime[t] = np.double(timegm(strptime(cabc.strip().split()[0], '%Y%m%d%H')))
-            cabc = fp.readline().strip().split()
-            if t == 0:
-                namep = cabc[0][1:]
-                lat_str, lon_str = cabc[2].split('-')
-                lat = float(lat_str)
-                lon = -float(lon_str)
-                depth = float(cabc[4])
+                if rncf > 0:
+                    line = fp.readline()
+                    line = line.strip().split()
+                    for i in range(0, rncf):
+                        freq[k] = float(line[i])
+                        k = k+1
 
-            wnds[t] = float(cabc[5])
-            wndd[t] = float(cabc[6])
+                # DF in frequency (dfreq)
+                dfreq = np.zeros(freq.shape[0], 'f')
+                for i in range(0, freq.shape[0]):
+                    if i == 0 or i == (freq.shape[0]-1):
+                        dfreq[i] = freq[i]*(1 + (((freq[-1]/freq[-2])-1)/2)) - freq[i]
+                    else:
+                        dfreq[i] = freq[i]*(freq[-1]/freq[-2]) - freq[i]
 
-            k = 0
-            for i in range(0, nl):
-                line = fp.readline()
-                line = line.strip().split()
-                for j in range(0, 7):
-                    auxs[k] = float(line[j])
-                    k = k+1
+                # Directions ---------------------
+                ncd = int(np.floor(nd/7))
+                rncd = int(np.round(7*((float(nd)/7)-ncd)))
+                k = 0
+                for i in range(0, ncd):
+                    line = fp.readline()
+                    line = line.strip().split()
+                    for j in range(0, 7):
+                        dire[k] = float(line[j])*180/np.pi
+                        k = k+1
 
-            if rncd > 0:
-                line = fp.readline()
-                line = line.strip().split()
-                for i in range(0, rnl):
-                    auxs[k] = float(line[i])
-                    k = k+1
+                if rncd > 0:
+                    line = fp.readline()
+                    line = line.strip().split()
+                    for i in range(0, rncd):
+                        dire[k] = float(line[i])*180/np.pi
+                        k = k+1
 
-            for ic in range(0, nf):
-                for il in range(0, nd):
-                    dspec[t, ic, il] = auxs[il*nf+ic]
+                nl = int(np.floor((nf*nd)/7.))
+                rnl = int(np.round(7*((float(nf*nd)/7)-nl)))
+                auxs = np.zeros((nf*nd), 'f')
+                wnds = np.zeros((nt), 'f')
+                wndd = np.zeros((nt), 'f')
+                hs = np.zeros(nt)  # Initialize significant wave height array
 
-        fp.close()
+                for t in range(0, nt):
 
-        results['ntime'] = ntime
-        results['latitude'] = lat
-        results['longitude'] = lon
-        results['wind_spd'] = wnds
-        results['wind_dir'] = wndd
-        results['freq'] = freq
-        results['deltafreq'] = dfreq
-        results['dir'] = dire
-        results['spec'] = dspec
-        results['station_name'] = stname
-        # Print some values for verification
-        print("Number of time steps:", nt)
-        print("Latitude:", lat)
-        print("Longitude:", lon)
-        print("Depth:", depth)
+                    cabc = [item.decode() for item in fp.readline().strip().split()]
 
-    else:
-        sys.exit(' Station '+stname+' not included in the output file')
+                    if not cabc:
+                        continue
+                    ntime[t] = np.double(timegm( strptime(cabc[0]+cabc[1][0:2], '%Y%m%d%H') ))
+                    cabc = [item.decode() for item in fp.readline().strip().split()]
+
+                    if not cabc:
+                        continue
+                    if t == 0:
+
+                        if len(cabc) >= 8:
+                            namep = cabc[0][1:]
+                            lat_str = cabc[3]
+                            lon_str = cabc[4]
+                            lat = -float(lat_str) if lat_str.startswith('-') else float(lat_str)
+                            lon = -float(lon_str) if lon_str.startswith('-') else float(lon_str)
+                            depth = float(cabc[5])
+                            wnds[t] = float(cabc[6])
+                            wndd[t] = float(cabc[7])
+
+
+
+                        elif len(cabc) == 7:
+                            namep = cabc[0][1:-1] if cabc[0].startswith("'") and cabc[0].endswith("'") else cabc[0][1:]
+                            print("Station Name:", namep)
+                            lat_lon = cabc[1].split('-')
+                            print("lat-lon:",lat_lon)
+                            lat_str = lat_lon[0]
+                            print("lat_str:",lat_str)
+                            lon_str = lat_lon[1]
+                            print("lon_str:",lon_str)
+                            lat = -float(lat_str) if lat_str.startswith('-') else float(lat_str)
+                            lon = -float(lon_str) if lon_str.startswith('-') else float(lon_str)
+                            depth = float(cabc[3])
+                            wnds[t] = float(cabc[4])
+                            wndd[t] = float(cabc[5])
+
+                    k = 0
+                    for i in range(0, nl):
+                        line = fp.readline()
+                        line = line.strip().split()
+                        for j in range(0, 7):
+                            auxs[k] = float(line[j])
+                            k = k+1
+
+                    if rncd > 0:
+                        line = fp.readline()
+                        line = line.strip().split()
+                        for i in range(0, rnl):
+                            auxs[k] = float(line[i])
+                            k = k+1
+
+                    for ic in range(0, nf):
+                        for il in range(0, nd):
+                            dspec[t, ic, il] = auxs[il*nf+ic]
+
+                    # Calculate significant wave height
+                    sp1d = np.sum(dspec[t], axis=1) * (np.abs(dire[1] - dire[0]))  # Calculate 1D spectrum
+                    hs[t] = 4 * np.sqrt(np.trapz(sp1d, x=freq))  # Calculate significant wave height
+
+                fp.close()
+
+                results['ntime'] = ntime
+                results['latitude'] = lat
+                results['longitude'] = lon
+                results['wind_spd'] = wnds
+                results['wind_dir'] = wndd
+                results['freq'] = freq
+                results['deltafreq'] = dfreq
+                results['dir'] = dire
+                results['spec'] = dspec
+                results['station_name'] = stname
+                results['hs'] = hs  # Add significant wave height to results
+
+            else:
+                sys.exit(f'Station {stname} not included in')
+    except Exception as e:
+        sys.exit(f'Error reading spectral file: {str(e)}')
 
     return results
 
-
-# Example usage:
-# results = read_text_file('txtfile_containing_filename.txt', 'station_name')
 
