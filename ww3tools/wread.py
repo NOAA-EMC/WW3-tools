@@ -235,7 +235,7 @@ def tseriesnc_ndbc(fname=None,anh=None):
                     print('Information about the Anemometer height, for wind speed conversion to 10m, could not be obtained.')
                 else:
                     if "Anemometer height" in html:
-                        anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+                        anh=float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
                     else:
                         print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found.')
                         anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
@@ -324,14 +324,14 @@ def tseriestxt_ndbc(fname=None,anh=None):
                 html = html_bytes.decode("utf-8")
                 auxlatlon=html.split('payload')[1][16:33]
                 if 'S' in auxlatlon:
-                    blat=-np.float(auxlatlon[0:6])
+                    blat=-float(auxlatlon[0:6])
                 else:
-                    blat=np.float(auxlatlon[0:6])
+                    blat=float(auxlatlon[0:6])
 
                 if 'W' in auxlatlon:
-                    blon=-np.float(auxlatlon[8:16])
+                    blon=-float(auxlatlon[8:16])
                 else:
-                    blon=np.float(auxlatlon[8:16])    
+                    blon=float(auxlatlon[8:16])    
 
             except:
                 if anh==None:
@@ -343,7 +343,7 @@ def tseriestxt_ndbc(fname=None,anh=None):
             else:
                 if anh==None:
                     if "Anemometer height" in html:
-                        anh=np.float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
+                        anh=float(html.split('Anemometer height')[1][0:15].split(':</b>')[1].split('m')[0])
                     else:
                         print('Information about the Anemometer height, for wind speed conversion to 10m, could not be found. Assuming 4.0 meters.')
                         anh=4.0 # assuming most of anemometer heights are between 3.7 to 4.1.
@@ -562,7 +562,7 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
                 st=np.double(fu.variables['TIME'][:]*24.*3600.+float(timegm( time.strptime('1985010100', '%Y%m%d%H') )))
                 indt=np.where((st>=adatemin-wconfig['maxti']) & (st<=adatemax+wconfig['maxti']))
                 # check if there is valid records inside the time range of interest
-                if np.size(indt)>10:
+                if size(indt)>10:
                     indt=indt[0]
                     # it does not read using the indexes because it is much slower
                     slat=fu.variables['LATITUDE'][:]
@@ -631,7 +631,7 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
 
     del asig0knstd,aswhknobs,aswhknstd,aswhkqc,adatemin,adatemax
 
-    if np.size(indq)>2:
+    if size(indq)>2:
         indq=indq[0]
         ast=np.double(np.copy(ast[indq]))
         aslat=np.copy(aslat[indq]); aslon=np.copy(aslon[indq])
@@ -682,7 +682,7 @@ def tseriestxt_ww3(*args):
         sys.exit(" Cannot open "+fname)
     else:
 
-        tt = int(np.size(mcontent)/(7+tnb)+1)
+        tt = int(size(mcontent)/(7+tnb)+1)
         myear = []; mmonth = [] ; mday = [] ; mhour = []; mmin = []
         mlon = np.zeros((tnb,tt),'f'); mlat = np.zeros((tnb,tt),'f'); mhs = np.zeros((tnb,tt),'f'); mL = np.zeros((tnb,tt),'f') 
         mtm = np.zeros((tnb,tt),'f'); mdm = np.zeros((tnb,tt),'f'); mspr = np.zeros((tnb,tt),'f')
@@ -710,7 +710,7 @@ def tseriestxt_ww3(*args):
         for i in range(0,mtp.shape[0]):    
             #mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
             indtp=np.where(atp[i,:]>0.0)
-            if np.size(indtp)>0:
+            if size(indtp)>0:
                 mtp[i,indtp] = np.copy(1./atp[i,indtp])
                 del indtp
 
@@ -754,7 +754,7 @@ def tseriesnc_ww3(*args):
             stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
 
         inds=np.where(stationname[:]==stname)
-        if np.size(inds)>0:
+        if size(inds)>0:
             inds=int(inds[0][0]); stname=str(stationname[inds])
         else:
             sys.exit(' Station '+stname+' not included in the ww3 output file, or wrong station ID')
@@ -777,7 +777,7 @@ def tseriesnc_ww3(*args):
         if 'fp' in ds.keys():
             mtp = np.zeros(mhs.shape[0],'f')*np.nan
             indtp=np.where(ds['fp'].values[:,inds]>0.0)
-            if np.size(indtp)>0:
+            if size(indtp)>0:
                 mtp[indtp] = np.copy(1./ds['fp'].values[indtp,inds])
                 del indtp
                 mtp[(mtp<0)|(mtp>40)]=np.nan
@@ -821,7 +821,8 @@ def bull(*args):
         sys.exit(' Too many inputs')
 
     # confirm format
-    if str(fname).split('/')[-1].split('.')[-1]=='bull':
+    if 'bull' in str(fname).split('/')[-1]:
+
         print("  reading ww3 bull file ...")
         at=[]; adate=[]; ahs=[]; atp=[]; adp=[]
         stname=str(fname).split('/')[-1].split('.')[-2]
@@ -831,91 +832,21 @@ def bull(*args):
         except:
             sys.exit('   Cannot open '+fname)
         else:
-
-            if 'gfs' in str(fname).split('/')[-1]:
-                iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
-
-                # lat / lon
-                auxpos=str(lines[0]).replace("b'","").split('(')[1]
-                if auxpos[5]=='N':
-                    alat=np.float(auxpos[0:5])
-                else:
-                    alat=-1.*np.float(auxpos[0:5])
-
-                if auxpos[13]=='E':
-                    alon=np.float(auxpos[7:13])
-                else:
-                    alon=-1.*np.float(auxpos[7:13])
-
-                # time ----
-                auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
-                auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
-                year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
-                pday=0
-                for j in range(7,np.size(lines)-8):
-                    day=int(lines[j][3:5]); hour=int(lines[j][6:8])
-                    if day<pday:
-                        if month<12:
-                            month=month+1
-                        else:
-                            month=1; year=year+1
-
-                    at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
-                    pday=np.copy(day)
-
-                del hour,day,month,year
-                for j in range(0,at.shape[0]):
-                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
-                # --------
-
-                for j in range(7,np.size(lines)-8):
-                    if len(lines[j][iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                        ahs=np.append(ahs,np.float(lines[j][10:15]))
-                        auxhs=np.array([np.float(lines[j][iauxhs[0]:iauxhs[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-                                auxhs=np.append(auxhs,np.float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
-
-                        auxtp=np.array([np.float(lines[j][iauxtp[0]:iauxtp[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-                                auxtp=np.append(auxtp,np.float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
-
-                        auxdp=np.array([np.float(lines[j][iauxdp[0]:iauxdp[1]])])
-                        for k in range(1,4):        
-                            if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-                                auxdp=np.append(auxdp,np.float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
-
-                        indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
-                        atp=np.append(atp,np.float(auxtp[indaux]))
-                        adp=np.append(adp,np.float(auxdp[indaux]))
-                        del indaux,auxhs,auxtp,auxdp
-                    else:
-                        ahs=np.append(ahs,np.nan)
-                        atp=np.append(atp,np.nan)
-                        adp=np.append(adp,np.nan)
-
-                # build dictionary
-                result={'latitude':alat,'longitude':alon,'station_name':stname,
-                'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
-                'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
-
-                del adp
-
-            elif 'gefs' in str(fname).split('/')[-1]:
+            # GEFS specific format
+            if 'gefs' in str(fname).split('/')[-1]:
                 iauxhs=[10,15];iauxtp=[28,33]
 
                 # lat / lon
                 auxpos=str(lines[1]).split('(')[1].split('N')
-                alat=np.float(auxpos[0])
-                alon=np.float(auxpos[1].split('W')[0])
+                alat=float(auxpos[0])
+                alon=float(auxpos[1].split('W')[0])
 
                 # time ----
                 auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
                 auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[10:12]+'00', '%Y%m%d %H%M') ))
                 year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
                 pday=0
-                for j in range(9,np.size(lines)-8):
+                for j in range(9,size(lines)-8):
                     day=int(lines[j][2:4]); hour=int(lines[j][5:7])
                     if day<pday:
                         if month<12:
@@ -932,10 +863,10 @@ def bull(*args):
                 # --------
 
                 ahs=[]; atp=[]
-                for j in range(9,np.size(lines)-8):
+                for j in range(9,size(lines)-8):
                     if len(lines[j][iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                        ahs=np.append(ahs,np.float(lines[j][iauxhs[0]:iauxhs[1]]))
-                        atp=np.append(atp,np.float(lines[j][iauxtp[0]:iauxtp[1]]))
+                        ahs=np.append(ahs,float(lines[j][iauxhs[0]:iauxhs[1]]))
+                        atp=np.append(atp,float(lines[j][iauxtp[0]:iauxtp[1]]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         atp=np.append(atp,np.nan)
@@ -944,6 +875,89 @@ def bull(*args):
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'latitude':alat,'longitude':alon,'station_name':stname,                
                 'hs':np.array(ahs),'tp':np.array(atp)}
+
+            # GFS, HAFS, and other formats
+            else:
+                iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
+
+                # lat / lon
+                auxpos=str(lines[0]).replace("b'","").split('(')[1]
+                if auxpos[5]=='N':
+                    alat=float(auxpos[0:5])
+                else:
+                    alat=-1.*float(auxpos[0:5])
+
+                if auxpos[13]=='E':
+                    alon=float(auxpos[7:13])
+                else:
+                    alon=-1.*float(auxpos[7:13])
+
+                # time ----
+                auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
+                auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
+                year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
+                pday=0
+                for j in range(7,size(lines)-8):
+                    day=int(lines[j][3:5]); hour=int(lines[j][6:8])
+                    if day<pday:
+                        if month<12:
+                            month=month+1
+                        else:
+                            month=1; year=year+1
+
+                    at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
+                    pday=np.copy(day)
+
+                del hour,day,month,year
+                for j in range(0,at.shape[0]):
+                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
+                # --------
+
+                for j in range(7,size(lines)-8):
+                    if len(lines[j][10:15].replace(' ',''))>0:
+                        ahs=np.append(ahs,float(lines[j][10:15]))
+
+                        # aux... is organizing the partitions. Ready for future versions (not included yet)
+                        auxhs=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
+                                auxhs=np.append(auxhs,float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                            else:
+                                auxhs=np.append(auxhs,np.nan)
+
+                        auxtp=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
+                                auxtp=np.append(auxtp,float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                            else:
+                                auxtp=np.append(auxtp,np.nan)
+
+                        auxdp=[]
+                        for k in range(0,4):        
+                            if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
+                                auxdp=np.append(auxdp,float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                            else:
+                                auxdp=np.append(auxdp,np.nan)
+
+                        if np.nanmin(auxhs)>-999:
+                            indaux=np.nanmin(np.where(auxhs==np.nanmax(auxhs))[0])
+                        else:
+                            indaux=0
+
+                        atp=np.append(atp,float(auxtp[indaux]))
+                        adp=np.append(adp,float(auxdp[indaux]))
+                        del indaux,auxhs,auxtp,auxdp
+                    else:
+                        ahs=np.append(ahs,np.nan)
+                        atp=np.append(atp,np.nan)
+                        adp=np.append(adp,np.nan)
+
+                # build dictionary
+                result={'latitude':alat,'longitude':alon,'station_name':stname,
+                'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
+                'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
+
+                del adp
 
             print("   Model data read, "+fname+", bull format.")
             return result
@@ -965,7 +979,8 @@ def bull_tar(*args):
         sys.exit(' Too many inputs')
 
     # confirm file format
-    if fname.split('/')[-1].split('.')[-1]=='bull_tar':
+    if ('bull' in str(fname).split('/')[-1]) and ('tar' in str(fname).split('/')[-1]):
+
         print("  reading ww3 bull_tar file ...")
         import tarfile
         stname=[]
@@ -977,10 +992,80 @@ def bull_tar(*args):
         else:
             at=[]; adate=[]; alat=[]; alon=[]
 
-            if 'gfs' in str(fname).split('/')[-1]:
+            # GEFS specific format
+            if 'gefs' in str(fname).split('/')[-1]:
+                iauxhs=[10,15];iauxtp=[28,33]
+                
+                for t in range(0,size(tar.getmembers())):
+                    # station names
+                    stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
+
+                    try:
+                        tfile=tar.extractfile(tar.getmembers()[t]); lines = tfile.readlines()
+                    except:
+                        print("   Cannot open "+tar.getmembers()[t].name)
+                    else:
+                        # lat / lon
+                        auxpos=str(lines[1]).replace("b'","").split('(')[1].split('N')
+                        alat=np.append(alat,float(auxpos[0]))
+                        alon=np.append(alon,float(auxpos[1].split('W')[0]))
+
+                        if t==0:
+                            # time array ----
+                            auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
+                            auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[10:12]+'00', '%Y%m%d %H%M') ))
+                            year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
+                            pday=0
+                            for j in range(9,size(lines)-8):
+                                auxlines = str(lines[j]).replace("b'","")
+                                day=int(auxlines[2:4]); hour=int(auxlines[5:7]); del auxlines
+                                if day<pday:
+                                    if month<12:
+                                        month=month+1
+                                    else:
+                                        month=1; year=year+1
+
+                                at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
+                                pday=np.copy(day)
+
+                            del hour,day,month,year
+                            for j in range(0,at.shape[0]):
+                                adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
+
+                            # --------
+                            ahs=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                            atp=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+
+                        auxhs=[]; auxtp=[]
+                        for j in range(9,size(lines)-8):
+                            auxlines = str(lines[j]).replace("b'","")
+                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
+                                auxhs=np.append(auxhs,float(auxlines[iauxhs[0]:iauxhs[1]]))
+                                auxtp=np.append(auxtp,float(auxlines[iauxtp[0]:iauxtp[1]]))
+                            else:
+                                auxhs=np.append(auxhs,np.nan)
+                                auxtp=np.append(auxtp,np.nan)
+
+                            del auxlines
+
+                        if ahs.shape[1]==auxhs.shape[0]:
+                            ahs[t,:]=np.array(auxhs)
+                            atp[t,:]=np.array(auxtp)
+                        else:
+                            print("   Time duration of "+tar.getmembers()[t]+" (in "+fname+") do not match the other stations. Mantained NaN.")
+    
+                        del auxhs,auxtp,tfile,lines
+
+                # build dictionary            
+                result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
+                'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
+                'hs':np.array(ahs),'tp':np.array(atp)}
+
+            # GFS, HAFS, and other formats
+            else:
                 iauxhs=[24,30];iauxtp=[30,34];iauxdp=[35,38]
 
-                for t in range(0,np.size(tar.getmembers())):
+                for t in range(0,size(tar.getmembers())):
                     # station names
                     stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
 
@@ -993,14 +1078,14 @@ def bull_tar(*args):
                         # lat / lon
                         auxpos=str(lines[0]).replace("b'","").split('(')[1]
                         if auxpos[5]=='N':
-                            alat=np.append(alat,np.float(auxpos[0:5]))
+                            alat=np.append(alat,float(auxpos[0:5]))
                         else:
-                            alat=np.append(alat,-1.*np.float(auxpos[0:5]))
+                            alat=np.append(alat,-1.*float(auxpos[0:5]))
 
                         if auxpos[13]=='E':
-                            alon=np.append(alon,np.float(auxpos[7:13]))
+                            alon=np.append(alon,float(auxpos[7:13]))
                         else:
-                            alon=np.append(alon,-1.*np.float(auxpos[7:13]))
+                            alon=np.append(alon,-1.*float(auxpos[7:13]))
 
                         if t==0:                
                             # time array ----
@@ -1008,7 +1093,7 @@ def bull_tar(*args):
                             auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
                             year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
                             pday=0
-                            for j in range(7,np.size(lines)-8):
+                            for j in range(7,size(lines)-8):
                                 auxlines = str(lines[j]).replace("b'","")
                                 day=int(auxlines[3:5]); hour=int(auxlines[6:8]); del auxlines
                                 if day<pday:
@@ -1025,33 +1110,43 @@ def bull_tar(*args):
                                 adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                             # --------
-                            ahs=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                            atp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                            adp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                            ahs=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                            atp=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                            adp=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
 
                         auxhs=[]; auxtp=[]; auxdp=[]
-                        for j in range(7,np.size(lines)-8):
+                        for j in range(7,size(lines)-8):
                             auxlines = str(lines[j]).replace("b'","")
-                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[10:15]))
-                                fuxhs=np.array([np.float(auxlines[iauxhs[0]:iauxhs[1]])])
-                                for k in range(1,4):        
+                            if len(auxlines[10:15].replace(' ',''))>0:
+                                auxhs=np.append(auxhs,float(auxlines[10:15]))
+                                fuxhs=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
-                                        fuxhs=np.append(fuxhs,np.float(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                                        fuxhs=np.append(fuxhs,float(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
+                                    else:
+                                        fuxhs=np.append(fuxhs,np.nan)
 
-                                fuxtp=np.array([np.float(auxlines[iauxtp[0]:iauxtp[1]])])
-                                for k in range(1,4):        
+                                fuxtp=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
-                                        fuxtp=np.append(fuxtp,np.float(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                                        fuxtp=np.append(fuxtp,float(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
+                                    else:
+                                        fuxtp=np.append(fuxtp,np.nan)
 
-                                fuxdp=np.array([np.float(auxlines[iauxdp[0]:iauxdp[1]])])
-                                for k in range(1,4):        
+                                fuxdp=[]
+                                for k in range(0,4):        
                                     if len(str(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
-                                        fuxdp=np.append(fuxdp,np.float(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                                        fuxdp=np.append(fuxdp,float(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
+                                    else:
+                                        fuxdp=np.append(fuxdp,np.nan)
 
-                                indaux=np.nanmin(np.where(fuxhs==np.nanmax(fuxhs))[0])
-                                auxtp=np.append(auxtp,np.float(fuxtp[indaux]))
-                                auxdp=np.append(auxdp,np.float(fuxdp[indaux]))
+                                if np.nanmin(fuxhs)>-999:
+                                    indaux=np.nanmin(np.where(fuxhs==np.nanmax(fuxhs))[0])
+                                else:
+                                    indaux=0
+
+                                auxtp=np.append(auxtp,float(fuxtp[indaux]))
+                                auxdp=np.append(auxdp,float(fuxdp[indaux]))
                                 del indaux,fuxhs,fuxtp,fuxdp
                             else:
                                 auxhs=np.append(auxhs,np.nan)
@@ -1073,74 +1168,6 @@ def bull_tar(*args):
                 'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
 
                 del adp
-
-            elif 'gefs' in str(fname).split('/')[-1]:
-                iauxhs=[10,15];iauxtp=[28,33]
-                
-                for t in range(0,np.size(tar.getmembers())):
-                    # station names
-                    stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
-
-                    try:
-                        tfile=tar.extractfile(tar.getmembers()[t]); lines = tfile.readlines()
-                    except:
-                        print("   Cannot open "+tar.getmembers()[t].name)
-                    else:
-                        # lat / lon
-                        auxpos=str(lines[1]).replace("b'","").split('(')[1].split('N')
-                        alat=np.append(alat,np.float(auxpos[0]))
-                        alon=np.append(alon,np.float(auxpos[1].split('W')[0]))
-
-                        if t==0:
-                            # time array ----
-                            auxdate = str(lines[3]).split(':')[1].split('UTC')[0][1::]
-                            auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[10:12]+'00', '%Y%m%d %H%M') ))
-                            year = int(time.gmtime(auxt)[0]); month = int(time.gmtime(auxt)[1])
-                            pday=0
-                            for j in range(9,np.size(lines)-8):
-                                auxlines = str(lines[j]).replace("b'","")
-                                day=int(auxlines[2:4]); hour=int(auxlines[5:7]); del auxlines
-                                if day<pday:
-                                    if month<12:
-                                        month=month+1
-                                    else:
-                                        month=1; year=year+1
-
-                                at=np.append(at,np.double(timegm( strptime( repr(year)+str(month).zfill(2)+str(day).zfill(2)+' '+str(hour).zfill(2)+'00', '%Y%m%d %H%M') )))
-                                pday=np.copy(day)
-
-                            del hour,day,month,year
-                            for j in range(0,at.shape[0]):
-                                adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
-
-                            # --------
-                            ahs=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                            atp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-
-                        auxhs=[]; auxtp=[]
-                        for j in range(9,np.size(lines)-8):
-                            auxlines = str(lines[j]).replace("b'","")
-                            if len(auxlines[iauxhs[0]:iauxhs[1]].replace(' ',''))>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[iauxhs[0]:iauxhs[1]]))
-                                auxtp=np.append(auxtp,np.float(auxlines[iauxtp[0]:iauxtp[1]]))
-                            else:
-                                auxhs=np.append(auxhs,np.nan)
-                                auxtp=np.append(auxtp,np.nan)
-
-                            del auxlines
-
-                        if ahs.shape[1]==auxhs.shape[0]:
-                            ahs[t,:]=np.array(auxhs)
-                            atp[t,:]=np.array(auxtp)
-                        else:
-                            print("   Time duration of "+tar.getmembers()[t]+" (in "+fname+") do not match the other stations. Mantained NaN.")
-    
-                        del auxhs,auxtp,tfile,lines
-
-                # build dictionary            
-                result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
-                'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
-                'hs':np.array(ahs),'tp':np.array(atp)}
 
             print("   Model data read, "+fname+", bull_tar format.")
             return result
@@ -1174,14 +1201,14 @@ def ts(*args):
             if 'gefs' in str(fname).split('/')[-1]:
                 # gefs lakes ww3 format
                 at=[]; adate=[]; ahs=[]; ahspr=[]; atp=[]
-                for j in range(0,np.size(lines)):
+                for j in range(0,size(lines)):
                     at=np.append(at,np.double(timegm( strptime( lines[j][1:12]+'00', '%Y%m%d %H%M') )))
                     adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                     if len(lines[j])>0:
-                        ahs=np.append(ahs,np.float(lines[j][13:18]))
-                        ahspr=np.append(ahspr,np.float(lines[j][19:25]))
-                        atp=np.append(atp,np.float(lines[j][27:32]))
+                        ahs=np.append(ahs,float(lines[j][13:18]))
+                        ahspr=np.append(ahspr,float(lines[j][19:25]))
+                        atp=np.append(atp,float(lines[j][27:32]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         ahspr=np.append(ahspr,np.nan)
@@ -1198,19 +1225,19 @@ def ts(*args):
             elif 'glwu' in str(fname).split('/')[-1]:
                 # great lakes ww3 format
                 at=[];adate=[];ahs=[];al=[];atr=[];adir=[];aspr=[];atp=[];ap_dir=[];ap_spr=[]
-                for j in range(0,np.size(lines)):
+                for j in range(0,size(lines)):
                     at=np.append(at,np.double(timegm( strptime( lines[j][2:13]+'00', '%Y%m%d %H%M') )))
                     adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                     if len(lines[j])>0:
-                        ahs=np.append(ahs,np.float(lines[j][22:28]))
-                        al=np.append(al,np.float(lines[j][31:35]))
-                        atr=np.append(atr,np.float(lines[j][37:42]))
-                        adir=np.append(adir,np.float(lines[j][44:49]))
-                        aspr=np.append(aspr,np.float(lines[j][50:56]))
-                        atp=np.append(atp,np.float(lines[j][57:64]))
-                        ap_dir=np.append(ap_dir,np.float(lines[j][66:71]))
-                        ap_spr=np.append(ap_spr,np.float(lines[j][72:78]))
+                        ahs=np.append(ahs,float(lines[j][22:28]))
+                        al=np.append(al,float(lines[j][31:35]))
+                        atr=np.append(atr,float(lines[j][37:42]))
+                        adir=np.append(adir,float(lines[j][44:49]))
+                        aspr=np.append(aspr,float(lines[j][50:56]))
+                        atp=np.append(atp,float(lines[j][57:64]))
+                        ap_dir=np.append(ap_dir,float(lines[j][66:71]))
+                        ap_spr=np.append(ap_spr,float(lines[j][72:78]))
                     else:
                         ahs=np.append(ahs,np.nan)
                         al=np.append(al,np.nan)
@@ -1262,7 +1289,7 @@ def station_tar(*args):
         except:
             sys.exit('   Cannot open '+fname)
         else:
-            for t in range(0,np.size(tar.getmembers())):
+            for t in range(0,size(tar.getmembers())):
                 # station names
                 stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
 
@@ -1274,22 +1301,22 @@ def station_tar(*args):
                     if t==0:
                         # time array ----
                         at=[]; adate=[]
-                        for j in range(0,np.size(lines)):
+                        for j in range(0,size(lines)):
                             at=np.append(at,np.double(timegm( strptime( str(lines[j])[3:14]+'00', '%Y%m%d %H%M') )))
                             adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
 
                         # --------
-                        ahs=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                        ahspr=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
-                        atp=np.zeros((np.size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                        ahs=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                        ahspr=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
+                        atp=np.zeros((size(tar.getmembers()),at.shape[0]),'f')*np.nan
 
                     auxhs=[]; auxhspr=[]; auxtp=[]
-                    for j in range(0,np.size(lines)):
+                    for j in range(0,size(lines)):
                         auxlines = str(lines[j]).replace("b'","")
                         if len(lines[j])>0:
-                                auxhs=np.append(auxhs,np.float(auxlines[13:18]))
-                                auxhspr=np.append(auxhspr,np.float(auxlines[19:25]))
-                                auxtp=np.append(auxtp,np.float(auxlines[27:32]))
+                                auxhs=np.append(auxhs,float(auxlines[13:18]))
+                                auxhspr=np.append(auxhspr,float(auxlines[19:25]))
+                                auxtp=np.append(auxtp,float(auxlines[27:32]))
                         else:
                             auxhs=np.append(auxhs,np.nan)
                             auxhspr=np.append(auxhspr,np.nan)
@@ -1379,10 +1406,10 @@ def spec_ndbc(*args):
     del btime,bdate,blat,blon,freq,dfreq,pspec,dmspec,dpspec,theta,dirspec
 
 
-# WAVEWATCH III spectra output, netcdf format
+# WAVEWATCH III spectra output
 def spec_ww3(*args):
     '''
-    WAVEWATCH III, wave spectrum, netcdf format
+    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
     Input: file name (example: ww3gefs.20160928_spec.nc), and station name (example: 41002)
     Output: dictionary containing:
       time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
@@ -1397,91 +1424,198 @@ def spec_ww3(*args):
     if len(args) > 3 :
         sys.exit(' Too many inputs')
 
-    try:
-        ds = xr.open_dataset(fname); f=nc.Dataset(fname)
-    except:
-        sys.exit(" Cannot open "+fname)
+    if str(fname).split('/')[-1].split('.')[-1]=='nc':
+
+        try:
+            ds = xr.open_dataset(fname); f=nc.Dataset(fname)
+        except:
+            sys.exit(" Cannot open "+fname)
+        else:
+
+            mtime = np.array(f.variables['time'][::sk]*24*3600 + timegm( strptime(str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
+            f.close(); del f
+
+            auxstationname=ds['station_name'].values[:,:]; stationname=[]
+            for i in range(0,auxstationname.shape[0]):
+                stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
+
+            inds=np.where(stationname[:]==stname)
+            if size(inds)>0:
+                inds=int(inds[0][0]); stname=str(stationname[inds])
+            else:
+                sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
+
+            # Spectrum
+            dspec=np.array(ds['efth'][::sk,inds,:,:])
+            # number of directions
+            nd=dspec.shape[2]
+            # number of frequencies
+            nf=dspec.shape[1]
+            # directions
+            dire=np.array(ds['direction'].values[:])
+            # frequencies
+            freq=np.array(ds['frequency'].values[:])
+            freq1=np.array(ds['frequency1'].values[:])
+            freq2=np.array(ds['frequency2'].values[:])
+            # DF in frequency (dfreq)
+            dfreq=np.array(freq2 - freq1)
+            # wind intensity and wind direction
+            wnds=np.array(ds['wnd'].values[::sk,inds])
+            wndd=np.array(ds['wnddir'].values[::sk,inds])
+            # Time datetime64 array
+            mdate=np.array(ds['time'].values[::sk])
+            # water depth (constant in time)
+            depth=np.nanmean(ds['dpt'].values[::sk,inds],axis=0)
+            lon=np.array(np.nanmean(ds['longitude'].values[::sk,inds],axis=0))
+            lat=np.array(np.nanmean(ds['latitude'].values[::sk,inds],axis=0))    
+            
+            ds.close(); del ds, auxstationname, inds, stationname
+            freq1=freq; freq2=freq
+
     else:
 
-        mtime = np.array(f.variables['time'][::sk]*24*3600 + timegm( strptime(str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
-        f.close(); del f
+        # Text format (only one point allowed here, same as WW3/NOAA operational)
+        fp = open(fname); nt = fp.read().count(stname); fp.close(); del fp
+        if nt>=1:
+            # Open file and read the first parameters
+            fp = open(fname)
+            cabc=fp.readline(); cabc=cabc.strip().split()
+            nf=int(cabc[3]) # number of frequencies
+            nd=int(cabc[4]) # number of directions
+            npo=int(cabc[5]) # number of point outputs 
 
-        auxstationname=ds['station_name'].values[:,:]; stationname=[]
-        for i in range(0,auxstationname.shape[0]):
-            stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
+            freq=zeros(nf,'f');dire=zeros(nd,'f')
+            dspec=zeros((nt,nf,nd),'f')
+            adire=zeros(dire.shape)
+            adspec=zeros(dspec.shape)
+            mtime=np.zeros((nt),'d')
 
-        inds=np.where(stationname[:]==stname)
-        if np.size(inds)>0:
-            inds=int(inds[0][0]); stname=str(stationname[inds])
-        else:
-            sys.exit(' Station '+stname+' not included in the output file, or wrong station ID')
+            # Frequencies --------------------
+            ncf=int(np.floor(nf/8));rncf=int(np.round(8*((float(nf)/8)-ncf)))
+            k=0
+            for i in range(0,ncf):
+                line=fp.readline()
+                line=line.strip().split()
+                for j in range(0,8):
+                    freq[k]=float(line[j])
+                    k=k+1
 
-        # Spectrum
-        dspec=np.array(ds['efth'][::sk,inds,:,:])
-        # number of directions
-        nd=dspec.shape[2]
-        # number of frequencies
-        nf=dspec.shape[1]
-        # directions
-        dire=np.array(ds['direction'].values[:])
-        # frequencies
-        freq=np.array(ds['frequency'].values[:])
-        freq1=np.array(ds['frequency1'].values[:])
-        freq2=np.array(ds['frequency2'].values[:])
-        # DF in frequency (dfreq)
-        dfreq=np.array(freq2 - freq1)
-        # wind intensity and wind direction
-        wnds=np.array(ds['wnd'].values[::sk,inds])
-        wndd=np.array(ds['wnddir'].values[::sk,inds])
-        # Time datetime64 array
-        mdate=np.array(ds['time'].values[::sk])
-        # water depth (constant in time)
-        depth=np.nanmean(ds['dpt'].values[::sk,inds],axis=0)
-        lon=np.array(np.nanmean(ds['longitude'].values[::sk,inds],axis=0))
-        lat=np.array(np.nanmean(ds['latitude'].values[::sk,inds],axis=0))    
-        
-        ds.close(); del ds, auxstationname, inds, stationname
-        # ------------------
-        # 1D power spectrum
-        pwst=np.zeros((dspec.shape[0],nf),'f')
-        for t in range(0,dspec.shape[0]):
-            for il in range(0,nf):
-                pwst[t,il]=sum(dspec[t,il,:]*(2*np.pi)/nd)
+            if rncf>0:
+                line=fp.readline()
+                line=line.strip().split()
+                for i in range(0,rncf):
+                    freq[k]=float(line[i])
+                    k=k+1	
 
-            pwst[t,:]=pwst[t,:]*dfreq[:]
+            # DF in frequency (dfreq)
+            dfreq=np.zeros(freq.shape[0],'f')
+            for i in range(0,freq.shape[0]):
+                if i==0 or i==(freq.shape[0]-1):
+                    dfreq[i] = freq[i]*(1+ ( ((freq[-1]/freq[-2])-1)/2 )) - freq[i]
+                else:
+                    dfreq[i] = freq[i]*(freq[-1]/freq[-2]) - freq[i]
 
-        # organizing directions  -----
-        adspec=np.copy(dspec); inddire=int(np.where(dire==min(dire))[0][0])
-        for t in range(0,dspec.shape[0]):
+            # Directions ---------------------
+            ncd=int(np.floor(nd/7));rncd=int(np.round(7*((float(nd)/7)-ncd)))
+            k=0
+            for i in range(0,ncd):
+                line=fp.readline()
+                line=line.strip().split()
+                for j in range(0,7):
+                    dire[k]=float(line[j])*180/pi
+                    k=k+1
+
+            if rncd>0:
+                line=fp.readline()
+                line=line.strip().split()
+                for i in range(0,rncd):
+                    dire[k]=float(line[i])*180/pi
+                    k=k+1
+
+            nl=int(floor((nf*nd)/7.)); rnl=int(np.round(7*((float(nf*nd)/7)-nl)))
+            auxs=np.zeros((nf*nd),'f')
+            wnds=np.zeros((nt),'f');wndd=np.zeros((nt),'f')
+
+            for t in range(0,nt):
+				    
+                cabc=fp.readline(); cabc.strip().split()[0]
+                mtime[t] = np.double(timegm( strptime(cabc.strip().split()[0]+cabc.strip().split()[1][0:2], '%Y%m%d%H') ))
+                cabc=fp.readline(); cabc=cabc.strip().split()
+                if t==0:
+                    namep=cabc[0][1:]
+                    lat=float(cabc[2]);lon=float(cabc[3])
+                    depth=float(cabc[4])
+
+                wnds[t]=float(cabc[5]);wndd[t]=float(cabc[6])
+
+                k=0
+                for i in range(0,nl):
+                    line=fp.readline()
+                    line=line.strip().split()
+                    for j in range(0,7):
+                        auxs[k]=float(line[j])
+                        k=k+1
+
+                if rncd>0:
+                    line=fp.readline()
+                    line=line.strip().split()
+                    for i in range(0,rnl):
+                        auxs[k]=float(line[i])
+                        k=k+1
+
+                for ic in range(0,nf):
+                    for il in range(0,nd):
+                        dspec[t,ic,il]=auxs[il*nf+ic]
+
+            fp.close(); del fp
+
+            # mdate = [date2num(datetime.datetime.utcfromtimestamp(time_stamp)) for time_stamp in mtime]
+            mdate = pd.to_datetime(mtime, unit='s').strftime('%Y-%m-%dT%H:%M:%S.%f')
+            freq1=freq*np.nan; freq2=freq*np.nan
+
+
+    # ------------------
+    # 1D power spectrum
+    pwst=np.zeros((dspec.shape[0],nf),'f')
+    for t in range(0,dspec.shape[0]):
+        for il in range(0,nf):
+            pwst[t,il]=sum(dspec[t,il,:]*(2*np.pi)/nd)
+
+        pwst[t,:]=pwst[t,:]*dfreq[:]
+
+    # organizing directions  -----
+    adspec=np.copy(dspec); inddire=int(np.where(dire==min(dire))[0][0])
+    for t in range(0,dspec.shape[0]):
             adspec[t,:,0:nd-(inddire+1)]=dspec[t,:,(inddire+1):nd]
             adspec[t,:,nd-(inddire+1):nd]=dspec[t,:,0:(inddire+1)]
             for i in range(0,nd):
                 dspec[t,:,i]=adspec[t,:,nd-i-1]
-
+	        
             adspec[t,:,0:int(nd/2)]=dspec[t,:,int(nd/2):nd]
             adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]
             dspec[t,:,:]=adspec[t,:,:]
 
-        dire=np.sort(dire)
+    dire=np.sort(dire)
 
-        # 1D directional spectrum
-        d1sp=np.zeros((dspec.shape[0],nf),'f')
-        for t in range(0,dspec.shape[0]):
-            for il in range(0,nf):    
-                a = np.sum(dspec[t,il,:] * np.array(np.sin((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
-                b = np.sum(dspec[t,il,:] * np.array(np.cos((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
-                aux = math.atan2(a,b)*(180./pi)
-                if aux<0:
-                    aux=aux+360.
-                
-                d1sp[t,il]=np.float(aux)
-                del a,b,aux
+    # 1D directional spectrum
+    d1sp=np.zeros((dspec.shape[0],nf),'f')
+    for t in range(0,dspec.shape[0]):
+        for il in range(0,nf):    
+            a = np.sum(dspec[t,il,:] * np.array(np.sin((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
+            b = np.sum(dspec[t,il,:] * np.array(np.cos((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
+            aux = math.atan2(a,b)*(180./pi)
+            if aux<0:
+                aux=aux+360.
 
-    # build dictionary            
-    result={'time':mtime,'date':mdate,'latitude':lat,'longitude':lon,
+            d1sp[t,il]=float(aux)
+            del a,b,aux
+
+    # build dictionary
+    result={'time':mtime,'date':mdate,'latitude':lat,'longitude':lon,'depth':depth,
     'wind_spd':wnds,'wind_dir':wndd,'freq':freq,'freq1':freq1,'freq2':freq2,
     'deltafreq':dfreq,'pspec':pwst,'theta':dire,'dmspec':d1sp,'dirspec':dspec}
 
     return result
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
+
 

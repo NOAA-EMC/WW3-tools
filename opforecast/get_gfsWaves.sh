@@ -75,7 +75,7 @@ dp=2
 # limits for domain selection
 latmin=-79.
 latmax=90.
-# variable naMONTH to be downloaded.
+# variable to be downloaded.
 VARSGET=":UGRD:surface:|:VGRD:surface:|:HTSGW:surface:|:PERPW:surface:|:DIRPW:surface:"
 
 # Initial date cycle for the ftp
