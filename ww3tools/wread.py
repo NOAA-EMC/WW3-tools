@@ -1645,7 +1645,7 @@ def spec1_ww3(*args):
     for fname in fnames:
         for stname in stnames:
             try:
-                # Text format (only one point allowed here, same as WW3/NOAA operational)
+                
                 fp = open(fname)
                 nt = fp.read().count(stname)
                 fp.close()
