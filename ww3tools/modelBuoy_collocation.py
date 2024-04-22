@@ -88,9 +88,19 @@ AUTHOR and DATE:
   and ww3) to maximize the amount of matchups even when one variable is 
   not available.
 
-How to run .spec file in a format of the .gz file: python3 modelBuoy_collocation.py ww3list.txt 3
-In the ww3list.txt, you have to define the .gz file path. 
-ww3list.txt is just name for the text file that contains the path for the .gz file.Any name for this file can be defined. 
+.spec update: 
+
+How to run .spec file in a format of the .gz file: 
+Here is an example of how the job script should look like:
+# Define variables
+input_gz_file="multi_1.t11z.spec_tar.gz"
+output_directory="./" (any directory)
+buoy_path="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam" (This path is on Hera. The path for Orion is different) 
+
+# Process data command
+python3 modelBuoy_collocation.py unzip "$input_gz_file" "$output_directory" "$buoy_path"
+
+
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
