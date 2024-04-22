@@ -26,11 +26,12 @@
 #  So if you want to download the whole database, you have to run
 #   this code for each satellite and hemisphere.
 #  Examples (from linux/terminal command line):
-#   nohup ./wfetchsatellite_AODN_Altimeter.sh TOPEX /media/data/observations/satellite/altimeter/AODN_altm/TOPEX S >> nohup_TOPEX_HS.out 2>&1 &
+#   nohup bash wfetchsatellite_AODN_Altimeter.sh CRYOSAT-2 /media/data/observations/satellite/altimeter/AODN_altm/CRYOSAT2 S >> nohup_CRYOSAT2_HS.out 2>&1 &
+#
+# when updating the database, consider: rsync --size-only --update source target
 #
 # OUTPUT:
-#  multiple AODN satellite data (netcdf format) saved in the given 
-#   directory.
+#  multiple AODN satellite data (netcdf format) saved in the given directory.
 #
 # DEPENDENCIES:
 #  wget
@@ -61,7 +62,7 @@ for lon in `seq -f "%03g" 0 20 340`; do
         test -f $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
         TE=$?
         if [ "$TE" -eq 1 ]; then
-          wget -l1 -H -t1 -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
+          wget -l1 -H -nd -N -np -erobots=off --tries=3 $fname/${s}/${lat}${h}_${lon}E/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc -O $DIR/IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc
           wait $!
           sleep 1
           echo IMOS_SRS-Surface-Waves_MW_${s}_FV02_"$(printf "%03d" ${lat2/#-})"${h}-"$(printf "%03d" $lon2)"E-DM00.nc >> listDownloaded_${s}.txt
