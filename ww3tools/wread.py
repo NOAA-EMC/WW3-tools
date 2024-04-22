@@ -60,7 +60,7 @@ PERSON OF CONTACT:
 """
 
 =======
->>>>>>> 12a8a9d (wind variable added to the .spec in a list of buoy nams and boy IDs)
+
 import matplotlib
 import time
 import timeit
@@ -82,7 +82,6 @@ import warnings; warnings.filterwarnings("ignore")
 import tarfile
 import math
 
-<<<<<<< HEAD
 
 def readconfig(fname):
     """
@@ -134,7 +133,7 @@ def readconfig(fname):
 def mask(*args):
 =======
 def spec_ww3(*args):
->>>>>>> 12a8a9d (wind variable added to the .spec in a list of buoy nams and boy IDs)
+
     '''
     WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
     Input: file names (list of file names), and station names (list of station names)
@@ -142,7 +141,6 @@ def spec_ww3(*args):
       time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
     '''
 
-<<<<<<< HEAD
     print("  reading ww3_tools mask ...")
     try:
         f=nc.Dataset(fname)
@@ -1576,7 +1574,7 @@ def spec_ww3(*args):
 
             fp.close(); del fp
 
-            # mdate = [date2num(datetime.datetime.utcfromtimestamp(time_stamp)) for time_stamp in mtime]
+            
             mdate = pd.to_datetime(mtime, unit='s').strftime('%Y-%m-%dT%H:%M:%S.%f')
             freq1=freq*np.nan; freq2=freq*np.nan
 
@@ -1626,8 +1624,6 @@ def spec_ww3(*args):
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
 
 
-<<<<<<< HEAD
-=======
 #added a function to read the txt files
 
 def read_text_file(fname_txtfile):
@@ -1653,7 +1649,7 @@ def read_text_file(fname_txtfile):
             # Station names
 
             stname.append(str(tar.getmembers()[t].name).split('/')[-1].split('.')[-2])
-=======
+
     if len(args) < 2:
         sys.exit(' Two inputs are required: list of file names and list of station names')
 
@@ -1668,7 +1664,7 @@ def read_text_file(fname_txtfile):
     file_names = args[0]
     station_names = args[1]
     results = []
->>>>>>> 12a8a9d (wind variable added to the .spec in a list of buoy nams and boy IDs)
+
 
     for fname in fnames:
         for stname in stnames:
