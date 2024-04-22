@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
@@ -59,11 +58,8 @@ PERSON OF CONTACT:
 
 """
 
-=======
-
 import matplotlib
 import time
-import timeit
 from time import strptime
 from calendar import timegm
 import pandas as pd
@@ -71,10 +67,9 @@ import xarray as xr
 import netCDF4 as nc
 import numpy as np
 from pylab import *
-import yaml
-import re
-import os
+import matplotlib.pyplot as plt
 import sys
+import pandas as pd
 from matplotlib import ticker
 # import pickle
 import sys
@@ -131,15 +126,15 @@ def readconfig(fname):
 
 
 def mask(*args):
-=======
-def spec_ww3(*args):
-
     '''
-    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
-    Input: file names (list of file names), and station names (list of station names)
-    Output: list of dictionaries containing:
-      time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
+    Read gridmask netcdf file generated with prepGridMask.py
+    Input: file name (example: gridInfo_GEFSv12.nc)
+    Output: dictionary containing the arrays and string names
     '''
+    if len(args) == 1:
+        fname=str(args[0])
+    else:
+        sys.exit(' Too many inputs')
 
     print("  reading ww3_tools mask ...")
     try:
@@ -1574,7 +1569,7 @@ def spec_ww3(*args):
 
             fp.close(); del fp
 
-            
+            # mdate = [date2num(datetime.datetime.utcfromtimestamp(time_stamp)) for time_stamp in mtime]
             mdate = pd.to_datetime(mtime, unit='s').strftime('%Y-%m-%dT%H:%M:%S.%f')
             freq1=freq*np.nan; freq2=freq*np.nan
 
@@ -1624,31 +1619,13 @@ def spec_ww3(*args):
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
 
 
-#added a function to read the txt files
-
-def read_text_file(fname_txtfile):
-    try:
-        # Attempt to open and read the file name from the txt file
-        with open(fname_txtfile, 'r') as f:
-            lines = f.readlines()
-            if len(lines) != 1:
-                raise ValueError("The txt file should contain only one line with the file name.")
-            fname = lines[0].strip()
-    except FileNotFoundError:
-        sys.exit('Text file not found.')
-    except Exception as e:
-        sys.exit(f'Error reading txt file: {str(e)}')
-
-    results = {}
-    stname = []
-
-    try:
-        tar = tarfile.open(fname, "r:gz")  # Open the tar file
-
-        for t in range(0, len(tar.getmembers())):
-            # Station names
-
-            stname.append(str(tar.getmembers()[t].name).split('/')[-1].split('.')[-2])
+def spec1_ww3(*args):
+    '''
+    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
+    Input: file names (list of file names), and station names (list of station names)
+    Output: list of dictionaries containing:
+      time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
+    '''
 
     if len(args) < 2:
         sys.exit(' Two inputs are required: list of file names and list of station names')
@@ -1665,11 +1642,10 @@ def read_text_file(fname_txtfile):
     station_names = args[1]
     results = []
 
-
     for fname in fnames:
         for stname in stnames:
             try:
-                # Text format (only one point allowed here, same as WW3/NOAA operational)
+                
                 fp = open(fname)
                 nt = fp.read().count(stname)
                 fp.close()
@@ -1750,9 +1726,9 @@ def read_text_file(fname_txtfile):
                             cabc.strip().split()[0]+cabc.strip().split()[1][0:2], '%Y%m%d%H')))
                         cabc = fp.readline()
                         cabc = cabc.strip().split()
-                        print(cabc)
+                        
                         if len(cabc) >8:
-                            # Format: ["'42085", "'", '17.86', '-66.52', '126.1', '1.12', '146.9']
+                            
                             namep = cabc[0][1:]
                             lat = float(cabc[2])
                             lon = float(cabc[3])
@@ -1760,12 +1736,11 @@ def read_text_file(fname_txtfile):
                             wnds_index = 5
                             wndd_index = 6
                         elif len(cabc) == 8:
-                            # Format: ["'46021", "'", '57.70-160.00', '50.8', '5.47', '6.9', '0.00', '270.0']
+                            
                             namep = cabc[0][1:]
                             lat_lon_str = cabc[2]
                             lat_lon_str = lat_lon_str.strip("'")
                             lat_lon_parts = lat_lon_str.split('-')
-                            print(lat_lon_parts)
                             lat = float(lat_lon_parts[0])
                             lon = -float(lat_lon_parts[1])
 
@@ -1773,8 +1748,8 @@ def read_text_file(fname_txtfile):
                             wnds_index = 4
                             wndd_index = 5
                         else:
-                            continue  # Skip this file as it cannot be processed
-                            # sys.exit('Unrecognized format of cabc')
+                            continue 
+                            
 
                         wnds[t] = float(cabc[wnds_index])
                         wndd[t] = float(cabc[wndd_index])
@@ -1847,8 +1822,11 @@ def read_text_file(fname_txtfile):
                             d1sp[t, il] = float(aux)
                             del a, b, aux
 
-                    hs = np.sqrt(2 * np.trapz(np.trapz(dspec, x=dire, axis=-1), x=freq, axis=-1))
-                    tp = freq[np.argmax(np.max(dspec, axis=-1), axis=-1)]
+                    m0 = np.sum(pwst , axis=1)  
+                    hs = 4 * np.sqrt(m0)
+                    max_index = np.argmax(pwst, axis=1)
+                    f_max = freq[max_index]
+                    tp = 1 / f_max  
 
                     # build dictionary
                     result = {'time': mtime, 'date': mdate, 'latitude': lat, 'longitude': lon, 'depth': depth,
@@ -1861,5 +1839,4 @@ def read_text_file(fname_txtfile):
                 continue
 
     return results
-
 
