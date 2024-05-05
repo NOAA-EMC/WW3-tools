@@ -142,10 +142,15 @@ def unzip_and_untar(gz_file, output_dir):
         with open(output_file, 'wb') as f_out:
             f_out.write(f_in.read())
 
-    with tarfile.open(output_file, 'r') as tar:
-        tar.extractall(output_dir)
+#    with tarfile.open(output_file, 'r') as tar:
+#        tar.extractall(output_dir)
 
     extracted_folder = os.path.join(output_dir, base_name)
+
+    with tarfile.open(output_file, 'r') as tar:
+        tar.extractall(extracted_folder)
+
+
     # Creating a list of the extracted files
     list_file = os.path.join(output_dir, f'{base_name}_contents.txt')
     with open(list_file, 'w') as f:
