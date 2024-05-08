@@ -119,11 +119,8 @@ from matplotlib.dates import DateFormatter
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import os
-from mpl_toolkits.basemap import cm
-colormap = cm.GMT_polar
-palette = plt.cm.jet
-palette.set_bad('aqua', 10.0)
 import warnings; warnings.filterwarnings("ignore")
+
 # Font size and style
 sl=13
 matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl) 
