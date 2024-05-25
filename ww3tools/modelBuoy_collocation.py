@@ -421,6 +421,7 @@ if __name__ == "__main__":
                             else:
                                 mwd = np.append(mwd, np.copy(result['hs']) * np.nan, axis=1)
 
+
                     else:
                         print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[i])
 
@@ -559,7 +560,6 @@ if __name__ == "__main__":
 
                     f.close();
                     del f
-
                     fcycle = np.array(np.zeros((at.shape[0]), 'd') + at[0]).astype('double')
                     if t == 0:
                         mhs = np.copy(ahs)
