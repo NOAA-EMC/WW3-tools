@@ -2,13 +2,14 @@
 """ Mesh spacing utilities, for barotropic flows
 """
 
-# Authors: Darren Engwirda
+# Authors: Darren Engwirda, Ali Salimi
 
 # routines to compute mesh spacing functions that scale
 # with shallow-water wave lengths, elev. gradients, etc 
 
 import numpy as np
 import jigsawpy
+import netCDF4 as nc
 
 from skimage.filters import gaussian, median
 from skimage.measure import label, regionprops_table
@@ -174,4 +175,14 @@ def elev_sharpness_spacing(
     vals = np.asarray(vals, dtype=np.float32)
     
     return vals
-    
+   
+
+def scale_spacing_via_mask(args, vals):
+    print("User-defined h(x) scaling...")
+    if hasattr(args, 'mask_file') and args.mask_file:  # Check if mask_file exists and is not empty
+        data = nc.Dataset(args.mask_file, "r")
+        vals = np.asarray(data["val"][:], dtype=np.float32)
+    else:
+        print("No mask file provided. Scaling will not be applied.")
+    return vals
+

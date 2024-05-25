@@ -119,9 +119,10 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf, pctlerr='no'):
     Input: two arrays of model and observation, respectively.
         They must have the same size
     In addition to the data arrays, users can enter minimum and maximum values, 
-        and maximum_difference, for a simple quality-control.
-    Output: numpy array with shape equal to 8:
-        bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC
+        and maximum_difference, for a simple quality-control. 
+    Additional output of 95% can be obtained if pctlerr!='no'
+    Output: numpy array with shape equal to 9:
+        bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC, N 
     Examples:
       import mvalstats
       mresult = mvalstats.metrics(model_hs,obs_hs)
@@ -145,7 +146,7 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf, pctlerr='no'):
         raise ValueError(' Array without valid numbers.')
 
     del ind
-    ferr=np.zeros((8),'f')*np.nan
+    ferr=np.zeros((9),'f')*np.nan
     ferr[0] = model.mean()-obs.mean() # Bias
     ferr[1] = (((model-obs)**2).mean())**0.5 # RMSE
     if obs.mean()!=0.:
@@ -157,6 +158,7 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf, pctlerr='no'):
     ferr[5] = ( (((model-model.mean())-(obs-obs.mean()))**2).sum() / (obs**2).sum() )**0.5  # Scatter Index
     ferr[6] = ( ((model - obs)**2).sum() / (model * obs).sum() )**0.5  # HH
     ferr[7]=np.corrcoef(model,obs)[0,1]  #  Correlation Coefficient 
+    ferr[8]=len(obs)  #number of match-ups between model/obs used in stat calculations 
 
     # Bias and RMSE for severe conditions above the 95 percentile.
     if pctlerr!='no':
@@ -164,8 +166,9 @@ def metrics(model,obs,vmin=-np.inf,vmax=np.inf,maxdiff=np.inf, pctlerr='no'):
         if np.size(ind)>1:
             ferr=np.append(ferr, model[ind[0]].mean()-obs[ind[0]].mean()) # Bias
             ferr=np.append(ferr, ((((model[ind[0]]-obs[ind[0]])**2).mean())**0.5)) # RMSE
+            ferr=np.append(ferr, len(model[ind[0]])) #number of obs in 95 percentile 
         else:
-            ferr=np.append(ferr, np.nan); ferr=np.append(ferr, np.nan)
+            ferr=np.append(ferr, np.nan); ferr=np.append(ferr, np.nan); ferr=np.append(ferr, np.nan)
 
     return ferr
 
