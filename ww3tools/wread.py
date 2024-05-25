@@ -1626,9 +1626,9 @@ def spec1_ww3(*args):
     Output: list of dictionaries containing:
       time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
     '''
-
+    
     if len(args) < 2:
-        sys.exit(' Two inputs are required: list of file names and list of station names')
+        sys.exit('Two inputs are required: list of file names and list of station names')
 
     fnames = args[0]
     stnames = args[1]
@@ -1636,202 +1636,141 @@ def spec1_ww3(*args):
     if len(args) > 2:
         sk = int(args[2])
     if len(args) > 3:
-        sys.exit(' Too many inputs')
+        sys.exit('Too many inputs')
 
-    file_names = args[0]
-    station_names = args[1]
     results = []
 
     for fname in fnames:
         for stname in stnames:
             try:
+                with open(fname) as fp:
+                    nt = fp.read().count(stname)  # No change
                 
-                fp = open(fname)
-                nt = fp.read().count(stname)
-                fp.close()
-                del fp
                 if nt >= 1:
-                    # Open file and read the first parameters
-                    fp = open(fname)
-                    cabc = fp.readline()
-                    cabc = cabc.strip().split()
-                    nf = int(cabc[3])  # number of frequencies
-                    nd = int(cabc[4])  # number of directions
-                    npo = int(cabc[5])  # number of point outputs
+                    with open(fname) as fp:
+                        cabc = fp.readline().strip().split()
+                        nf = int(cabc[3])
+                        nd = int(cabc[4])
+                        npo = int(cabc[5])
 
-                    freq = zeros(nf, 'f')
-                    dire = zeros(nd, 'f')
-                    dspec = zeros((nt, nf, nd), 'f')
-                    adire = zeros(dire.shape)
-                    adspec = zeros(dspec.shape)
-                    mtime = np.zeros((nt), 'd')
-
-                    # Frequencies --------------------
-                    ncf = int(np.floor(nf/8))
-                    rncf = int(np.round(8*((float(nf)/8)-ncf)))
-                    k = 0
-                    for i in range(0, ncf):
-                        line = fp.readline()
-                        line = line.strip().split()
-                        for j in range(0, 8):
-                            freq[k] = float(line[j])
-                            k = k + 1
-
-                    if rncf > 0:
-                        line = fp.readline()
-                        line = line.strip().split()
-                        for i in range(0, rncf):
-                            freq[k] = float(line[i])
-                            k = k + 1
-
-                    # DF in frequency (dfreq)
-                    dfreq = np.zeros(freq.shape[0], 'f')
-                    for i in range(0, freq.shape[0]):
-                        if i == 0 or i == (freq.shape[0]-1):
-                            dfreq[i] = freq[i] * \
-                                (1 + (((freq[-1]/freq[-2])-1)/2)) - freq[i]
-                        else:
-                            dfreq[i] = freq[i] * \
-                                (freq[-1]/freq[-2]) - freq[i]
-
-                    # Directions ---------------------
-                    ncd = int(np.floor(nd/7))
-                    rncd = int(np.round(7*((float(nd)/7)-ncd)))
-                    k = 0
-                    for i in range(0, ncd):
-                        line = fp.readline()
-                        line = line.strip().split()
-                        for j in range(0, 7):
-                            dire[k] = float(line[j])*180/pi
-                            k = k+1
-
-                    if rncd > 0:
-                        line = fp.readline()
-                        line = line.strip().split()
-                        for i in range(0, rncd):
-                            dire[k] = float(line[i])*180/pi
-                            k = k+1
-
-                    nl = int(floor((nf*nd)/7.))
-                    rnl = int(np.round(7*((float(nf*nd)/7)-nl)))
-                    auxs = np.zeros((nf*nd), 'f')
-                    wnds = np.zeros((nt), 'f')
-                    wndd = np.zeros((nt), 'f')
-
-                    for t in range(0, nt):
-
-                        cabc = fp.readline()
-                        cabc.strip().split()[0]
-                        mtime[t] = np.double(timegm(strptime(
-                            cabc.strip().split()[0]+cabc.strip().split()[1][0:2], '%Y%m%d%H')))
-                        cabc = fp.readline()
-                        cabc = cabc.strip().split()
-                        
-                        if len(cabc) >8:
-                            
-                            namep = cabc[0][1:]
-                            lat = float(cabc[2])
-                            lon = float(cabc[3])
-                            depth = float(cabc[4])
-                            wnds_index = 5
-                            wndd_index = 6
-                        elif len(cabc) == 8:
-                            
-                            namep = cabc[0][1:]
-                            lat_lon_str = cabc[2]
-                            lat_lon_str = lat_lon_str.strip("'")
-                            lat_lon_parts = lat_lon_str.split('-')
-                            lat = float(lat_lon_parts[0])
-                            lon = -float(lat_lon_parts[1])
-
-                            depth = float(cabc[3])
-                            wnds_index = 4
-                            wndd_index = 5
-                        else:
-                            continue 
-                            
-
-                        wnds[t] = float(cabc[wnds_index])
-                        wndd[t] = float(cabc[wndd_index])
+                        freq = np.zeros(nf, 'f')
+                        dire = np.zeros(nd, 'f')
+                        dspec = np.zeros((nt, nf, nd), 'f')
+                        adire = np.zeros(dire.shape)
+                        adspec = np.zeros(dspec.shape)
+                        mtime = np.zeros((nt), 'd')
 
                         k = 0
-                        for i in range(0, nl):
-                            line = fp.readline()
-                            line = line.strip().split()
-                            for j in range(0, 7):
-                                auxs[k] = float(line[j])
-                                k = k+1
+                        # Reading frequencies
+                        for i in range(0, int(np.floor(nf/8))):  # Changed loop condition to int(np.floor(nf/8))
+                            line = fp.readline().strip().split()
+                            for j in range(8):
+                                freq[k] = float(line[j])
+                                k += 1
 
-                        if rncd > 0:
-                            line = fp.readline()
-                            line = line.strip().split()
-                            for i in range(0, rnl):
-                                auxs[k] = float(line[i])
-                                k = k+1
+                        if (nf % 8) > 0:
+                            line = fp.readline().strip().split()
+                            for i in range(nf % 8):
+                                freq[k] = float(line[i])
+                                k += 1
 
-                        for ic in range(0, nf):
-                            for il in range(0, nd):
-                                dspec[t, ic, il] = auxs[il*nf+ic]
+                        dfreq = np.diff(freq, prepend=freq[0])  # Simplified dfreq calculation using np.diff
 
-                    fp.close()
-                    del fp
+                        k = 0
+                        # Reading directions
+                        for i in range(0, int(np.floor(nd/7))):  # Changed loop condition to int(np.floor(nd/7))
+                            line = fp.readline().strip().split()
+                            for j in range(7):
+                                dire[k] = float(line[j]) * 180 / np.pi  # Added conversion to degrees
+                                k += 1
 
-                    mdate = pd.to_datetime(mtime, unit='s').strftime(
-                        '%Y-%m-%dT%H:%M:%S.%f')
-                    freq1 = freq*np.nan
-                    freq2 = freq*np.nan
+                        if (nd % 7) > 0:
+                            line = fp.readline().strip().split()
+                            for i in range(nd % 7):
+                                dire[k] = float(line[i]) * 180 / np.pi  # Added conversion to degrees
+                                k += 1
 
-                    # ------------------
-                    # 1D power spectrum
+                        auxs = np.zeros((nf * nd), 'f')
+                        wnds = np.zeros((nt), 'f')
+                        wndd = np.zeros((nt), 'f')
+
+                        for t in range(nt):
+                            cabc = fp.readline().strip().split()
+                            mtime[t] = np.double(timegm(strptime(cabc[0] + cabc[1][0:2], '%Y%m%d%H')))
+                            cabc = fp.readline().strip().split()
+                            
+                            if len(cabc) > 8:
+                                lat, lon, depth = float(cabc[2]), float(cabc[3]), float(cabc[4])
+                                wnds[t], wndd[t] = float(cabc[5]), float(cabc[6])
+                            elif len(cabc) == 8:
+                                lat_lon_parts = cabc[2].strip("'").split('-')
+                                lat, lon, depth = float(lat_lon_parts[0]), -float(lat_lon_parts[1]), float(cabc[3])
+                                wnds[t], wndd[t] = float(cabc[4]), float(cabc[5])
+                            else:
+                                continue
+
+                            k = 0
+                            for i in range(0, int(np.floor((nf*nd)/7.))):  # Changed loop condition to int(np.floor((nf*nd)/7.))
+                                line = fp.readline().strip().split()
+                                for j in range(7):
+                                    auxs[k] = float(line[j])
+                                    k += 1
+
+                            if (nf * nd % 7) > 0:
+                                line = fp.readline().strip().split()
+                                for i in range(nf * nd % 7):
+                                    auxs[k] = float(line[i])
+                                    k += 1
+
+                            for ic in range(nf):
+                                for il in range(nd):
+                                    dspec[t, ic, il] = auxs[il * nf + ic]
+
+                    mdate = pd.to_datetime(mtime, unit='s').strftime('%Y-%m-%dT%H:%M:%S.%f')
+                    freq1 = np.copy(freq)
+                    freq2 = np.copy(freq)
+
                     pwst = np.zeros((dspec.shape[0], nf), 'f')
-                    for t in range(0, dspec.shape[0]):
-                        for il in range(0, nf):
-                            pwst[t, il] = sum(
-                                dspec[t, il, :]*(2*np.pi)/nd)
+                    for t in range(dspec.shape[0]):
+                        for il in range(nf):
+                            pwst[t, il] = sum(dspec[t, il, :] * (2 * np.pi) / nd)
+                        pwst[t, :] *= dfreq
 
-                        pwst[t, :] = pwst[t, :]*dfreq[:]
-
-                    # organizing directions  -----
                     adspec = np.copy(dspec)
-                    inddire = int(np.where(dire == min(dire))[0][0])
-                    for t in range(0, dspec.shape[0]):
-                        adspec[t, :, 0:nd-(inddire+1)] = dspec[t,:, (inddire+1):]
-                        adspec[t, :, nd-(inddire+1):nd] = dspec[t,:, :(inddire+1)]
-                        for i in range(0, nd):
-                            dspec[t, :, i] = adspec[t, :, nd-i-1]
-
-                        adspec[t, :, :int(nd/2)] = dspec[t, :, int(nd/2):]
-                        adspec[t, :, int(nd/2):] = dspec[t, :, :int(nd/2)]
+                    inddire = np.argmin(dire)
+                    for t in range(dspec.shape[0]):
+                        adspec[t, :, 0:nd - (inddire + 1)] = dspec[t, :, (inddire + 1):]
+                        adspec[t, :, nd - (inddire + 1):nd] = dspec[t, :, :(inddire + 1)]
+                        for i in range(nd):
+                            dspec[t, :, i] = adspec[t, :, nd - i - 1]
+                        adspec[t, :, :int(nd / 2)] = dspec[t, :, int(nd / 2):]
+                        adspec[t, :, int(nd / 2):] = dspec[t, :, :int(nd / 2)]
                         dspec[t, :, :] = adspec[t, :, :]
 
                     dire = np.sort(dire)
 
-                    # 1D directional spectrum
                     d1sp = np.zeros((dspec.shape[0], nf), 'f')
-
-                    for t in range(0, dspec.shape[0]):
-                        for il in range(0, nf):
-                            a = np.sum(dspec[t, il, :] * np.array(
-                                np.sin((pi*dire)/180.)/np.sum(dspec[t, il, :])))
-                            b = np.sum(dspec[t, il, :] * np.array(
-                                np.cos((pi*dire)/180.)/np.sum(dspec[t, il, :])))
-                            aux = math.atan2(a, b)*(180./pi)
+                    for t in range(dspec.shape[0]):
+                        for il in range(nf):
+                            a = np.sum(dspec[t, il, :] * np.sin((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
+                            b = np.sum(dspec[t, il, :] * np.cos((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
+                            aux = np.degrees(np.arctan2(a, b))  # Changed to np.degrees
                             if aux < 0:
-                                aux = aux+360.
+                                aux += 360.
+                            d1sp[t, il] = aux
 
-                            d1sp[t, il] = float(aux)
-                            del a, b, aux
-
-                    m0 = np.sum(pwst , axis=1)  
+                    m0 = np.sum(pwst, axis=1)
                     hs = 4 * np.sqrt(m0)
                     max_index = np.argmax(pwst, axis=1)
                     f_max = freq[max_index]
-                    tp = 1 / f_max  
+                    tp = 1 / f_max
 
-                    # build dictionary
-                    result = {'time': mtime, 'date': mdate, 'latitude': lat, 'longitude': lon, 'depth': depth,
-                              'wind_spd': wnds, 'wind_dir': wndd, 'freq': freq, 'freq1': freq1, 'freq2': freq2,
-                              'deltafreq': dfreq, 'pspec': pwst, 'theta': dire, 'dmspec': d1sp, 'dirspec': dspec, 'Hs': hs, 'Tp': tp,'station_name': stname}
+                    result = {
+                        'time': mtime, 'date': mdate, 'latitude': lat, 'longitude': lon, 'depth': depth,
+                        'wind_spd': wnds, 'wind_dir': wndd, 'freq': freq, 'freq1': freq1, 'freq2': freq2,
+                        'deltafreq': dfreq, 'pspec': pwst, 'theta': dire, 'dmspec': d1sp, 'dirspec': dspec,
+                        'Hs': hs, 'Tp': tp, 'station_name': stname
+                    }
 
                     results.append(result)
             except Exception as e:

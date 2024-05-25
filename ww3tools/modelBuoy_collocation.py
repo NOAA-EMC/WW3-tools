@@ -11,6 +11,7 @@ VERSION AND LAST UPDATE:
  v1.3  11/17/2022
  v1.4  12/08/2022
  v1.5  01/31/2023
+ v1.6  05/21/2024
 
 PURPOSE:
  Collocation/pairing ww3 point output results with wave buoys.
@@ -33,7 +34,7 @@ PURPOSE:
 
 USAGE:
  Input WW3 point outputs are utilized (not grids), with option of
-  reading different formats: netcdf, text (bull and ts), 
+modelBuoy_collocation.py  reading different formats: netcdf, text (bull and ts), 
   or tar files with multiple bull or ts files.
  For the observations, it uses two public buoy databases, 
   NDBC and Copernicus, which (at least one) must have been previously 
@@ -54,6 +55,26 @@ USAGE:
   nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 0 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
   multiple forecast data files:
   nohup python3 modelBuoy_collocation.py ww3list.gfs-d36.GSE1.5.txt 2 gridInfo.nc CycloneMap_2021.nc >> nohup_modelBuoy_collocation.out 2>&1 &
+
+- From 05/21/24 if you want to run this you have to define the (buoy_path) variable in the command line or in the job script. This recent does not accept the 
+hard coded ndbcp path anymore.
+
+USAGE (spec.gz):
+ In wread.py the ww3_spec1 is responsible for reading and accepting the spec.gz files like,ex:gfswave.t00z.spec_tar.gz
+ sort of files. 
+ to run the code one should have to define these values in the job script or the command line: 
+
+# Define the arguments
+ input_gz_file="./gfswave.t00z.spec_tar.gz"
+ output_directory="./"  (Where the users wants to have the output saved)
+ buoy_path="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam" (The path should be changed based on the users buoy path directory)
+ model_name="HR3a"   # Define the model name
+ forecast_ds="1"    # Indicator for forecast data structure, set to 1 or 0 based on requirements
+ (If it is 1 or greater than 1, it does the forecast structure)
+
+# Process data for each date
+ python3 modelBuoy_collocation.py spec.gz "$input_gz_file" "$output_directory" "$buoy_path"  "$model_name " "$forecast_ds"
+
 
 OUTPUT:
  netcdf file WW3.Buoy*.nc containing matchups of buoy and ww3 data,
@@ -87,19 +108,8 @@ AUTHOR and DATE:
   dimensions), and check if variable names exist in the netcdf file (buoy 
   and ww3) to maximize the amount of matchups even when one variable is 
   not available.
-
-.spec update: 
-
-How to run .spec file in a format of the .gz file: 
-Here is an example of how the job script should look like:
-# Define variables
-input_gz_file="multi_1.t11z.spec_tar.gz"
-output_directory="./" (any directory)
-buoy_path="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam" (This path is on Hera. The path for Orion is different) 
-
-# Process data command
-python3 modelBuoy_collocation.py unzip "$input_gz_file" "$output_directory" "$buoy_path"
-
+ 05/21/2024 : Ghazal Mohammadpour , developed the code to be able to process 
+ the spec.gz files.
 
 
 PERSON OF CONTACT:
@@ -118,6 +128,8 @@ import time
 from time import strptime
 from calendar import timegm
 import wread
+import glob
+import shutil
 
 # Suppressing warnings
 warnings.filterwarnings("ignore")
@@ -129,8 +141,6 @@ gridinfo = int(0)
 cyclonemap = int(0)
 wlist = []
 ftag = ''
-forecastds = 0
-
 
 # Function to unzip and untar files
 def unzip_and_untar(gz_file, output_dir):
@@ -142,14 +152,10 @@ def unzip_and_untar(gz_file, output_dir):
         with open(output_file, 'wb') as f_out:
             f_out.write(f_in.read())
 
-#    with tarfile.open(output_file, 'r') as tar:
-#        tar.extractall(output_dir)
-
     extracted_folder = os.path.join(output_dir, base_name)
 
     with tarfile.open(output_file, 'r') as tar:
         tar.extractall(extracted_folder)
-
 
     # Creating a list of the extracted files
     list_file = os.path.join(output_dir, f'{base_name}_contents.txt')
@@ -167,23 +173,24 @@ def unzip_and_untar(gz_file, output_dir):
                 if len(file_parts) >= 3:
                     id_between_dots = file_parts[1]
                     f.write(id_between_dots + '\n')
-    
+
     # Return the path to the extracted folder
     return extracted_folder, list_file, id_file
-
 
 
 # Main part of the script
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else ""
 
-    if mode == "unzip":
-        if len(sys.argv) != 5:
+    if mode == "spec.gz":
+        if len(sys.argv) != 7:
             sys.exit("Usage: python script.py unzip input_gz_file output_directory buoy_path")
 
         gz_file = sys.argv[2]
         output_dir = sys.argv[3]
         buoy_path = sys.argv[4]
+        model_name = sys.argv[5]
+        forecastds = int(sys.argv[6])  # Convert forecast indicator to integer
         ndbcp = buoy_path
         extracted_folder, list_file, id_file = unzip_and_untar(gz_file, output_dir)
 
@@ -298,6 +305,7 @@ if __name__ == "__main__":
                 else:
                     print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[i])
 
+
     else:
         gridinfo = int(0)
         cyclonemap = int(0)
@@ -305,28 +313,28 @@ if __name__ == "__main__":
         ftag = ''
         forecastds = 0
 
-        if len(sys.argv) < 2:
+        if len(sys.argv) < 3:
             sys.exit('At least one argument (list of ww3 files) must be informed.')
         wlist = np.atleast_1d(np.loadtxt(sys.argv[1], dtype=str))
         ftag = str(sys.argv[1]).split('list')[1].split('.txt')[0]
         print('Reading ww3 list ' + str(sys.argv[1]))
         print('Tag ' + ftag)
 
-        if len(sys.argv) >= 3:
-            forecastds = int(sys.argv[2])
-            if forecastds > 0:
-                print('Forecast-type data structure')
+        forecastds = int(sys.argv[2]) if len(sys.argv) >= 4 else 0
+        if forecastds > 0:
+            print('Forecast-type data structure')
 
-        if len(sys.argv) >= 4:
-            gridinfo = str(sys.argv[3])
+        gridinfo = str(sys.argv[3]) if len(sys.argv) >= 5 else int(0)
+        if gridinfo != 0:
             print('Writing gridinfo ' + gridinfo)
 
-        if len(sys.argv) >= 5:
-            cyclonemap = str(sys.argv[4])
+        cyclonemap = str(sys.argv[4]) if len(sys.argv) >= 6 else int(0)
+        if cyclonemap != 0:
             print('Writing cyclonemap ' + cyclonemap)
 
         # Paths
-        ndbcp = "/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam"
+        ndbcp = str(sys.argv[-1])  # Always get the last argument for ndbcp path
+        print('Using ndbcp path: ' + ndbcp)
 
         # READ DATA
         print(" ")
@@ -389,7 +397,7 @@ if __name__ == "__main__":
                     else:
                         mwd = np.copy(mhs) * np.nan
 
-                    
+
                 else:
                     if (mhs.shape[0] == result['hs'].shape[0]) and (
                             np.size(stname) == np.size(result['station_name'])):
@@ -415,8 +423,7 @@ if __name__ == "__main__":
 
 
                     else:
-                        print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[
-                            i])
+                        print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[i])
 
                 del result, at, fcycle
                 mdm = np.copy(mhs) * np.nan;
@@ -520,17 +527,17 @@ if __name__ == "__main__":
                     if 'th1m' in f.variables.keys():
                         adm = np.array(f.variables['th1m'][:, :]).T
                     else:
-                        adm = np.array(np.copy(ahs * nan))
+                        adm = np.array(np.copy(ahs * np.nan))
 
                     if 'th1p' in f.variables.keys():
                         adp = np.array(f.variables['th1p'][:, :]).T
                     else:
-                        adp = np.array(np.copy(ahs * nan))
+                        adp = np.array(np.copy(ahs * np.nan))
 
                     if 'tr' in f.variables.keys():
                         atm = np.array(f.variables['tr'][:, :]).T
                     else:
-                        atm = np.array(np.copy(ahs * nan))
+                        atm = np.array(np.copy(ahs * np.nan))
 
                     if 'fp' in f.variables.keys():
                         auxtp = np.array(f.variables['fp'][:, :]).T
@@ -543,7 +550,7 @@ if __name__ == "__main__":
                         del auxtp
 
                     else:
-                        atm = np.array(np.copy(ahs * nan))
+                        atm = np.array(np.copy(ahs * np.nan))
 
                     ftunits = str(f.variables['time'].units).split('since')[1][1::].replace('T', ' ').replace('+00:00',
                                                                                                                 '')
@@ -560,6 +567,7 @@ if __name__ == "__main__":
                         mtp = np.copy(atp)
                         mdm = np.copy(adm)
                         mdp = np.copy(adp)
+                        mwn = np.copy(awm)
                         mtime = np.copy(at)
                         mfcycle = np.copy(fcycle)
                     else:
@@ -568,6 +576,7 @@ if __name__ == "__main__":
                         mtp = np.append(mtp, atp, axis=1)
                         mdm = np.append(mdm, adm, axis=1)
                         mdp = np.append(mdp, adp, axis=1)
+                        mwn = np.append(mwn, awm, axis=1)
                         mtime = np.append(mtime, at)
                         mfcycle = np.append(mfcycle, fcycle)
 
@@ -584,512 +593,439 @@ if __name__ == "__main__":
         print('  ')
 
 
-# BUOYS ------------------
-bwind = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-bhs = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-btm = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-btp = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-bdm = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-bdp = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
-lat = np.zeros(np.size(stname), 'f') * np.nan
-lon = np.zeros(np.size(stname), 'f') * np.nan
-# help reading NDBC buoys, divided by year
-yrange = np.array(np.arange(time.gmtime(mtime.min())[0], time.gmtime(mtime.min())[0] + 1, 1)).astype('int')
-# loop buoys
-for b in range(0, np.size(stname)):
+    # BUOYS ------------------
+    bwind = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    bhs = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    btm = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    btp = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    bdm = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    bdp = np.zeros((np.size(stname), np.size(mtime)), 'f') * np.nan
+    lat = np.zeros(np.size(stname), 'f') * np.nan
+    lon = np.zeros(np.size(stname), 'f') * np.nan
+    # help reading NDBC buoys, divided by year
+    yrange = np.array(np.arange(time.gmtime(mtime.min())[0], time.gmtime(mtime.min())[0] + 1, 1)).astype('int')
+    # loop buoys
+    for b in range(0, np.size(stname)):
 
-    ahs = []
-    try:
-        awm = []
         ahs = []
-        atm = []
-        atp = []
-        adm = []
-        atime = []
-        for y in yrange:
+        try:
+            awm = []
+            ahs = []
+            atm = []
+            atp = []
+            adm = []
+            atime = []
+            for y in yrange:
 
-            f = nc.Dataset(ndbcp + "/" + stname[b] + "h" + repr(y) + ".nc")
-            if 'wave_height' in f.variables.keys():
-                ahs = np.append(ahs, f.variables['wave_height'][:, 0, 0])
-            elif 'hs' in f.variables.keys():
-                ahs = np.append(ahs, f.variables['hs'][:, 0, 0])
-            elif 'swh' in f.variables.keys():
-                ahs = np.append(ahs, f.variables['swh'][:, 0, 0])
+                f = nc.Dataset(ndbcp + "/" + stname[b] + "h" + repr(y) + ".nc")
+                if 'wave_height' in f.variables.keys():
+                    ahs = np.append(ahs, f.variables['wave_height'][:, 0, 0])
+                elif 'hs' in f.variables.keys():
+                    ahs = np.append(ahs, f.variables['hs'][:, 0, 0])
+                elif 'swh' in f.variables.keys():
+                    ahs = np.append(ahs, f.variables['swh'][:, 0, 0])
 
-            if 'wind_spd' in f.variables.keys():
-                awm = np.append(awm, f.variables['wind_spd'][:, 0, 0])
-            else:
-                awm = np.array(np.copy(ahs * nan))
+                if 'wind_spd' in f.variables.keys():
+                    awm = np.append(awm, f.variables['wind_spd'][:, 0, 0])
+                else:
+                    awm = np.array(np.copy(ahs * np.nan))
 
-            if 'average_wpd' in f.variables.keys():
-                atm = np.append(atm, f.variables['average_wpd'][:, 0, 0])
-            else:
-                atm = np.array(np.copy(ahs * nan))
+                if 'average_wpd' in f.variables.keys():
+                    atm = np.append(atm, f.variables['average_wpd'][:, 0, 0])
+                else:
+                    atm = np.array(np.copy(ahs * np.nan))
 
-            if 'dominant_wpd' in f.variables.keys():
-                atp = np.append(atp, f.variables['dominant_wpd'][:, 0, 0])
-            else:
-                atp = np.array(np.copy(ahs * nan))
+                if 'dominant_wpd' in f.variables.keys():
+                    atp = np.append(atp, f.variables['dominant_wpd'][:, 0, 0])
+                else:
+                    atp = np.array(np.copy(ahs * np.nan))
 
-            if 'mean_wave_dir' in f.variables.keys():
-                adm = np.append(adm, f.variables['mean_wave_dir'][:, 0, 0])
-            else:
-                adm = np.array(np.copy(ahs * nan))
+                if 'mean_wave_dir' in f.variables.keys():
+                    adm = np.append(adm, f.variables['mean_wave_dir'][:, 0, 0])
+                else:
+                    adm = np.array(np.copy(ahs * np.nan))
 
-            if 'latitude' in f.variables.keys():
-                lat[b] = f.variables['latitude'][:]
-            elif 'LATITUDE' in f.variables.keys():
-                lat[b] = f.variables['LATITUDE'][:]
-            else:
-                lat[b] = nan
+                if 'latitude' in f.variables.keys():
+                    lat[b] = f.variables['latitude'][:]
+                elif 'LATITUDE' in f.variables.keys():
+                    lat[b] = f.variables['LATITUDE'][:]
+                else:
+                    lat[b] = np.nan
 
-            if 'longitude' in f.variables.keys():
-                lon[b] = f.variables['longitude'][:]
-            elif 'LONGITUDE' in f.variables.keys():
-                lon[b] = f.variables['LONGITUDE'][:]
-            else:
-                lon[b] = nan
+                if 'longitude' in f.variables.keys():
+                    lon[b] = f.variables['longitude'][:]
+                elif 'LONGITUDE' in f.variables.keys():
+                    lon[b] = f.variables['LONGITUDE'][:]
+                else:
+                    lon[b] = np.nan
 
-            atime = np.append(atime, np.array(f.variables['time'][:]).astype('double'))
+                atime = np.append(atime, np.array(f.variables['time'][:]).astype('double'))
 
-            f.close()
-            del f
+                f.close()
+                del f
 
-        adp = adm * np.nan  # no peak direction available in this format
+            adp = adm * np.nan  # no peak direction available in this format
 
-        if np.size(ahs) > 0:
+            if np.size(ahs) > 0:
 
-            # First layer of simple quality-control
-            indq = np.where((ahs > 30.) | (ahs < 0.0))
-            if np.size(indq) > 0:
-                ahs[indq] = np.nan
-                del indq
+                # First layer of simple quality-control
+                indq = np.where((ahs > 30.) | (ahs < 0.0))
+                if np.size(indq) > 0:
+                    ahs[indq] = np.nan
+                    del indq
 
-            indq = np.where((atm > 40.) | (atm < 0.0))
-            if np.size(indq) > 0:
-                atm[indq] = np.nan
-                del indq
+                indq = np.where((atm > 40.) | (atm < 0.0))
+                if np.size(indq) > 0:
+                    atm[indq] = np.nan
+                    del indq
 
-            indq = np.where((atp > 40.) | (atp < 0.0))
-            if np.size(indq) > 0:
-                atp[indq] = np.nan
-                del indq
+                indq = np.where((atp > 40.) | (atp < 0.0))
+                if np.size(indq) > 0:
+                    atp[indq] = np.nan
+                    del indq
 
-            indq = np.where((adm > 360.) | (adm < -180.))
-            if np.size(indq) > 0:
-                adm[indq] = np.nan
-                del indq
+                indq = np.where((adm > 360.) | (adm < -180.))
+                if np.size(indq) > 0:
+                    adm[indq] = np.nan
+                    del indq
 
-            indq = np.where((adp > 360.) | (adp < -180.))
-            if np.size(indq) > 0:
-                adp[indq] = np.nan
-                del indq
+                indq = np.where((adp > 360.) | (adp < -180.))
+                if np.size(indq) > 0:
+                    adp[indq] = np.nan
+                    del indq
 
-            indq = np.where((awm > 50.) | (awm < 0.0))
-            if np.size(indq) > 0:
-                awm[indq] = np.nan
-                del indq
+                indq = np.where((awm > 50.) | (awm < 0.0))
+                if np.size(indq) > 0:
+                    awm[indq] = np.nan
+                    del indq
 
-            c = 0
-            for t in range(0, np.size(mtime)):
-                indt = np.where(np.abs(atime - mtime[t]) < 1800.)
-                if np.size(indt) > 0:
-                    if np.any(ahs[indt[0]].mask == False):
-                        bhs[b, t] = np.nanmean(ahs[indt[0]][ahs[indt[0]].mask == False])
-                        c = c + 1
-                    if np.any(atm[indt[0]].mask == False):
-                        btm[b, t] = np.nanmean(atm[indt[0]][atm[indt[0]].mask == False])
-                    if np.any(atp[indt[0]].mask == False):
-                        btp[b, t] = np.nanmean(atp[indt[0]][atp[indt[0]].mask == False])
-                    if np.any(adm[indt[0]].mask == False):
-                        bdm[b, t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask == False])
-                    if np.any(adp[indt[0]].mask == False):
-                        bdp[b, t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask == False])
-                    if np.any(awm[indt[0]].mask == False):
-                        bwind[b, t] = np.nanmean(awm[indt[0]][awm[indt[0]].mask == False])
+                c = 0
+                for t in mtime:
+                    indt = np.where(np.abs(atime - t) < 1800.)[0]
+                    if np.size(indt) > 0:
+                        if np.any(ahs[indt].mask == False):
+                            bhs[b, c] = np.nanmean(ahs[indt][ahs[indt].mask == False])
+                        if np.any(atm[indt].mask == False):
+                            btm[b, c] = np.nanmean(atm[indt][atm[indt].mask == False])
+                        if np.any(atp[indt].mask == False):
+                            btp[b, c] = np.nanmean(atp[indt][atp[indt].mask == False])
+                        if np.any(adm[indt].mask == False):
+                            bdm[b, c] = np.nanmean(adm[indt][adm[indt].mask == False])
+                        if np.any(adp[indt].mask == False):
+                            bdp[b, c] = np.nanmean(adp[indt][adp[indt].mask == False])
+                        if np.any(awm[indt].mask == False):
+                            bwind[b, c] = np.nanmean(awm[indt][awm[indt].mask == False])
+                        c += 1
 
-                    del indt
+                # print("counted "+repr(c)+" at "+stname[b])
 
-            # print("counted "+repr(c)+" at "+stname[b])
+            print("   station " + stname[b] + "  ok")
 
-        print("   station " + stname[b] + "  ok")
-#        del ahs
-    except Exception as e:
-        print("Error occurred while processing station", stname[b])
-        print(e)
+        except Exception as e:
+            print("Error occurred while processing station", stname[b])
+            print(e)
 
-print('bwind:',bwind)
-print('bhs:',bhs)
-
-
-print('  ')
-# Simple quality-control (range)
-ind=np.where((bhs>30.)|(bhs<0.0))
-if np.size(ind)>0:
-        bhs[ind]=np.nan; del ind
-
-ind=np.where((btm>40.)|(btm<0.0))
-if np.size(ind)>0:
-        btm[ind]=np.nan; del ind
-
-ind=np.where((btp>40.)|(btp<0.0))
-if np.size(ind)>0:
-        btp[ind]=np.nan; del ind
-
-ind=np.where((bdm>360.)|(bdm<-180.))
-if np.size(ind)>0:
-        bdm[ind]=np.nan; del ind
-
-ind=np.where((bdp>360.)|(bdp<-180.))
-if np.size(ind)>0:
-        bdp[ind]=np.nan; del ind
-
-ind=np.where((bwind>50.0)|(bwind<0.0))
-if np.size(ind)>0:
-        bwind[ind]=np.nan; del ind
-
-ind=np.where((mhs>30.)|(mhs<0.0))
-if np.size(ind)>0:
-        mhs[ind]=np.nan; del ind
-
-ind=np.where((mtm>40.)|(mtm<0.0))
-if np.size(ind)>0:
-        mtm[ind]=np.nan; del ind
-
-ind=np.where((mtp>40.)|(mtp<0.0))
-if np.size(ind)>0:
-        mtp[ind]=np.nan; del ind
+    print('bwind:', bwind)
+    print('bhs:', bhs)
 
 
-ind=np.where((mdm>360.)|(mdm<-180.))
-if np.size(ind)>0:
-        mdm[ind]=np.nan; del ind
+    print('  ')
 
-ind=np.where((mdp>360.)|(mdp<-180.))
-if np.size(ind)>0:
-        mdp[ind]=np.nan; del ind
 
-ind=np.where((mwn>50.)|(mwn<0.0))
-if np.size(ind)>0:
-        mwn[ind]=np.nan; del ind
+    # Simple quality-control (range)
+    ind = np.where((bhs > 30.) | (bhs < 0.0))
+    if np.size(ind) > 0:
+        bhs[ind] = np.nan;
+        del ind
 
-# Clean data excluding some stations. Select matchups only when model and buoy are available.
-ind=np.where( (np.isnan(lat)==False) & (np.isnan(lon)==False) & (np.isnan(np.nanmean(mhs,axis=1))==False) & (np.isnan(np.nanmean(bhs,axis=1))==False) )
-if np.size(ind)>0:
-        stname=np.array(stname[ind[0]])
-        lat=np.array(lat[ind[0]])
-        lon=np.array(lon[ind[0]])
-        mhs=np.array(mhs[ind[0],:])
-        mtm=np.array(mtm[ind[0],:])
-        mtp=np.array(mtp[ind[0],:])
-        mdm=np.array(mdm[ind[0],:])
-       # mdp=np.array(mdp[ind[0],:])
+    ind = np.where((btm > 40.) | (btm < 0.0))
+    if np.size(ind) > 0:
+        btm[ind] = np.nan;
+        del ind
+
+    ind = np.where((btp > 40.) | (btp < 0.0))
+    if np.size(ind) > 0:
+        btp[ind] = np.nan;
+        del ind
+
+    ind = np.where((bdm > 360.) | (bdm < -180.))
+    if np.size(ind) > 0:
+        bdm[ind] = np.nan;
+        del ind
+
+    ind = np.where((bdp > 360.) | (bdp < -180.))
+    if np.size(ind) > 0:
+        bdp[ind] = np.nan;
+        del ind
+
+    ind = np.where((bwind > 50.0) | (bwind < 0.0))
+    if np.size(ind) > 0:
+        bwind[ind] = np.nan;
+        del ind
+
+    ind = np.where((mhs > 30.) | (mhs < 0.0))
+    if np.size(ind) > 0:
+        mhs[ind] = np.nan;
+        del ind
+
+    ind = np.where((mtm > 40.) | (mtm < 0.0))
+    if np.size(ind) > 0:
+        mtm[ind] = np.nan;
+        del ind
+
+    ind = np.where((mtp > 40.) | (mtp < 0.0))
+    if np.size(ind) > 0:
+        mtp[ind] = np.nan;
+        del ind
+
+
+    ind = np.where((mdm > 360.) | (mdm < -180.))
+    if np.size(ind) > 0:
+        mdm[ind] = np.nan;
+        del ind
+
+    ind = np.where((mdp > 360.) | (mdp < -180.))
+    if np.size(ind) > 0:
+        mdp[ind] = np.nan;
+        del ind
+
+    ind = np.where((mwn > 50.) | (mwn < 0.0))
+    if np.size(ind) > 0:
+        mwn[ind] = np.nan;
+        del ind
+
+    # Clean data excluding some stations. Select matchups only when model and buoy are available.
+
+    ind = np.where((np.isnan(lat) == False) & (np.isnan(lon) == False) & (np.isnan(np.nanmean(mhs, axis=1)) == False) & (np.isnan(np.nanmean(bhs, axis=1)) == False))
+    if np.size(ind) > 0:
+        stname = np.array(stname[ind[0]])
+        lat = np.array(lat[ind[0]])
+        lon = np.array(lon[ind[0]])
+        mhs = np.array(mhs[ind[0], :])
+        mtm = np.array(mtm[ind[0], :])
+        mtp = np.array(mtp[ind[0], :])
+        mdm = np.array(mdm[ind[0], :])
         mdp = np.array(mdp[ind[0], :])
-        mwn=np.array(mwn[ind[0],:])
-        bhs=np.array(bhs[ind[0],:])
-        btm=np.array(btm[ind[0],:])
-        btp=np.array(btp[ind[0],:])
-        bdm=np.array(bdm[ind[0],:])
-        bdp=np.array(bdp[ind[0],:])
-        bwind=np.array(bwind[ind[0],:])
-else:
+        mwn = np.array(mwn[ind[0], :])
+        bhs = np.array(bhs[ind[0], :])
+        btm = np.array(btm[ind[0], :])
+        btp = np.array(btp[ind[0], :])
+        bdm = np.array(bdm[ind[0], :])
+        bdp = np.array(bdp[ind[0], :])
+        bwind = np.array(bwind[ind[0], :])
+    else:
         sys.exit(' Error: No matchups Model/Buoy available.')
 
 
-print(" Matchups model/buoy complete. Total of "+repr(np.size(ind))+" stations/buoys avaliable."); del ind
+    print(" Matchups model/buoy complete. Total of " + repr(np.size(ind)) + " stations/buoys available.");
+    del ind
 
-# Processing grid and/or cyclone information
-if gridinfo!=0:
-        print(" Adding extra information ... ")
-        alon=np.copy(lon); alon[alon<0]=alon[alon<0]+360.
-        indgplat=[]; indgplon=[]
-        for i in range(0,lat.shape[0]):
-                # indexes nearest point.
-                indgplat = np.append(indgplat,np.where( abs(mlat-lat[i])==abs(mlat-lat[i]).min() )[0][0])
-                indgplon = np.append(indgplon,np.where( abs(mlon-alon[i])==abs(mlon-alon[i]).min() )[0][0])
+    # Edit format if this is forecast model data. Reshape and allocate
+    if forecastds > 0:
+        unt = np.unique(mfcycle)
+        mxsz = 1
 
-        indgplat=np.array(indgplat).astype('int'); indgplon=np.array(indgplon).astype('int')
-        pdistcoast=np.zeros(lat.shape[0],'f')*np.nan
-        pdepth=np.zeros(lat.shape[0],'f')*np.nan
-        poni=np.zeros(lat.shape[0],'f')*np.nan
-        phsmz=np.zeros(lat.shape[0],'f')*np.nan
-        for i in range(0,lat.shape[0]):
-                pdistcoast[i]=distcoast[indgplat[i],indgplon[i]]
-                pdepth[i]=depth[indgplat[i],indgplon[i]]
-                poni[i]=oni[indgplat[i],indgplon[i]]
-                phsmz[i]=hsmz[indgplat[i],indgplon[i]]
+        for i in range(0, unt.shape[0]):
+            ind = np.where(mfcycle == unt[i])[0]
+            mxsz = np.max([mxsz, np.size(ind)])
 
-        print(" Grid Information Included.")
+        for i in range(0, unt.shape[0]):
+            ind = np.where(mfcycle == unt[i])[0]
+            if i == 0:
+                nmhs = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmtm = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmtp = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmdm = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmdp = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmwn = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbhs = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbtm = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbtp = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbdm = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbdp = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nbwind = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
+                nmtime = np.zeros((unt.shape[0], mxsz), 'double') * np.nan
+                if cyclonemap != 0:
+                    nfcmap = np.zeros((mhs.shape[0], unt.shape[0], mxsz), 'f') * np.nan
 
-        # Excluding shallow water points too close to the coast (mask information not accurate)
-        ind=np.where( (np.isnan(pdistcoast)==False) & (np.isnan(pdepth)==False) )
-        if np.size(ind)>0:
-                stname=np.array(stname[ind[0]])
-                lat=np.array(lat[ind[0]])
-                lon=np.array(lon[ind[0]])
-                mhs=np.array(mhs[ind[0],:])
-                mtm=np.array(mtm[ind[0],:])
-                mtp=np.array(mtp[ind[0],:])
-                mdm=np.array(mdm[ind[0],:])
-                mdp=np.array(mdp[ind[0],:])
-                mwn=np.array(mwn[ind[0],:])
-                bhs=np.array(bhs[ind[0],:])
-                btm=np.array(btm[ind[0],:])
-                btp=np.array(btp[ind[0],:])
-                bdm=np.array(bdm[ind[0],:])
-                bdp=np.array(bdp[ind[0],:])
-                bwind=np.array(bwind[ind[0],:])
-                pdistcoast=np.array(pdistcoast[ind[0]])
-                pdepth=np.array(pdepth[ind[0]])
-                poni=np.array(poni[ind[0]])
-                phsmz=np.array(phsmz[ind[0]])
-        else:
-                sys.exit(' Error: No matchups Model/Buoy available after using grid mask.')
+            nmtime[i, 0:np.size(ind)] = np.array(mtime[ind]).astype('double')
+            nmhs[:, i, :][:, 0:np.size(ind)] = np.array(mhs[:, ind])
+            nmtm[:, i, :][:, 0:np.size(ind)] = np.array(mtm[:, ind])
+            nmtp[:, i, :][:, 0:np.size(ind)] = np.array(mtp[:, ind])
+            nmdm[:, i, :][:, 0:np.size(ind)] = np.array(mdm[:, ind])
+            nmdp[:, i, :][:, 0:np.size(ind)] = np.array(mdp[:, ind])
+            nmwn[:, i, :][:, 0:np.size(ind)] = np.array(mwn[:, ind])
+            nbhs[:, i, :][:, 0:np.size(ind)] = np.array(bhs[:, ind])
+            nbtm[:, i, :][:, 0:np.size(ind)] = np.array(btm[:, ind])
+            nbtp[:, i, :][:, 0:np.size(ind)] = np.array(btp[:, ind])
+            nbdm[:, i, :][:, 0:np.size(ind)] = np.array(bdm[:, ind])
+            nbdp[:, i, :][:, 0:np.size(ind)] = np.array(bdp[:, ind])
+            nbwind[:, i, :][:, 0:np.size(ind)] = np.array(bwind[:, ind])
+            if cyclonemap != 0:
+                nfcmap[:, i, :][:, 0:np.size(ind)] = np.array(fcmap[:, ind])
 
-        del ind
+        ind = np.where((nmhs > 0.0) & (nbhs > 0.0))
 
-        if cyclonemap!=0:
-                fcmap=np.zeros((lat.shape[0],mtime.shape[0]),'f')*np.nan
-                for t in range(0,np.size(mtime)):
-                        # search for cyclone time index and cyclone map
-                        indt=np.where(np.abs(ctime-mtime[t])<5400.)
-                        if np.size(indt)>0:
-                                for i in range(0,lat.shape[0]):
-                                        fcmap[i,t] = np.array(cmap[indt[0][0],indgplat[i],indgplon[i]])
+    else:
+        ind = np.where((mhs > 0.0) & (bhs > 0.0))
 
-                                del indt
-                        else:
-                                print('     - No cyclone information for this time step: '+repr(t))
-
-                        # print(' Done cyclone analysis at step: '+repr(t))
-
-                ind=np.where(fcmap<0)
-                if np.size(ind)>0:
-                        fcmap[ind]=np.nan
-
-                print(" Cyclone Information Included.")
-
-# Edit format if this is forecast model data. Reshape and allocate
-
-
-if forecastds>0:
-        unt=np.unique(mfcycle); mxsz=1
-        for i in range(0,unt.shape[0]):
-                ind=np.where(mfcycle==unt[i])[0]
-                mxsz=np.max([mxsz,np.size(ind)])
-
-        for i in range(0,unt.shape[0]):
-                ind=np.where(mfcycle==unt[i])[0]
-                if i==0:
-                        nmhs=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmtm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmtp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmdm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmdp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmwn=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbhs=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbtm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbtp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbdm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbdp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nbwind=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-                        nmtime=np.zeros((unt.shape[0],mxsz),'double')*np.nan
-                        if cyclonemap!=0:
-                                nfcmap=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
-
-                nmtime[i,0:np.size(ind)]=np.array(mtime[ind]).astype('double')
-                nmhs[:,i,:][:,0:np.size(ind)]=np.array(mhs[:,ind])
-                nmtm[:,i,:][:,0:np.size(ind)]=np.array(mtm[:,ind])
-                nmtp[:,i,:][:,0:np.size(ind)]=np.array(mtp[:,ind])
-                nmdm[:,i,:][:,0:np.size(ind)]=np.array(mdm[:,ind])
-                nmdp[:,i,:][:,0:np.size(ind)]=np.array(mdp[:,ind])
-                nmwn[:,i,:][:,0:np.size(ind)]=np.array(mwn[:,ind])
-                nbhs[:,i,:][:,0:np.size(ind)]=np.array(bhs[:,ind])
-                nbtm[:,i,:][:,0:np.size(ind)]=np.array(btm[:,ind])
-                nbtp[:,i,:][:,0:np.size(ind)]=np.array(btp[:,ind])
-                nbdm[:,i,:][:,0:np.size(ind)]=np.array(bdm[:,ind])
-                nbdp[:,i,:][:,0:np.size(ind)]=np.array(bdp[:,ind])
-                nbwind[:,i,:][:,0:np.size(ind)]=np.array(bwind[:,ind])
-
-                if cyclonemap!=0:
-                        nfcmap[:,i,:][:,0:np.size(ind)]=np.array(fcmap[:,ind])
-
-
-        ind=np.where( (nmhs>0.0) & (nbhs>0.0) )
-
-else:
-
-    larger_shape = max(mhs.shape, bhs.shape)
-    padded_mhs = np.zeros(larger_shape)
-    padded_bhs = np.zeros(larger_shape)
-    padded_mhs[:mhs.shape[0], :mhs.shape[1]] = mhs
-    padded_bhs[:bhs.shape[0], :bhs.shape[1]] = bhs
-
-
-    # Create padded arrays for other variables
-    padded_mtm = np.zeros(larger_shape)  # Assuming mtm has the same shape as mhs
-    padded_mtp = np.zeros(larger_shape)  # Assuming mtp has the same shape as mhs
-    padded_mdm = np.zeros(larger_shape)  # Assuming mdm has the same shape as mhs
-    padded_mdp = np.zeros(larger_shape)  # Assuming mdp has the same shape as mhs
-    padded_mwn = np.zeros(larger_shape)  # Assuming mwn has the same shape as mhs
-
-    padded_btm = np.zeros(larger_shape)  # Assuming btm has the same shape as bhs
-    padded_btp = np.zeros(larger_shape)  # Assuming btp has the same shape as bhs
-    padded_bdm = np.zeros(larger_shape)  # Assuming bdm has the same shape as bhs
-    padded_bdp = np.zeros(larger_shape)  # Assuming bdp has the same shape as bhs
-    padded_bwind = np.zeros(larger_shape)  # Assuming bwind has the same shape as bhs
-
-    # Copy values from original arrays to padded arrays for other variables
-    padded_mtm[:mtm.shape[0], :mtm.shape[1]] = mtm
-    padded_mtp[:mtp.shape[0], :mtp.shape[1]] = mtp
-    padded_mdm[:mdm.shape[0], :mdm.shape[1]] = mdm
-    padded_mdp[:mdp.shape[0], :mdp.shape[1]] = mdp
-    padded_mwn[:mwn.shape[0], :mwn.shape[1]] = mwn
-
-    padded_btm[:btm.shape[0], :btm.shape[1]] = btm
-    padded_btp[:btp.shape[0], :btp.shape[1]] = btp
-    padded_bdm[:bdm.shape[0], :bdm.shape[1]] = bdm
-    padded_bdp[:bdp.shape[0], :bdp.shape[1]] = bdp
-    padded_bwind[:bwind.shape[0], :bwind.shape[1]] = bwind
-
-
-
-#       ind=np.where( (mhs>0.0) & (bhs>0.0) )
-    ind = np.where((padded_mhs > 0.0) & (padded_bhs > 0.0))
-if np.size(ind)>0:
-        print(' Total amount of matchups model/buoy: '+repr(np.size(ind)))
+    if np.size(ind) > 0:
+        print(' Total amount of matchups model/buoy: ' + repr(np.size(ind)))
 
         # Save netcdf output file
-        lon[lon>180.]=lon[lon>180.]-360.
-        initime=str(time.gmtime(mtime.min())[0])+str(time.gmtime(mtime.min())[1]).zfill(2)+str(time.gmtime(mtime.min())[2]).zfill(2)+str(time.gmtime(mtime.min())[3]).zfill(2)
-        fintime=str(time.gmtime(mtime.max())[0])+str(time.gmtime(mtime.max())[1]).zfill(2)+str(time.gmtime(mtime.max())[2]).zfill(2)+str(time.gmtime(mtime.max())[3]).zfill(2)
-        ncfile = nc.Dataset('WW3.Buoy'+str(ftag)+'_'+initime+'to'+fintime+'.nc', "w", format=fnetcdf)
-        ncfile.history="Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of "+repr(bhs[bhs>0.].shape[0])+" observations or pairs model/observation."
+        lon[lon > 180.] = lon[lon > 180.] - 360.
+        initime = str(time.gmtime(mtime.min())[0]) + str(time.gmtime(mtime.min())[1]).zfill(2) + str(time.gmtime(mtime.min())[2]).zfill(2) + str(time.gmtime(mtime.min())[3]).zfill(2)
+        fintime = str(time.gmtime(mtime.max())[0]) + str(time.gmtime(mtime.max())[1]).zfill(2) + str(time.gmtime(mtime.max())[2]).zfill(2) + str(time.gmtime(mtime.max())[3]).zfill(2)
+
+        # Ensure model_name is defined
+        if 'model_name' not in locals():
+            model_name = ''
+
+        ncfile = nc.Dataset(f'WW3.{model_name}Buoy{ftag}_{initime}to{fintime}.nc', "w", format=fnetcdf)
+        print(f"Model Name: {model_name}, Tag: {ftag}, Start Time: {initime}, End Time: {fintime}")
+        ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " + repr(bhs[bhs > 0.].shape[0]) + " observations or pairs model/observation."
+
         # create  dimensions
-        ncfile.createDimension('buoypoints', bhs.shape[0] )
-        if gridinfo!=0:
-                ncfile.createDimension('GlobalOceansSeas', ocnames.shape[0] )
-                ncfile.createDimension('HighSeasMarineZones', hsmznames.shape[0] )
-        if cyclonemap!=0:
-                ncfile.createDimension('cycloneinfo', cinfo.shape[0] )
-                vcinfo = ncfile.createVariable('cycloneinfo',dtype('a25'),('cycloneinfo'))
+        ncfile.createDimension('buoypoints', bhs.shape[0])
+        if gridinfo != 0:
+            ncfile.createDimension('GlobalOceansSeas', ocnames.shape[0])
+            ncfile.createDimension('HighSeasMarineZones', hsmznames.shape[0])
+        if cyclonemap != 0:
+            ncfile.createDimension('cycloneinfo', cinfo.shape[0])
+            vcinfo = ncfile.createVariable('cycloneinfo', dtype('a25'), ('cycloneinfo'))
+
         # create variables.
-        vstname = ncfile.createVariable('buoyID',type('a25'),('buoypoints'))
-        vlat = ncfile.createVariable('latitude',np.dtype('float32').char,('buoypoints'))
-        vlon = ncfile.createVariable('longitude',np.dtype('float32').char,('buoypoints'))
+        vstname = ncfile.createVariable('buoyID', type('a25'), ('buoypoints'))
+        vlat = ncfile.createVariable('latitude', np.dtype('float32').char, ('buoypoints'))
+        vlon = ncfile.createVariable('longitude', np.dtype('float32').char, ('buoypoints'))
 
-        if forecastds>0:
-                ncfile.createDimension('time', nmhs.shape[2] )
-                ncfile.createDimension('fcycle', unt.shape[0] )
-                vt = ncfile.createVariable('time',np.dtype('float64').char,('fcycle','time'))
-                vmhs = ncfile.createVariable('model_hs',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vmtm = ncfile.createVariable('model_tm',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vmtp = ncfile.createVariable('model_tp',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vmdm = ncfile.createVariable('model_dm',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vmdp = ncfile.createVariable('model_dp',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vmwn = ncfile.createVariable('model_wind',np.dtype('float32').char,('buoypoints','fcycle','time'))
+        if forecastds > 0:
+            ncfile.createDimension('time', nmhs.shape[2])
+            ncfile.createDimension('fcycle', unt.shape[0])
+            vt = ncfile.createVariable('time', np.dtype('float64').char, ('fcycle', 'time'))
+            vmhs = ncfile.createVariable('model_hs', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vmtm = ncfile.createVariable('model_tm', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vmtp = ncfile.createVariable('model_tp', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vmdm = ncfile.createVariable('model_dm', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vmdp = ncfile.createVariable('model_dp', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vmwn = ncfile.createVariable('model_wind', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
 
-                vbhs = ncfile.createVariable('obs_hs',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vbtm = ncfile.createVariable('obs_tm',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vbdm = ncfile.createVariable('obs_dm',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vbdp = ncfile.createVariable('obs_dp',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                vbwind = ncfile.createVariable('obs_wind',np.dtype('float32').char,('buoypoints','fcycle','time'))
+            vbhs = ncfile.createVariable('obs_hs', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vbtm = ncfile.createVariable('obs_tm', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vbtp = ncfile.createVariable('obs_tp', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vbdm = ncfile.createVariable('obs_dm', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vbdp = ncfile.createVariable('obs_dp', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            vbwind = ncfile.createVariable('obs_wind', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
 
         else:
-                ncfile.createDimension('time', bhs.shape[1] )
-                vt = ncfile.createVariable('time',np.dtype('float64').char,('time'))
-                vmhs = ncfile.createVariable('model_hs',np.dtype('float32').char,('buoypoints','time'))
-                vmtm = ncfile.createVariable('model_tm',np.dtype('float32').char,('buoypoints','time'))
-                vmtp = ncfile.createVariable('model_tp',np.dtype('float32').char,('buoypoints','time'))
-                vmdm = ncfile.createVariable('model_dm',np.dtype('float32').char,('buoypoints','time'))
-                vmdp = ncfile.createVariable('model_dp',np.dtype('float32').char,('buoypoints','time'))
-                vmwn = ncfile.createVariable('model_wind',np.dtype('float32').char,('buoypoints','time'))
+            ncfile.createDimension('time', bhs.shape[1])
+            vt = ncfile.createVariable('time', np.dtype('float64').char, ('time'))
+            vmhs = ncfile.createVariable('model_hs', np.dtype('float32').char, ('buoypoints', 'time'))
+            vmtm = ncfile.createVariable('model_tm', np.dtype('float32').char, ('buoypoints', 'time'))
+            vmtp = ncfile.createVariable('model_tp', np.dtype('float32').char, ('buoypoints', 'time'))
+            vmdm = ncfile.createVariable('model_dm', np.dtype('float32').char, ('buoypoints', 'time'))
+            vmdp = ncfile.createVariable('model_dp', np.dtype('float32').char, ('buoypoints', 'time'))
+            vmwn = ncfile.createVariable('model_wind', np.dtype('float32').char, ('buoypoints', 'time'))
 
-                vbhs = ncfile.createVariable('obs_hs',np.dtype('float32').char,('buoypoints','time'))
-                vbtm = ncfile.createVariable('obs_tm',np.dtype('float32').char,('buoypoints','time'))
-                vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','time'))
-                vbdm = ncfile.createVariable('obs_dm',np.dtype('float32').char,('buoypoints','time'))
-                vbdp = ncfile.createVariable('obs_dp',np.dtype('float32').char,('buoypoints','time'))
-                vbwind = ncfile.createVariable('obs_wind',np.dtype('float32').char,('buoypoints','time'))
+            vbhs = ncfile.createVariable('obs_hs', np.dtype('float32').char, ('buoypoints', 'time'))
+            vbtm = ncfile.createVariable('obs_tm', np.dtype('float32').char, ('buoypoints', 'time'))
+            vbtp = ncfile.createVariable('obs_tp', np.dtype('float32').char, ('buoypoints', 'time'))
+            vbdm = ncfile.createVariable('obs_dm', np.dtype('float32').char, ('buoypoints', 'time'))
+            vbdp = ncfile.createVariable('obs_dp', np.dtype('float32').char, ('buoypoints', 'time'))
+            vbwind = ncfile.createVariable('obs_wind', np.dtype('float32').char, ('buoypoints', 'time'))
 
-
-
-
-        if gridinfo!=0:
-                vpdistcoast = ncfile.createVariable('distcoast',np.dtype('float32').char,('buoypoints'))
-                vpdepth = ncfile.createVariable('depth',np.dtype('float32').char,('buoypoints'))
-                vponi = ncfile.createVariable('GlobalOceansSeas',np.dtype('float32').char,('buoypoints'))
-                vocnames = ncfile.createVariable('names_GlobalOceansSeas',dtype('a25'),('GlobalOceansSeas'))
-                vphsmz = ncfile.createVariable('HighSeasMarineZones',np.dtype('float32').char,('buoypoints'))
-                vhsmznames = ncfile.createVariable('names_HighSeasMarineZones',dtype('a25'),('HighSeasMarineZones'))
-        if cyclonemap!=0:
-                if forecastds>0:
-                        vcmap = ncfile.createVariable('cyclone',np.dtype('float32').char,('buoypoints','fcycle','time'))
-                else:
-                        vcmap = ncfile.createVariable('cyclone',np.dtype('float32').char,('buoypoints','time'))
+        if gridinfo != 0:
+            vpdistcoast = ncfile.createVariable('distcoast', np.dtype('float32').char, ('buoypoints'))
+            vpdepth = ncfile.createVariable('depth', np.dtype('float32').char, ('buoypoints'))
+            vponi = ncfile.createVariable('GlobalOceansSeas', np.dtype('float32').char, ('buoypoints'))
+            vocnames = ncfile.createVariable('names_GlobalOceansSeas', dtype('a25'), ('GlobalOceansSeas'))
+            vphsmz = ncfile.createVariable('HighSeasMarineZones', np.dtype('float32').char, ('buoypoints'))
+            vhsmznames = ncfile.createVariable('names_HighSeasMarineZones', dtype('a25'), ('HighSeasMarineZones'))
+        if cyclonemap != 0:
+            if forecastds > 0:
+                vcmap = ncfile.createVariable('cyclone', np.dtype('float32').char, ('buoypoints', 'fcycle', 'time'))
+            else:
+                vcmap = ncfile.createVariable('cyclone', np.dtype('float32').char, ('buoypoints', 'time'))
 
         # Assign units
-        vlat.units = 'degrees_north' ; vlon.units = 'degrees_east'
+        vlat.units = 'degrees_north'
+        vlon.units = 'degrees_east'
         vt.units = 'seconds since 1970-01-01T00:00:00+00:00'
-        vmhs.units='m'; vbhs.units='m'
-        vmtm.units='s'; vbtm.units='s'
-        vmtp.units='s'; vbtp.units='s'
-        vmdm.units='degrees'; vbdm.units='degrees'
-        vmdp.units='degrees'; vbdp.units='degrees'
-        vmwn.unit='m/s';vbwind.unit='m/s'
+        vmhs.units = 'm'
+        vbhs.units = 'm'
+        vmtm.units = 's'
+        vbtm.units = 's'
+        vmtp.units = 's'
+        vbtp.units = 's'
+        vmdm.units = 'degrees'
+        vbdm.units = 'degrees'
+        vmdp.units = 'degrees'
+        vbdp.units = 'degrees'
+        vmwn.unit = 'm/s'
+        vbwind.unit = 'm/s'
 
-        if gridinfo!=0:
-                vpdepth.units='m'; vpdistcoast.units='km'
+        if gridinfo != 0:
+            vpdepth.units = 'm'
+            vpdistcoast.units = 'km'
 
         # Allocate Data
-        vstname[:]=stname[:]; vlat[:] = lat[:]; vlon[:] = lon[:]
-        if forecastds>0:
-                vt[:,:]=nmtime[:,:]
-                vmhs[:,:,:]=nmhs[:,:,:]
-                vmtm[:,:,:]=nmtm[:,:,:]
-                vmtp[:,:,:]=nmtp[:,:,:]
-                vmdm[:,:,:]=nmdm[:,:,:]
-                vmdp[:,:,:]=nmdp[:,:,:]
-                vmwn[:,:,:]=nmwn[:,:,:]
-                vbhs[:,:,:]=nbhs[:,:,:]
-                vbtm[:,:,:]=nbtm[:,:,:]
-                vbtp[:,:,:]=nbtp[:,:,:]
-                vbdm[:,:,:]=nbdm[:,:,:]
-                vbdp[:,:,:]=nbdp[:,:,:]
-                vbwind[:,:,:]=nbwind[:,:,:]
+        vstname[:] = stname[:]
+        vlat[:] = lat[:]
+        vlon[:] = lon[:]
+        if forecastds > 0:
+            vt[:, :] = nmtime[:, :]
+            vmhs[:, :, :] = nmhs[:, :, :]
+            vmtm[:, :, :] = nmtm[:, :, :]
+            vmtp[:, :, :] = nmtp[:, :, :]
+            vmdm[:, :, :] = nmdm[:, :, :]
+            vmdp[:, :, :] = nmdp[:, :, :]
+            vmwn[:, :, :] = nmwn[:, :, :]
+            vbhs[:, :, :] = nbhs[:, :, :]
+            vbtm[:, :, :] = nbtm[:, :, :]
+            vbtp[:, :, :] = nbtp[:, :, :]
+            vbdm[:, :, :] = nbdm[:, :, :]
+            vbdp[:, :, :] = nbdp[:, :, :]
+            vbwind[:, :, :] = nbwind[:, :, :]
 
-        else:
-                vt[:]=mtime[:]
-                vmhs[:,:]=padded_mhs[:,:]
-                vmtm[:,:]=padded_mtm[:,:]
-                vmtp[:,:]=padded_mtp[:,:]
-                vmdm[:,:]=padded_mdm[:,:]
-                vmdp[:,:]=padded_mdp[:,:]
-                vmwn[:,:]=padded_mwn[:,:]
-                vbhs[:,:]=padded_bhs[:,:]
-                vbtm[:,:]=btm[:,:]
-                vbtp[:,:]=btp[:,:]
-                vbdm[:,:]=bdm[:,:]
-                vbdp[:,:]=bdp[:,:]
-                vbwind[:,:]=bwind[:,:]
-
-
-
-
-        if gridinfo!=0:
-                vpdistcoast[:]=pdistcoast[:]
-                vpdepth[:]=pdepth[:]
-                vponi[:]=poni[:]; vocnames[:] = ocnames[:]
-                vphsmz[:]=phsmz[:]; vhsmznames[:] = hsmznames[:]
-        if cyclonemap!=0:
-                vcinfo[:] = cinfo[:]
-                if forecastds>0:
-                        vcmap[:,:,:]=nfcmap[:,:,:]
-                else:
-                        vcmap[:,:]=fcmap[:,:]
+        if gridinfo != 0:
+            vpdistcoast[:] = pdistcoast[:]
+            vpdepth[:] = pdepth[:]
+            vponi[:] = poni[:]
+            vocnames[:] = ocnames[:]
+            vphsmz[:] = phsmz[:]
+            vhsmznames[:] = hsmznames[:]
+        if cyclonemap != 0:
+            vcinfo[:] = cinfo[:]
+            if forecastds > 0:
+                vcmap[:, :, :] = nfcmap[:, :, :]
+            else:
+                vcmap[:, :] = fcmap[:, :]
 
         ncfile.close()
         print(' ')
-        print('Done. Netcdf ok. New file saved: WW3.Buoy'+str(ftag)+'_'+initime+'to'+fintime+'.nc')
+        print(f'Done. Netcdf ok. New file saved: WW3.{model_name}_Buoy{ftag}_{initime}to{fintime}.nc')
+
+        # File deletion section
+        files_to_delete = [
+            os.path.join(output_dir, '*_contents.txt'),
+            os.path.join(output_dir, '*_id.txt'),
+            os.path.join(output_dir, '*.spec_tar')
+        ]
+
+        for pattern in files_to_delete:
+            for file in glob.glob(pattern):
+                try:
+                    os.remove(file)
+                    print(f'Deleted file: {file}')
+                except OSError as e:
+                    print(f'Error deleting file {file}: {e}')
+
+        # Folder deletion section
+        try:
+            shutil.rmtree(extracted_folder)
+            print(f'Deleted folder: {extracted_folder}')
+        except OSError as e:
+            print(f'Error deleting folder {extracted_folder}: {e}')
+
+        print('Temporary files and folder deleted.')
 
