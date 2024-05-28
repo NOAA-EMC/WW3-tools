@@ -1622,12 +1622,10 @@ def spec_ww3(*args):
 
 def spec1_ww3(*args):
     '''
-    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
-    Input: file names (list of file names), and station names (list of station names)
-    Output: list of dictionaries containing:
-      time(seconds since 1970),time(datetime64),lat,lon; Arrays: freq,dfreq,pwst,d1sp,dire,dspec,wnds,wndd
+    WAVEWATCH III, .spec.gz reader. This new function is responsible for reading the model station data 
+    with the .spec.gz format.
     '''
-    
+
     if len(args) < 2:
         sys.exit('Two inputs are required: list of file names and list of station names')
 
@@ -1645,8 +1643,8 @@ def spec1_ww3(*args):
         for stname in stnames:
             try:
                 with open(fname) as fp:
-                    nt = fp.read().count(stname)  # No change
-                
+                    nt = fp.read().count(stname)
+
                 if nt >= 1:
                     with open(fname) as fp:
                         cabc = fp.readline().strip().split()
@@ -1663,7 +1661,7 @@ def spec1_ww3(*args):
 
                         k = 0
                         # Reading frequencies
-                        for i in range(0, int(np.floor(nf/8))):  # Changed loop condition to int(np.floor(nf/8))
+                        for i in range(0, int(np.floor(nf/8))):
                             line = fp.readline().strip().split()
                             for j in range(8):
                                 freq[k] = float(line[j])
@@ -1675,20 +1673,20 @@ def spec1_ww3(*args):
                                 freq[k] = float(line[i])
                                 k += 1
 
-                        dfreq = np.diff(freq, prepend=freq[0])  # Simplified dfreq calculation using np.diff
+                        dfreq = np.diff(freq, prepend=freq[0])
 
                         k = 0
                         # Reading directions
-                        for i in range(0, int(np.floor(nd/7))):  # Changed loop condition to int(np.floor(nd/7))
+                        for i in range(0, int(np.floor(nd/7))):
                             line = fp.readline().strip().split()
                             for j in range(7):
-                                dire[k] = float(line[j]) * 180 / np.pi  # Added conversion to degrees
+                                dire[k] = float(line[j]) * 180 / np.pi
                                 k += 1
 
                         if (nd % 7) > 0:
                             line = fp.readline().strip().split()
                             for i in range(nd % 7):
-                                dire[k] = float(line[i]) * 180 / np.pi  # Added conversion to degrees
+                                dire[k] = float(line[i]) * 180 / np.pi
                                 k += 1
 
                         auxs = np.zeros((nf * nd), 'f')
@@ -1699,19 +1697,24 @@ def spec1_ww3(*args):
                             cabc = fp.readline().strip().split()
                             mtime[t] = np.double(timegm(strptime(cabc[0] + cabc[1][0:2], '%Y%m%d%H')))
                             cabc = fp.readline().strip().split()
-                            
+
                             if len(cabc) > 8:
                                 lat, lon, depth = float(cabc[2]), float(cabc[3]), float(cabc[4])
                                 wnds[t], wndd[t] = float(cabc[5]), float(cabc[6])
                             elif len(cabc) == 8:
                                 lat_lon_parts = cabc[2].strip("'").split('-')
-                                lat, lon, depth = float(lat_lon_parts[0]), -float(lat_lon_parts[1]), float(cabc[3])
+                                if len(lat_lon_parts) == 2:
+                                    lat, lon, depth = float(lat_lon_parts[0]), -float(lat_lon_parts[1]), float(cabc[3])
+                                else:
+                                    lat = float(cabc[2][:6])
+                                    lon = float(cabc[2][6:])
+                                    depth = float(cabc[3])
                                 wnds[t], wndd[t] = float(cabc[4]), float(cabc[5])
                             else:
                                 continue
 
                             k = 0
-                            for i in range(0, int(np.floor((nf*nd)/7.))):  # Changed loop condition to int(np.floor((nf*nd)/7.))
+                            for i in range(0, int(np.floor((nf*nd)/7.))):
                                 line = fp.readline().strip().split()
                                 for j in range(7):
                                     auxs[k] = float(line[j])
@@ -1755,7 +1758,7 @@ def spec1_ww3(*args):
                         for il in range(nf):
                             a = np.sum(dspec[t, il, :] * np.sin((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
                             b = np.sum(dspec[t, il, :] * np.cos((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
-                            aux = np.degrees(np.arctan2(a, b))  # Changed to np.degrees
+                            aux = np.degrees(np.arctan2(a, b))
                             if aux < 0:
                                 aux += 360.
                             d1sp[t, il] = aux
