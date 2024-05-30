@@ -1620,10 +1620,13 @@ def spec_ww3(*args):
 
 
 
+
 def spec1_ww3(*args):
     '''
-    WAVEWATCH III, .spec.gz reader. This new function is responsible for reading the model station data 
-    with the .spec.gz format.
+    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
+    Input: file names (list of file names), and station names (list of station names)
+    Output: list of dictionaries containing:
+      time(seconds since 1970), time(datetime64), lat, lon; Arrays: freq, dfreq, pwst, d1sp, dire, dspec, wnds, wndd
     '''
 
     if len(args) < 2:
@@ -1661,7 +1664,7 @@ def spec1_ww3(*args):
 
                         k = 0
                         # Reading frequencies
-                        for i in range(0, int(np.floor(nf/8))):
+                        for i in range(0, int(np.floor(nf / 8))):
                             line = fp.readline().strip().split()
                             for j in range(8):
                                 freq[k] = float(line[j])
@@ -1673,11 +1676,20 @@ def spec1_ww3(*args):
                                 freq[k] = float(line[i])
                                 k += 1
 
-                        dfreq = np.diff(freq, prepend=freq[0])
+                        # Calculate dfreq using geometric progression
+                        dfreq = np.zeros(freq.shape[0], 'f')
+                        alpha = (freq[-1] / freq[-2])
+                        for i in range(freq.shape[0]):
+                            if i == 0:
+                                dfreq[i] = freq[i] * (np.sqrt(alpha) - 1)
+                            elif i == (freq.shape[0] - 1):
+                                dfreq[i] = freq[i] * (1 - 1 / np.sqrt(alpha))
+                            else:
+                                dfreq[i] = freq[i] * (np.sqrt(alpha) - 1 / np.sqrt(alpha))
 
                         k = 0
                         # Reading directions
-                        for i in range(0, int(np.floor(nd/7))):
+                        for i in range(0, int(np.floor(nd / 7))):
                             line = fp.readline().strip().split()
                             for j in range(7):
                                 dire[k] = float(line[j]) * 180 / np.pi
@@ -1714,7 +1726,7 @@ def spec1_ww3(*args):
                                 continue
 
                             k = 0
-                            for i in range(0, int(np.floor((nf*nd)/7.))):
+                            for i in range(0, int(np.floor((nf * nd) / 7.))):
                                 line = fp.readline().strip().split()
                                 for j in range(7):
                                     auxs[k] = float(line[j])
@@ -1782,3 +1794,4 @@ def spec1_ww3(*args):
                 continue
 
     return results
+
