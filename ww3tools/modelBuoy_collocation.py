@@ -883,7 +883,10 @@ if __name__ == "__main__":
 
         ncfile = nc.Dataset(f'WW3.{model_name}Buoy{ftag}_{initime}to{fintime}.nc', "w", format=fnetcdf)
         print(f"Model Name: {model_name}, Tag: {ftag}, Start Time: {initime}, End Time: {fintime}")
-        ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " + repr(bhs[bhs > 0.].shape[0]) + " observations or pairs model/observation."
+        num_time_points = nmhs.shape[2]  # Total number of time points
+        num_buoy_points = bhs.shape[0]  # Total number of buoy points
+        total_observations = num_time_points * num_buoy_points
+        ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " + str(total_observations) + " observations or pairs model/observation."
 
         # create  dimensions
         ncfile.createDimension('buoypoints', bhs.shape[0])
