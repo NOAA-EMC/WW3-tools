@@ -304,18 +304,6 @@ if __name__ == "__main__":
                 else:
                     print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[i])
 
-        # Print values after loop for inspection
-        print('mfcycle:', mfcycle)
-        print('stname:', stname)
-        print('mtime:', mtime)
-        print('mhs:', mhs)
-        print('mtp:', mtp)
-        print('mwn:', mwn)
-        print('mwd:', mwd)
-        print('mfreq:', mfreq)
-        print('mtm:', mtm)
-        print('mdp:', mdp)
-        print('mdm:', mdm)
 
     else:
         gridinfo = int(0)
@@ -824,8 +812,6 @@ if __name__ == "__main__":
         bdm = np.array(bdm[ind[0], :])
         bdp = np.array(bdp[ind[0], :])
         bwind = np.array(bwind[ind[0], :])
-
-        print("bhs:",bhs.shape)
 
     else:
         sys.exit(' Error: No matchups Model/Buoy available.')
