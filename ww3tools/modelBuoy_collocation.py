@@ -268,7 +268,6 @@ if __name__ == "__main__":
 
                 if mhs.shape[1] == result['Hs'].shape[0]:
                     stname = np.append(stname, np.atleast_1d(np.array(result['station_name'])))
-                    mtime = np.append(mtime, at)
                     mhs = np.append(mhs, [result['Hs']], axis=0)
                     mtp = np.append(mtp, [result['Tp']], axis=0)
 
@@ -305,6 +304,18 @@ if __name__ == "__main__":
                 else:
                     print("   Stations in " + wlist[i] + " do not match the other tar files. Skipped " + wlist[i])
 
+        # Print values after loop for inspection
+        print('mfcycle:', mfcycle)
+        print('stname:', stname)
+        print('mtime:', mtime)
+        print('mhs:', mhs)
+        print('mtp:', mtp)
+        print('mwn:', mwn)
+        print('mwd:', mwd)
+        print('mfreq:', mfreq)
+        print('mtm:', mtm)
+        print('mdp:', mdp)
+        print('mdm:', mdm)
 
     else:
         gridinfo = int(0)
@@ -813,6 +824,9 @@ if __name__ == "__main__":
         bdm = np.array(bdm[ind[0], :])
         bdp = np.array(bdp[ind[0], :])
         bwind = np.array(bwind[ind[0], :])
+
+        print("bhs:",bhs.shape)
+
     else:
         sys.exit(' Error: No matchups Model/Buoy available.')
 
@@ -883,10 +897,7 @@ if __name__ == "__main__":
 
         ncfile = nc.Dataset(f'WW3.{model_name}Buoy{ftag}_{initime}to{fintime}.nc', "w", format=fnetcdf)
         print(f"Model Name: {model_name}, Tag: {ftag}, Start Time: {initime}, End Time: {fintime}")
-        num_time_points = nmhs.shape[2]  # Total number of time points
-        num_buoy_points = bhs.shape[0]  # Total number of buoy points
-        total_observations = num_time_points * num_buoy_points
-        ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " + str(total_observations) + " observations or pairs model/observation."
+        ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " +repr(bhs[bhs>0.].shape[0])+" observations or pairs model/observation."
 
         # create  dimensions
         ncfile.createDimension('buoypoints', bhs.shape[0])
@@ -1031,3 +1042,4 @@ if __name__ == "__main__":
             print(f'Error deleting folder {extracted_folder}: {e}')
 
         print('Temporary files and folder deleted.')
+
