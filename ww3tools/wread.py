@@ -1722,6 +1722,12 @@ def spec1_ww3(*args):
                                     lon = float(cabc[2][6:])
                                     depth = float(cabc[3])
                                 wnds[t], wndd[t] = float(cabc[4]), float(cabc[5])
+                            elif len(cabc) == 7:
+                     
+                                lat_lon_parts = cabc[1].split()
+                                lat, lon = float(lat_lon_parts[0]), float(lat_lon_parts[1])
+                                depth = float(cabc[2])
+                                wnds[t], wndd[t] = float(cabc[3]), float(cabc[4])
                             else:
                                 continue
 
@@ -1794,4 +1800,3 @@ def spec1_ww3(*args):
                 continue
 
     return results
-
