@@ -426,7 +426,7 @@ if __name__ == "__main__":
 
                 del result, at, fcycle
                 mdm = np.copy(mhs) * np.nan;
-                mtm = np.copy(mhs) * np.nan  # not saved in this file format
+                mtm = np.copy(mhs) * np.nan  
                 print("    ww3 file " + wlist[i] + " OK")
 
         elif (str(wlist[0]).split('/')[-1].split('.')[-1] == 'bull') or (
@@ -714,21 +714,14 @@ if __name__ == "__main__":
                             bdp[b, c] = np.nanmean(adp[indt][adp[indt].mask == False])
                         if np.any(awm[indt].mask == False):
                             bwind[b, c] = np.nanmean(awm[indt][awm[indt].mask == False])
-                        c += 1
+                    c += 1
 
-                # print("counted "+repr(c)+" at "+stname[b])
 
             print("   station " + stname[b] + "  ok")
 
         except Exception as e:
             print("Error occurred while processing station", stname[b])
             print(e)
-
-    print('bwind:', bwind)
-    print('bhs:', bhs)
-
-
-    print('  ')
 
 
     # Simple quality-control (range)
@@ -884,6 +877,8 @@ if __name__ == "__main__":
         ncfile = nc.Dataset(f'WW3.{model_name}Buoy{ftag}_{initime}to{fintime}.nc', "w", format=fnetcdf)
         print(f"Model Name: {model_name}, Tag: {ftag}, Start Time: {initime}, End Time: {fintime}")
         ncfile.history = "Matchups of WAVEWATCHIII point output (table) and NDBC and Copernicus Buoys. Total of " +repr(bhs[bhs>0.].shape[0])+" observations or pairs model/observation."
+        ncfile.initial_condition = initime
+        ncfile.time_units = "seconds since 1970-01-01T00:00:00+00:00"  
 
         # create  dimensions
         ncfile.createDimension('buoypoints', bhs.shape[0])
@@ -898,6 +893,8 @@ if __name__ == "__main__":
         vstname = ncfile.createVariable('buoyID', type('a25'), ('buoypoints'))
         vlat = ncfile.createVariable('latitude', np.dtype('float32').char, ('buoypoints'))
         vlon = ncfile.createVariable('longitude', np.dtype('float32').char, ('buoypoints'))
+
+
 
         if forecastds > 0:
             ncfile.createDimension('time', nmhs.shape[2])
@@ -964,6 +961,7 @@ if __name__ == "__main__":
         vmwn.unit = 'm/s'
         vbwind.unit = 'm/s'
 
+
         if gridinfo != 0:
             vpdepth.units = 'm'
             vpdistcoast.units = 'km'
@@ -972,6 +970,10 @@ if __name__ == "__main__":
         vstname[:] = stname[:]
         vlat[:] = lat[:]
         vlon[:] = lon[:]
+        initime_unix = timegm(strptime(initime, '%Y%m%d%H'))
+
+
+
         if forecastds > 0:
             vt[:, :] = nmtime[:, :]
             vmhs[:, :, :] = nmhs[:, :, :]
@@ -1000,6 +1002,21 @@ if __name__ == "__main__":
                 vcmap[:, :, :] = nfcmap[:, :, :]
             else:
                 vcmap[:, :] = fcmap[:, :]
+
+        fcst_hr = np.full_like(mtime, np.nan, dtype='float64')
+        for i in range(mtime.shape[0]):
+            if mtime.ndim > 1:
+                for j in range(mtime.shape[1]):
+                    if not np.isnan(mtime[i, j]):
+                        fcst_hr[i, j] = (mtime[i, j] - initime_unix) / 3600
+            else:
+                if not np.isnan(mtime[i]):
+                    fcst_hr[i] = (mtime[i] - initime_unix) / 3600
+
+        # Add fcst_hr 
+        vfcst_hr = ncfile.createVariable('fcst_hr', np.dtype('float64').char, ('buoypoints', 'time'))
+        vfcst_hr.units = 'hours'
+        vfcst_hr[:] = fcst_hr
 
         ncfile.close()
         print(' ')
