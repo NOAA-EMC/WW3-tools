@@ -76,6 +76,17 @@ USAGE (spec.gz):
  python3 modelBuoy_collocation.py spec.gz "$input_gz_file" "$output_directory" "$buoy_path"  "$model_name " "$forecast_ds"
 
 
+Note: Updated way for submitting formats(bulltar) other than spec.gz:
+
+
+buoy_path="/scratch2/NCEPDEV/marine/Matthew.Masarik/dat/buoys/NDBC/ncformat/wparam"
+The buoy path should be defined in the job script.
+
+# Process data for each date
+python3 modelBuoy_collocation.py ww3list.txt(any text file name that user defined)  2 $buoy_path
+(The buoy path should be the last item)
+
+
 OUTPUT:
  netcdf file WW3.Buoy*.nc containing matchups of buoy and ww3 data,
   for the stations (lat/lon) where both data sources are available.
