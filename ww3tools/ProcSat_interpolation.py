@@ -269,6 +269,18 @@ def interpolate_netcdf(model_data_directory, model_data_pattern, satellite_file,
     # Load and concatenate the model data files
     model_data_list = [xr.open_dataset(file) for file in model_data_files]
     model_data_combined = xr.concat(model_data_list, dim='time')
+    
+    # Calculate the wind speed if not in the model output
+    try:
+      WIND_surface = model_data_combined['WIND_surface']
+      print("WIND_surface found in dataset. Using existing variable.")
+    except KeyError:
+      print("WIND_surface not found. Computing wind speed from uwnd and vwnd.")
+      uwnd = model_data_combined['uwnd']
+      vwnd = model_data_combined['vwnd']
+      WIND_surface = np.sqrt(uwnd**2 + vwnd**2)
+      # Add or overwrite wind speed variable for interpolation
+      model_data_combined['WIND_surface'] = WIND_surface
     model_data_combined.close()  # Close the files after loading
 
     # Convert longitudes from -180 to 180 to 0 to 360, if necessary
