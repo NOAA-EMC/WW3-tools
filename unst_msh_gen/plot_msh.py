@@ -163,7 +163,8 @@ def setup_plot(ax, extent=[-180, 180, -90, 90]):
     gl.xformatter = LongitudeFormatter()
     gl.yformatter = LatitudeFormatter()
 
-def plot_eleminfo(plotdescriptor, xy, ect, distmin, distmax, depth, highlight_nodes=None):
+def plot_eleminfo(plotdescriptor, xy, ect, distmin, distmax, depth, highlight_nodes=None, named_points=None):
+
     print('Grid')
     print(plotdescriptor)
     print('Min/max of distmin:', np.min(distmin), np.max(distmin))
@@ -199,16 +200,38 @@ def plot_eleminfo(plotdescriptor, xy, ect, distmin, distmax, depth, highlight_no
 
         if highlight_nodes is not None and suffix == 'elm':
             ax.scatter(xy[highlight_nodes, 0], xy[highlight_nodes, 1], color='red', s=100, zorder=102, transform=ccrs.PlateCarree())
+        # --- ADD THIS BLOCK FOR NAMED POINTS ---
+        if named_points is not None and len(named_points) > 0:
+            for lon, lat, name in named_points:
+                if lon > 180 : 
+                    lon = lon - 360 
+                ax.scatter(lon, lat, color='black', s=10, marker='o', zorder=103, transform=ccrs.PlateCarree())
+                ax.text(lon, lat, name, fontsize=10, color='black', zorder=104, transform=ccrs.PlateCarree(), ha='left', va='bottom')
+        # ---------------------------------------
 
-        plt.savefig(f'{suffix}_{plotdescriptor}.png')
+
+        plt.savefig(f'{suffix}_{plotdescriptor}_{name}.png')
         #plt.close()
 
-filename = "./uglo_poly_nBlkS.ww3"
+def main():
+    parser = argparse.ArgumentParser(description='Plot mesh information from a gmsh file.')
+    parser.add_argument('--filename', type=str, required=True, help='Path to the gmsh file')
+    parser.add_argument('--descriptor', type=str, required=True, help='Descriptor for output plot filenames')
+    args = parser.parse_args()
 
-descriptor = "uglo_poly_nBlkS"
+    filename = args.filename
+    descriptor = args.descriptor
 
-xy, depth, ect, bnd =  read_gmsh(filename)
+    xy, depth, ect, bnd =  read_gmsh(filename)
+    distmin, distmax = calc_elm_size(xy, ect)
+    highlighted_nodes = []  # Replace with your actual node indices, e.g. [12776, 13923]
+    named_points = [] # Replace with similar list as seen below: 
+    #named_poins = [ 
+    #(-165.475,   64.473,  "46265"),
+    #(-157.750,   21.480,  "51207"),
+    # # ...
+    #]
+    plot_eleminfo(descriptor, xy, ect, distmin, distmax, depth, highlight_nodes=highlighted_nodes, named_points=named_points)
 
-distmin, distmax = calc_elm_size(xy, ect)
-highlighted_nodes = []  # Replace with your actual node indices , 12776, 13923
-plot_eleminfo(descriptor, xy, ect, distmin, distmax, depth, highlight_nodes=highlighted_nodes)
+if __name__ == "__main__":
+    main()
