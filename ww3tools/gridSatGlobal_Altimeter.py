@@ -84,15 +84,15 @@ datemin='1999123118'; datemax='2020010106'
 
 # Satellite missions available at AODN dataset, pick one as this code runs one satellite at a time!
 s=int(sys.argv[1]) # argument satellite ID for satellite mission selection. s=0 is JASON3, s=1 is JASON2 etc. See list below.
-sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT'])
-sname=np.array(['JASON-3','JASON-2','CRYOSAT-2','JASON-1','HY-2','SARAL','SENTINEL-3A','ENVISAT','ERS-1','ERS-2','GEOSAT','GFO','TOPEX','SENTINEL-3B','CFOSAT'])
+sdname=np.array(['JASON3','JASON2','CRYOSAT2','JASON1','HY2','HY2B','SARAL','SENTINEL3A','ENVISAT','ERS1','ERS2','GEOSAT','GFO','TOPEX','SENTINEL3B','CFOSAT','SENTINEL6A'])
+sname=np.array(['JASON-3','JASON-2','CRYOSAT-2','JASON-1','HY-2','HY-2B','SARAL','SENTINEL-3A','ENVISAT','ERS-1','ERS-2','GEOSAT','GFO','TOPEX','SENTINEL-3B','CFOSAT','SENTINEL-6A'])
 
 # Quality Control parameters
 max_swh_rms = 1.5  # Max RMS of the band significant wave height
 max_sig0_rms = 0.8 # Max RMS of the backscatter coefficient
 max_swh_qc = 2.0 # Max SWH Ku band quality control
 hsmax=20.; wspmax=80.
-min_swh_numval = np.array([17,17,17,17,17,17,17,17,17,17,-inf,3,7,17,-inf])
+min_swh_numval = np.array([17,17,17,17,17,17,17,17,17,17,17,-inf,3,7,17,-inf,17])
 
 # weight function for pyresample
 def wf(pdist):

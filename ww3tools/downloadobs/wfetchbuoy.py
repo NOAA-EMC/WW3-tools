@@ -13,11 +13,9 @@ VERSION AND LAST UPDATE:
  v1.6  01/25/2023
 
 PURPOSE:
- This module downloads NDBC and Copernicus metocean data. One file per buoy.
+ This module downloads NDBC metocean data. One file per buoy.
 
  NDBC data can be downloaded for a user-provided time period (files are divided by year) 
-  whereas Copernicus buoy files gather the entire dataset available for a given buoy (ID name) in each file.
- Both NDBC and Copernicus provide time-series of integrated parameters and wave spectra.
  Information about NDBC formats, netcdf and stdmet, can be found at:
   https://dods.ndbc.noaa.gov/thredds/fileServer/data/
   https://www.ndbc.noaa.gov/rsa.shtml
@@ -28,27 +26,19 @@ PURPOSE:
  NOAA National Data Buoy Center:
   https://www.ndbc.noaa.gov/
 
- Access to Copernicus buoy dataset requires username and password. If you do not have them:
-  https://marine.copernicus.eu/
- Copernicus documentation and updates:
-  https://marine.copernicus.eu/media/pdf/November2022_Transition_Document.pdf/open
-  https://data.marine.copernicus.eu/product/INSITU_GLO_WAV_DISCRETE_MY_013_045/description
-  https://doi.org/10.17882/70345
-  https://catalogue.marine.copernicus.eu/documents/PUM/CMEMS-INS-PUM-013-045.pdf
-  https://help.marine.copernicus.eu/en/articles/4521873-how-to-download-a-dataset-from-ftp-server#h_5a34fdd0c5
- Copernicus data is in netcdf format only, divided into time-series of integrated parameters (copernicus_tseriesnc)
-  and wave spectrum (opernicus_specnc).
+ See also https://pypi.org/project/ndbc-api/
+
+ For Copernicus buoy data:
+  https://help.marine.copernicus.eu/en/articles/7949409-copernicus-marine-toolbox-introduction
+  https://data.marine.copernicus.eu/product/INSITU_GLO_WAV_DISCRETE_MY_013_045/files?subdataset=cmems_obs-ins_glo_wav_my_na_PT1H_202311--ext--history
 
 USAGE:
  functions
    ndbc_nc : downloads NDBC buoy dataset integrated parameters and spectrum, in netcdf format
    ndbc_stdmet : downloads time-series of NDBC buoy dataset of integrated parameters in text stdmet format
-   copernicus_tseriesnc : downloads time-series of Copernicus buoy datatset of integrated parameters in netcdf format
-   copernicus_specnc : downloads wave spectrum of Copernicus buoy datatset in netcdf format
 
  A list of buoy IDs is required and final output paths can be given.
  For ndbc_nc and ndbc_stdmet, two inputs of initial and final years must be entered.
- For copernicus_tseriesnc and copernicus_specnc user and password are must be entered.
  Explanation for each function is contained in the headers.
 
 OUTPUT:
@@ -356,185 +346,6 @@ def ndbc_stdmet(*args):
                     
                 pbar.update(1)
 
-
-            #if tb>0:
-            #    os.system("cat "+odir+"/NDBC_stdmet_"+namest.upper()+"_*.txt >> "+odir+"/NDBC_stdmet_"+namest.upper()+".txt")
-            #    os.system("rm -f "+odir+"/NDBC_stdmet_"+namest.upper()+"_*.txt")
-            #    path = Path(odir+"/NDBC_stdmet_"+namest.upper()+".txt")
-            #    text = path.read_text()
-            #    text = text.replace("YYYY","#YYYY")
-            #    path.write_text(text)
-            #    del path, text
-            # else:
-            #    print(" "); print(" No data for "+namest+"  from "+iyear+" to "+fyear); print(" ")
-
         del namest
-        pbar.close()
-
-
-#  ----- COPERNICUS BUOY DATA -----
-
-def copernicus_tseriesnc(*args):
-    """
-    wfetchbuoy.copernicus_tseriesnc
-
-    PURPOSE:
-     Download Copernicus buoy database of time-series of integrated parameters,
-      given a user/password and a list of buoys to fetch.
-     If you do not have a user/password, see:
-      https://marine.copernicus.eu/
-     Documentation and updates:
-      https://marine.copernicus.eu/media/pdf/November2022_Transition_Document.pdf/open
-      https://data.marine.copernicus.eu/product/INSITU_GLO_WAV_DISCRETE_MY_013_045/description
-      https://doi.org/10.17882/70345
-      https://catalogue.marine.copernicus.eu/documents/PUM/CMEMS-INS-PUM-013-045.pdf
-      https://help.marine.copernicus.eu/en/articles/4521873-how-to-download-a-dataset-from-ftp-server#h_5a34fdd0c5
-
-    USAGE:
-     Four arguments required (first three mandatory): user, password, station list, and output dir.
-     Station list can be an array/list or a text file (full path) with one column (.txt) or a ww3 point input format file (.dat)
-     Examples:
-      from ww3tools.downloadobs import wfetchbuoy
-      wfetchbuoy.copernicus_tseriesnc('user','password','allbstations.txt')
-      wfetchbuoy.copernicus_tseriesnc('user','password','/home/name/reference_data/buoys/allbstations.txt','/home/name/reference_data/buoys/NDBC')
-      wfetchbuoy.copernicus_tseriesnc('user','password',[41004,41047])
-
-    OUTPUT:
-     Formatted and saved netcdf files for all available buoy stations given in a list.
-     One file per buoy.
-
-    """
-
-    odir = os.getcwd()+'/'
-    if len(args) < 3 :
-        sys.exit(' At least three arguments (user,password, and buoy_list) must be informed.')
-    if len(args) >= 3 :
-        cuser=str(args[0])
-        cpassword=str(args[1])
-        lstations=args[2]
-    if len(args) >= 4:
-        odir = str(args[3])
-        if odir[-1]!='/':
-            odir=odir+'/'
-
-    if len(args) > 4:
-        sys.exit(' Too many inputs')
-
-    # Read list of buoys
-    #lndbc = open('allbstations.txt'); content = lndbc.readlines()
-    if type(lstations)==str:
-        if lstations.split('.')[-1] == 'dat':
-            # WAVEWATCHIII point input format
-            dfabs = pd.read_csv(lstations, comment='$'); stationList=[]
-            for i in range(0,dfabs.values.shape[0]-1):
-                aux=str(dfabs.values[i]).split()
-                stationList=np.append(stationList,str(aux[3][1::]).split("'")[0])
-        else:
-            # List (single column) of buoy IDs
-            f = open(lstations, "r")
-            stationList = f.read().splitlines()
-    else:
-        stationList=np.array(lstations).astype('str')
-    ###############################################################################
-
-    with tqdm(total=int(len(stationList)), desc=" -Downloading Copernicus Files (tseries)", position=0, leave=True) as pbar:
-
-        # Dowload each buoy/station
-        for st in range(0,np.size(stationList)):
-
-            namest = str(stationList[st]).split()[0].lower()
-            fname="ftp://"+cuser+":"+cpassword+"@my.cmems-du.eu/Core/INSITU_GLO_WAV_DISCRETE_MY_013_045/cmems_obs-ins_glo_wav_my_na_irr/history/MO/GL_TS_MO_"+namest+".nc"
-            try:
-                request.urlretrieve(fname,odir+"GL_TS_MO_"+namest+".nc")
-            except :
-                print(" Copernicus cmems buoy "+namest+" not available or wrong user/password.")
-            else:
-                print(" Copernicus cmems buoy "+namest+" successfully downloaded.")
-
-            del namest,fname
-            pbar.update(1)
-
-        pbar.close()
-
-
-def copernicus_specnc(*args):
-    """
-    wfetchbuoy.copernicus_specnc
-
-    PURPOSE:
-     Download Copernicus buoy wave spectrum database, given a user/password and a list of buoys to fetch.
-     If you do not have a user/password, see:
-      https://marine.copernicus.eu/
-     Documentation and updates:
-      https://marine.copernicus.eu/media/pdf/November2022_Transition_Document.pdf/open
-      https://data.marine.copernicus.eu/product/INSITU_GLO_WAV_DISCRETE_MY_013_045/description
-      https://doi.org/10.17882/70345
-      https://catalogue.marine.copernicus.eu/documents/PUM/CMEMS-INS-PUM-013-045.pdf
-      https://help.marine.copernicus.eu/en/articles/4521873-how-to-download-a-dataset-from-ftp-server#h_5a34fdd0c5
-
-    USAGE:
-     Four arguments required (first three mandatory): user, password, station list, and output dir
-     Station list can be an array/list or a text file (full path) with one column (.txt) or a ww3 point input format file (.dat)
-     Examples:
-      from ww3tools.downloadobs import wfetchbuoy
-      wfetchbuoy.copernicus_specnc('user','password','allbstations.txt')
-      wfetchbuoy.copernicus_specnc('user','password','/home/name/reference_data/buoys/allbstations.txt','/home/name/reference_data/buoys/NDBC')
-      wfetchbuoy.copernicus_specnc('user','password',[41004,41047])
-
-    OUTPUT:
-     Formatted and saved netcdf files for all available buoy stations given in a list.
-     One file per buoy.
-
-    """
-
-    odir = os.getcwd()+'/'
-    if len(args) < 3 :
-        sys.exit(' At least three arguments (user,password, and buoy_list) must be informed.')
-    if len(args) >= 3 :
-        cuser=str(args[0])
-        cpassword=str(args[1])
-        lstations=args[2]
-    if len(args) >= 4:
-        odir = str(args[3])
-        if odir[-1]!='/':
-            odir=odir+'/'
-
-    if len(args) > 4:
-        sys.exit(' Too many inputs')
-
-    # Read list of buoys
-    #lndbc = open('allbstations.txt'); content = lndbc.readlines()
-    if type(lstations)==str:
-        if lstations.split('.')[-1] == 'dat':
-            # WAVEWATCHIII point input format
-            dfabs = pd.read_csv(lstations, comment='$'); stationList=[]
-            for i in range(0,dfabs.values.shape[0]-1):
-                aux=str(dfabs.values[i]).split()
-                stationList=np.append(stationList,str(aux[3][1::]).split("'")[0])
-        else:
-            # List (single column) of buoy IDs
-            f = open(lstations, "r")
-            stationList = f.read().splitlines()
-    else:
-        stationList=np.array(lstations).astype('str')
-    ###############################################################################
-
-    with tqdm(total=int(len(stationList)), desc=" -Downloading Copernicus Files (spec)", position=0, leave=True) as pbar:
-
-        # Dowload each buoy/station
-        for st in range(0,np.size(stationList)):
-
-            namest = str(stationList[st]).split()[0].lower()
-            fname="ftp://"+cuser+":"+cpassword+"@my.cmems-du.eu/Core/INSITU_GLO_WAV_DISCRETE_MY_013_045/cmems_obs-ins_glo_wav_my_na_irr/history/MO/GL_WS_MO_"+namest+".nc"
-            try:
-                request.urlretrieve(fname,odir+"GL_TS_MO_"+namest+".nc")
-            except :
-                print(" Copernicus cmems buoy "+namest+" not available or wrong user/password.")
-            else:
-                print(" Copernicus cmems buoy "+namest+" successfully downloaded.")
-
-            del namest,fname
-            pbar.update(1)
-
         pbar.close()
 
