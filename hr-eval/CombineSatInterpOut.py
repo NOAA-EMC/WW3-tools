@@ -172,7 +172,7 @@ def main():
         indx=np.where(( fhrsall <= f1 ) & ( fhrsall > f0 )) 
         time_day = time[indx]
         lats_day = lats[indx] 
-        lons_day = lats[indx] 
+        lons_day = lons[indx] 
         fhrs_day = fhrs[indx]
         obs_hs_day = obs_hs[indx]
         obs_wnd_day = obs_wnd[indx]
