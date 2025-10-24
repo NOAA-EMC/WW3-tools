@@ -45,6 +45,21 @@
 #  Ricardo M Campos: ricardo.campos@noaa.gov
 #
 
+#### NOTE #### 
+# A potentially faster way is to instead use AWS S3 bucket to retrieve info.  
+# To do this, you need the aws command line functions to work and then you can do: 
+#
+#  List available satelites: 
+#  aws s3 ls --no-sign s3://imos-data/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/ 
+# 
+# Copy data (note this will keep the folder structure, so you'll have to re-configure the folder structure
+#    so that it is as expected in ww3-tools, which is all files in a single folder. 
+#
+# aws s3 cp --no-sign s3://imos-data/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/${Altimeter}/ ${LocalDestinationFolder} --recursive
+# Example:
+# aws s3 cp --no-sign s3://imos-data/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00/CRYOSAT-2/ /path/to/output/CRYOSAT-2 --recursive
+
+
 fname=http://thredds.aodn.org.au/thredds/fileServer/IMOS/SRS/Surface-Waves/Wave-Wind-Altimetry-DM00
 DIR="$2"
 
