@@ -11,7 +11,7 @@ VERSION AND LAST UPDATE:
  v1.3  03/07/2025
 
 PURPOSE:
- Group of python functions to Read Wave data: 
+ Group of python functions to Read Wave data:
   WAVEWATCHIII results, buoys (moored and drifters), saildrones, and altimeters.
  Prefix meaning:
   tseriesnc = time series (table of integrated parameters versus time).
@@ -960,12 +960,13 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
             else:
                 hem='S'
 
-            try: 
+            try:
                 fu=nc.Dataset(wconfig['path_alt']+satname+'/IMOS_SRS-Surface-Waves_MW_'+nsatname+'_FV02_'+str(np.abs(j)).zfill(3)+hem+'-'+str(k).zfill(3)+'E-DM00.nc')
             except:
                 print(' '+wconfig['path_alt']+satname+'/IMOS_SRS-Surface-Waves_MW_'+nsatname+'_FV02_'+str(np.abs(j)).zfill(3)+hem+'-'+str(k).zfill(3)+'E-DM00.nc does not exist')
             else:
                 st=np.double(fu.variables['TIME'][:]*24.*3600.+float(timegm( time.strptime('1985010100', '%Y%m%d%H') )))
+                st = np.atleast_1d(st)
                 indt=np.where((st>=adatemin-wconfig['maxti']) & (st<=adatemax+wconfig['maxti']))
                 # check if there is valid records inside the time range of interest
                 if np.size(indt)>10:
@@ -977,7 +978,7 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
                     sdistcoast=fu.variables['DIST2COAST'][:]
                     wnd=fu.variables['WSPD'][:]
                     wndcal=fu.variables['WSPD_CAL'][:]
-                    try: 
+                    try:
                         hsk=fu.variables['SWH_KU'][:]
                         hskcal=fu.variables['SWH_KU_CAL'][:]
                         sig0knstd=fu.variables['SIG0_KU_std_dev'][:]
@@ -995,7 +996,7 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
 
                     if ii+len(indt) <= ast.shape[0] :
                         # check the file is correct
-                        if (st.shape[0]==wnd.shape[0]) & (slat.shape[0]==slon.shape[0]) & (hsk.shape[0]==hskcal.shape[0]) :    
+                        if (st.shape[0]==wnd.shape[0]) & (slat.shape[0]==slon.shape[0]) & (hsk.shape[0]==hskcal.shape[0]) :
                             ast[ii:ii+len(indt)]=np.array(st[indt]).astype('double')
                             aslat[ii:ii+len(indt)]=np.array(slat[indt]).astype('float')
                             aslon[ii:ii+len(indt)]=np.array(slon[indt]).astype('float')
@@ -1031,8 +1032,8 @@ def aodn_altimeter(satname,wconfig,datemin,datemax):
     else:
         indq = np.where( (aswdepth>=wconfig['mindepth']) & (asdistcoast>=wconfig['mindfc']) & (aswhknstd<=wconfig['max_swh_rms']) &
             (asig0knstd<=wconfig['max_sig0_rms']) & (aswhknobs>=wconfig['min_swh_numval']) & (aswhkqc<=wconfig['max_swh_qc']) &
-            (ahsk>0.1) & (ahsk<wconfig['hsmax']) & (awnd>0.2) & (awnd<wconfig['wspmax']) & 
-            (ahskcal>0.1) & (ahskcal<wconfig['hsmax']) & (awndcal>0.2) & (awndcal<wconfig['wspmax']) & 
+            (ahsk>0.1) & (ahsk<wconfig['hsmax']) & (awnd>0.2) & (awnd<wconfig['wspmax']) &
+            (ahskcal>0.1) & (ahskcal<wconfig['hsmax']) & (awndcal>0.2) & (awndcal<wconfig['wspmax']) &
             (ast>=adatemin) & (ast<=adatemax) )
 
     del asig0knstd,aswhknobs,aswhknstd,aswhkqc,adatemin,adatemax
