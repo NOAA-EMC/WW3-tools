@@ -55,7 +55,7 @@ PURPOSE:
   levels = np.array(np.linspace(0.1,2.3,31)).round(2)
   gmp = GlobalMapPlot(gdata=gsmooth(RmseGefsControl,1),latm=lat,lonm=lon,
     latmin=-67.,latmax=67.,palette = palette, levels=levels,ftag=figname,pextend=pextend)
-  gmp.plot()   
+  gmp.plot()
 
 USAGE:
  Class ModelObsPlot
@@ -123,7 +123,7 @@ import warnings; warnings.filterwarnings("ignore")
 
 # Font size and style
 sl=13
-matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl) 
+matplotlib.rcParams.update({'font.size': sl}); plt.rc('font', size=sl)
 matplotlib.rc('xtick', labelsize=sl); matplotlib.rc('ytick', labelsize=sl); matplotlib.rcParams.update({'font.size': sl})
 
 def interp_nan(data,lmt=10**50):
@@ -151,15 +151,15 @@ def interp_nan(data,lmt=10**50):
 
 class ModelObsPlot:
 
-    def __init__(self,model=None,obs=None,time=None,
-        fctime=None,fctintervals=None,fctxt=None,fctxticks=None,fctunits=None,month=None,linreg=None,axisnames=None,
-        mlabels=[],vaxisname=None,linestyle=None,linestyle_html=None,marker=None,color=None,ftag='',figformat=None):
+    def __init__(self,model=None,obs=None,time=None,fctime=None,fctintervals=None,fctxt=None,
+        fctxticks=None,fctunits=None,month=None,linreg=None,axisnames=None,mlabels=[],vaxisname=None,
+        linestyle=None,linestyle_html=None,marker=None,color=None,ftag='',figformat=None, mtitle=None):
 
         """
         Initialization of the main object used for the plot functions below.
         model and obs are mandatory.
         time is mandatory for the timeseries plot only.
-        Optional: 
+        Optional:
         :param axisnames: adds specific model and observation axis names to qqplot and scatterplot,
             for ex axisnames=["WW3","Buoy"]
         :param vaxisname: adds specific axis names when only one axis is need, for timeseries (y-axis), month (y-axis), and pdf (x-axis),
@@ -175,12 +175,13 @@ class ModelObsPlot:
             raise ValueError("Missing required input arguments.")
             return
         else:
-            self.model = np.array(np.atleast_2d(model)).astype('float') 
+            self.model = np.array(np.atleast_2d(model)).astype('float')
             self.obs = np.array(np.atleast_2d(obs)).astype('float')
 
         self.figformat = figformat
         self.ftag = ftag
         self.mlabels = mlabels
+        self.mtitle = mtitle
         self.linreg = linreg
         self.vaxisname = vaxisname if vaxisname is not None else "Model and Observations"
         self.axisnames = axisnames if axisnames is not None else ["Model","Observations"]
@@ -349,7 +350,7 @@ class ModelObsPlot:
                 p.yaxis.axis_label = self.vaxisname
             else:
                 p.yaxis.axis_label = "Model and Observations"
-         
+
             output_file(self.ftag + 'TimeSeries.html'); show(p); del p
 
     def qqplot(self):
@@ -400,9 +401,9 @@ class ModelObsPlot:
                     ax.plot(aux,aregr,color=self.color[i],ls='-',linewidth=1.,alpha=0.8,zorder=4)
                     ax.plot(aux,aregr,color='k',ls=':',linewidth=0.7,alpha=0.7,zorder=4)
                     if np.size(self.mlabels)>0:
-                        print(self.ftag+"QQplot "+self.mlabels[i]+": Slope "+np.str(np.round(float(r.slope),5))+", Intercept "+np.str(np.round(float(r.intercept),5)))
+                        print(self.ftag+"QQplot "+self.mlabels[i]+": Slope "+str(np.round(float(r.slope),5))+", Intercept "+str(np.round(float(r.intercept),5)))
                     else:
-                        print(self.ftag+"QQplot: Slope "+np.str(np.round(float(r.slope),5))+", Intercept "+np.str(np.round(float(r.intercept),5)))                      
+                        print(self.ftag+"QQplot: Slope "+str(np.round(float(r.slope),5))+", Intercept "+str(np.round(float(r.intercept),5)))
 
                     del a,b,r,aregr
 
@@ -416,19 +417,21 @@ class ModelObsPlot:
 
         plt.ylim(ymax = aux.max(), ymin = aux.min())
         plt.xlim(xmax = aux.max(), xmin = aux.min())
-        plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7) 
+        plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7)
 
         ax.set_xlabel(self.axisnames[1]); ax.set_ylabel(self.axisnames[0])
 
         if np.size(self.mlabels)>0:
             plt.legend(loc="upper left",fontsize=sl-2)
 
+        if self.mtitle is not None:
+            ax.set_title("Q-Q plot: " + self.mtitle, fontsize=sl-2)
+
         plt.tight_layout()
         plt.savefig(self.ftag+'QQplot.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1); del fig1, ax
 
-
-    def scatterplot(self, dwscl='no'):
+    def scatterplot(self, dwscl='no', nsample=30000, method='uniform'):
         '''
         Scatter plot.
         Inputs:
@@ -440,6 +443,13 @@ class ModelObsPlot:
           - ftag: Path to save the figure. Default is the current directory.
           - dwscl: Whether to apply downsampling. Default is 'no'. If set to 'no', downsampling is not applied.
                 If set to any other value, downsampling is applied.
+          - nsample: Target number of samples after downsampling. Default is 30,000
+          - method: Downsampling method. Options are:
+              - 'uniform': Evenly spaced sampling (default, original method)
+              - 'uniform_max': Selects the largest observation value in each evenly spaced sector.
+              - 'random': Random sampling of point
+              - 'datadensity': Sampling inversely proportional to data density
+              - 'quantile': Sampling equally for quantile bins
         Output: png figure saved in the local directory where python is running or in the path given through ftag.
         Example:
           from pvalstats import ModelObsPlot
@@ -452,13 +462,74 @@ class ModelObsPlot:
           mop.scatterplot()
         '''
 
-        if self.obs[0,:].shape[0] > 50000 and dwscl != 'no':
-            sk = int(np.round(float(self.obs[0,:].shape[0]) / 30000., 0))
-        else:
-            sk = 1
+        total_points = self.obs[0,:].shape[0]
 
-        a = math.floor(np.nanmin(np.append(self.obs[:,::sk], self.model[:,::sk])) * 100.) / 100.
-        b = math.ceil(np.nanmax(np.append(self.obs[:,::sk], self.model[:,::sk])) * 100.) / 100.
+        # Downsampling logic
+        if total_points > 50000 and dwscl != 'no':
+            if nsample >= total_points:
+                obs_sampled = self.obs[0,:]
+                model_sampled = self.model
+            else:
+                if method == 'uniform':
+                    sk = int(np.round(float(total_points) / nsample, 0))
+                    obs_sampled = self.obs[0,::sk]
+                    model_sampled = self.model[:,::sk]
+                elif method == 'uniform_max':
+                    sector_size = total_points // nsample
+                    indices = []
+                    for i in range(nsample):
+                        start = i * sector_size
+                        end = min((i + 1) * sector_size, total_points)
+                        sector_obs = self.obs[0, start:end]
+                        if len(sector_obs) > 0:
+                            max_idx = start + np.argmax(sector_obs)
+                            indices.append(max_idx)
+                    indices = np.array(indices)
+                    obs_sampled = self.obs[0, indices]
+                    model_sampled = self.model[:, indices]
+                elif method == 'random':
+                    indices = np.random.choice(total_points, size=nsample, replace=False)
+                    obs_sampled = self.obs[0, indices]
+                    model_sampled = self.model[:, indices]
+                elif method == 'datadensity':
+                    kde = gaussian_kde(self.obs[0,:])
+                    densities = kde(self.obs[0,:])
+                    probs = 1 / (densities + 1e-6)
+                    probs /= probs.sum()
+                    indices = np.random.choice(total_points, size=nsample, p=probs, replace=False)
+                    obs_sampled = self.obs[0, indices]
+                    model_sampled = self.model[:, indices]
+                elif method == 'quantile':
+                    n_bins = nsample // 1000
+                    points_per_bin = nsample // n_bins
+                    obs = self.obs[0,:]
+                    quantiles = np.nanpercentile(obs, np.linspace(0, 100, n_bins + 1))
+                    indices = []
+                    for i in range(n_bins):
+                        bin_mask = (obs >= quantiles[i]) & (obs < quantiles[i + 1])
+                        bin_indices = np.where(bin_mask)[0]
+                        if len(bin_indices) > 0:
+                            sampled = np.random.choice(bin_indices, size=min(points_per_bin, len(bin_indices)), replace=False)
+                            indices.extend(sampled)
+                    obs_sampled = obs[indices]
+                    model_sampled = self.model[:, indices]
+                else:
+                    raise ValueError("Invalid method. Choose 'uniform', 'random', 'datadensity', or 'quantile'.")
+        else:
+            obs_sampled = self.obs[0,:]
+            model_sampled = self.model
+
+#        if self.obs[0,:].shape[0] > 50000 and dwscl != 'no':
+#            sk = int(np.round(float(self.obs[0,:].shape[0]) / 30000., 0))
+#        else:
+#            sk = 1
+
+#        a = math.floor(np.nanmin(np.append(self.obs[:,::sk], self.model[:,::sk])) * 100.) / 100.
+#        b = math.ceil(np.nanmax(np.append(self.obs[:,::sk], self.model[:,::sk])) * 100.) / 100.
+
+        # Determine plot limits
+        a = math.floor(np.nanmin(np.append(obs_sampled, model_sampled)) * 100.) / 100.
+        b = math.ceil(np.nanmax(np.append(obs_sampled, model_sampled)) * 100.) / 100.
         famin = a - 0.1 * a
         famax = b + 0.1 * a
         aux = np.linspace(famin, famax, 100)
@@ -469,8 +540,12 @@ class ModelObsPlot:
         ax = fig1.add_subplot(111)
 
         for i in range(0, self.model.shape[0]):
-            b = np.array(self.obs[0,::sk])
-            a = np.array(self.model[i,::sk])
+            # b = np.array(self.obs[0,::sk])
+            # a = np.array(self.model[i,::sk])
+
+            b = np.array(obs_sampled)
+            a = np.array(model_sampled[i,:])
+
             ind = np.where((a*b) > -999.)[0]
             a = np.copy(a[ind])
             b = np.copy(b[ind])
@@ -502,11 +577,11 @@ class ModelObsPlot:
                 ax.plot(aux, aregr, color=self.color[i], ls='-', linewidth=1., alpha=0.8, zorder=4)
                 ax.plot(aux, aregr, color='k', ls=':', linewidth=0.7, alpha=0.7, zorder=4)
                 if np.size(self.mlabels) > 0:
-                    print(self.ftag + "ScatterPlot " + self.mlabels[i] + ": Slope " + np.str(np.round(float(r.slope), 5))
-                          + ", Intercept " + np.str(np.round(float(r.intercept), 5)))
+                    print(self.ftag + "ScatterPlot " + self.mlabels[i] + ": Slope " + str(np.round(float(r.slope), 5))
+                          + ", Intercept " + str(np.round(float(r.intercept), 5)))
                 else:
-                    print(self.ftag + "ScatterPlot: Slope " + np.str(np.round(float(r.slope), 5)) + ", Intercept "
-                          + np.str(np.round(float(r.intercept), 5)))
+                    print(self.ftag + "ScatterPlot: Slope " + str(np.round(float(r.slope), 5)) + ", Intercept "
+                          + str(np.round(float(r.intercept), 5)))
                 del r, aregr
 
             del a, b
@@ -520,10 +595,15 @@ class ModelObsPlot:
 
         plt.grid(c='grey', ls=':', alpha=0.5, zorder=1)
         for i in np.array([50, 80, 95, 99]):
-            plt.axvline(x=np.nanpercentile(self.obs, int(i)), ls='--', color='grey', linewidth=1., alpha=0.7, zorder=1)
-            plt.text(np.nanpercentile(self.obs, int(i)), ((famax - famin) / 15) + famin, str(int(i)) + 'th', color='dimgrey',
+            #plt.axvline(x=np.nanpercentile(self.obs, int(i)), ls='--', color='grey', linewidth=1., alpha=0.7, zorder=1)
+            #plt.text(np.nanpercentile(self.obs, int(i)), ((famax - famin) / 15) + famin, str(int(i)) + 'th', color='dimgrey',
+            #         fontsize=sl - 7, zorder=4)
+            #plt.text(np.nanpercentile(self.obs, int(i)), ((famax - famin) / 1.05) + famin, str(int(i)) + 'th',
+            #         color='dimgrey', fontsize=sl - 7, zorder=4)
+            plt.axvline(x=np.nanpercentile(obs_sampled, int(i)), ls='--', color='grey', linewidth=1., alpha=0.7, zorder=1)
+            plt.text(np.nanpercentile(obs_sampled, int(i)), ((famax - famin) / 15) + famin, str(int(i)) + 'th', color='dimgrey',
                      fontsize=sl - 7, zorder=4)
-            plt.text(np.nanpercentile(self.obs, int(i)), ((famax - famin) / 1.05) + famin, str(int(i)) + 'th',
+            plt.text(np.nanpercentile(obs_sampled, int(i)), ((famax - famin) / 1.05) + famin, str(int(i)) + 'th',
                      color='dimgrey', fontsize=sl - 7, zorder=4)
 
         plt.gca().set_xlim(left=famin, right=famax)
@@ -625,7 +705,7 @@ class ModelObsPlot:
             if i==0:
                 sm.taylor_diagram(sdev.take([0,i+1]), crmsd.take([0,i+1]), ccoef.take([0,i+1]), locationColorBar = 'EastOutside',  markerColor = self.color[i],
                     # markerLegend = 'on', markerLabel = list(label.take([0,i+1])),
-                    styleOBS = '-', colOBS = 'k', markerobs = 'o', titleOBS = 'Obs', 
+                    styleOBS = '-', colOBS = 'k', markerobs = 'o', titleOBS = 'Obs',
                     markerSize = 17, tickRMS = tRMS, axismax = axmax, alpha=0.7, tickSTD = tSTD,
                     tickRMSangle = 87, showlabelsRMS = 'on',
                     colRMS='dimgrey', styleRMS=':', widthRMS=1.0, titleRMS='off',
@@ -634,17 +714,19 @@ class ModelObsPlot:
 
             else:
                 sm.taylor_diagram(sdev.take([0,i+1]), crmsd.take([0,i+1]), ccoef.take([0,i+1]), overlay = 'on', locationColorBar = 'EastOutside',  markerColor = self.color[i],
-                    # markerLegend = 'on', markerLabel = list(label.take([0,i+1])), 
-                    styleOBS = '-', colOBS = 'k', markerobs = 'o', titleOBS = 'Obs', 
+                    # markerLegend = 'on', markerLabel = list(label.take([0,i+1])),
+                    styleOBS = '-', colOBS = 'k', markerobs = 'o', titleOBS = 'Obs',
                     markerSize = 17, tickRMS = tRMS, axismax = axmax, alpha=0.5, tickSTD = tSTD,
                     tickRMSangle = 87, showlabelsRMS = 'on',
                     colRMS='dimgrey', styleRMS=':', widthRMS=1.0, titleRMS='off',
                     colSTD='k', styleSTD='-.', widthSTD=1.0, titleSTD ='on',
                     colCOR='k', styleCOR='--', widthCOR=1.0, titleCOR='on')
 
-            if np.size(self.mlabels)>0: 
+            if np.size(self.mlabels)>0:
                 ax.text(fp1, fp2-(fp3*i), label[i+1], verticalalignment='bottom', horizontalalignment='right',
                     transform=ax.transAxes,color=self.color[i], fontsize=fp4)
+            if self.mtitle is not None:
+                ax.set_title("Taylor Diagram: " + self.mtitle, fontsize=fp4, y=1.1)
 
         plt.tight_layout()
         plt.savefig(self.ftag+'TaylorDiagram.png', dpi=250, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
@@ -686,7 +768,7 @@ class ModelObsPlot:
 
         plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
         plt.axvline(x=0,ls='--',color='dimgrey',linewidth=1.,alpha=0.9,zorder=2)
-        plt.locator_params(axis='y', nbins=5) ; plt.locator_params(axis='x', nbins=5) 
+        plt.locator_params(axis='y', nbins=5) ; plt.locator_params(axis='x', nbins=5)
         ax.set_xlabel("Normalized Bias"); ax.set_ylabel("Scatter Index")
         if (np.nanmax(fauxnb)-np.nanmin(fauxnb))<0.001:
             plt.ticklabel_format(axis="x", style="sci", scilimits=(0,0))
@@ -748,14 +830,14 @@ class ModelObsPlot:
             del de
 
         plt.grid(c='grey', ls=':', alpha=0.5,zorder=1)
-        plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7) 
+        plt.locator_params(axis='y', nbins=7) ; plt.locator_params(axis='x', nbins=7)
         ax.set_ylabel("Probability Density")
         ax.set_xlabel(self.vaxisname)
 
         if np.size(self.mlabels)>0:
             plt.legend(fontsize=sl-2)
 
-        plt.tight_layout(); plt.axis('tight'); plt.ylim(ymin = -0.005) 
+        plt.tight_layout(); plt.axis('tight'); plt.ylim(ymin = -0.005)
         plt.savefig(self.ftag+'PDF.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
         ax.set_yscale( "log" ); plt.axis('tight');plt.ylim(ymin = 0.001);plt.ylim(ymax = np.nanmax(mmax))
         plt.savefig(self.ftag+'PDFlogscale.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
@@ -900,7 +982,7 @@ class ModelObsPlot:
 
     # --- Ensemble Validation ---
 
-    # Rank Histogram (Talagrand diagram) 
+    # Rank Histogram (Talagrand diagram)
     # https://journals.ametsoc.org/view/journals/mwre/129/3/1520-0493_2001_129_0550_iorhfv_2.0.co_2.xml
     def rankhist(self,result="no"):
 
@@ -930,7 +1012,7 @@ class ModelObsPlot:
         # plt.ylim(ymax = 1.01, ymin = -0.01)
         ax1.set_xticks(np.arange(1,13,1))
         ax1.set_xlabel('Rank',size=sl); ax1.set_ylabel('Probability',size=sl)
-        plt.tight_layout(); # plt.axis('tight') 
+        plt.tight_layout(); # plt.axis('tight')
         plt.grid(c='grey', ls='--', alpha=0.3)
         plt.savefig(self.ftag+'RankHistogram.png', dpi=200, facecolor='w', edgecolor='w',orientation='portrait', format='png',transparent=False, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig1); del fig1, ax1, result
@@ -1130,7 +1212,7 @@ class ModelObsPlot:
                 for j in range(0,obs.shape[0]):
                     atrue_binary = 1 if obs[j] >= threshold else 0
                     abinary_forecasts = [1 if auxv >= threshold else 0 for auxv in model[:,j]]
-                    atrue_binary = [atrue_binary]*len(abinary_forecasts)        
+                    atrue_binary = [atrue_binary]*len(abinary_forecasts)
                     true_binary=np.append(true_binary,atrue_binary)
                     binary_forecasts=np.append(binary_forecasts,abinary_forecasts)
                     fprob_forecasts=np.append(fprob_forecasts,prob_forecasts)
@@ -1183,7 +1265,7 @@ def gsmooth(data,gflev=1):
     """
     Gaussian filter for spatial smoothness.
     data is a 2-dimensional field. data.shape must be equal to 2.
-    gflev is the level of smoothing.    
+    gflev is the level of smoothing.
     """
     from scipy.ndimage.filters import gaussian_filter
     data=np.array(data)
@@ -1207,7 +1289,7 @@ class GlobalMapPlot:
         self.levels = levels
         self.pextend = pextend
         self.contcolor = contcolor
-        self.sl = sl 
+        self.sl = sl
 
         self.ftag = ftag if ftag is not None else str(os.getcwd()) + '/GlobalMap.png'
         self.palette = palette if palette is not None else plt.cm.jet
@@ -1226,7 +1308,7 @@ class GlobalMapPlot:
                 aux=np.nanpercentile(np.abs(self.gdata), 99.)
                 self.levels = np.linspace(-aux,aux, 101); del aux
             else:
-                self.levels = np.linspace(0, np.nanpercentile(self.gdata, 99.), 101)       	
+                self.levels = np.linspace(0, np.nanpercentile(self.gdata, 99.), 101)
 
         plt.figure(figsize=(7, 4))
         # ax = plt.axes(projection=ccrs.PlateCarree(central_longitude=-90))
@@ -1253,4 +1335,442 @@ class GlobalMapPlot:
         plt.close('all')
         del ax
 
+#-------------------------------------------------------------
+#-------- global bias and rmse -------------------------------
+class GlobalSkillMap:
+    """
+    GlobalSkillMap
+    -------------
+    Compute and plot gridded global Bias and RMSE from collocated point matchups.
 
+    Designed to reproduce 'global_plot.py' style:
+      - lat/lon binning (centers)
+      - bias = mean(model - obs)
+      - rmse = sqrt(mean((model - obs)^2))
+      - min_count masking
+      - pcolormesh map with fixed vmin/vmax (no cartopy)
+
+    Parameters
+    ----------
+    lat, lon : array-like, shape (N,)
+    model    : array-like, shape (N,) or (M,N)
+    obs      : array-like, shape (N,)
+    mlabels  : list[str] or None
+    """
+    def __init__(self, lat, lon, model, obs, mlabels=None):
+        self.lat = np.asarray(lat, dtype=float).ravel()
+        self.lon = np.asarray(lon, dtype=float).ravel()
+        self.obs = np.asarray(obs, dtype=float).ravel()
+
+        model = np.asarray(model, dtype=float)
+        if model.ndim == 1:
+            model = model.reshape(1, -1)
+        elif model.ndim != 2:
+            raise ValueError("model must be shape (N,) or (M,N)")
+        self.model = model
+
+        N = self.obs.size
+        if self.lat.size != N or self.lon.size != N or self.model.shape[1] != N:
+            raise ValueError("lat/lon/obs/model length mismatch")
+
+        self.M = self.model.shape[0]
+        if mlabels is None:
+            self.mlabels = [f"Model{i+1}" for i in range(self.M)]
+        else:
+            if len(mlabels) != self.M:
+                raise ValueError("len(mlabels) must equal number of models (M)")
+            self.mlabels = list(mlabels)
+
+    # -----------------------------
+    # QC / filtering
+    # -----------------------------
+    def apply_qc(
+        self,
+        latmin=None,
+        latmax=None,
+        lon_0_360=True,
+        model_min=None,
+        model_max=None,
+        obs_min=None,
+        obs_max=None,
+        extra_mask=None,
+        model_index_for_mask=None,
+    ):
+        """
+        Return filtered copies of (lat, lon, model, obs).
+        This lets you match global_plot.py QC exactly.
+
+        Parameters
+        ----------
+        latmin, latmax : float or None
+        lon_0_360      : bool
+        model_min/max  : float or None
+        obs_min/max    : float or None
+        extra_mask     : boolean array (N,) or None
+        """
+        lat = self.lat.copy()
+        lon = self.lon.copy()
+        obs = self.obs.copy()
+        model = self.model.copy()
+
+        if lon_0_360:
+            lon = (lon + 360.0) % 360.0
+
+        mask = np.isfinite(lat) & np.isfinite(lon) & np.isfinite(obs)
+        if model_index_for_mask is None:
+            mask &= np.all(np.isfinite(model), axis=0)
+        else:
+            mi = int(model_index_for_mask)
+            if mi < 0 or mi >= model.shape[0]:
+                raise ValueError("model_index_for_mask out of range")
+            mask &= np.isfinite(model[mi, :])
+
+        if latmin is not None:
+            mask &= (lat >= latmin)
+        if latmax is not None:
+            mask &= (lat <= latmax)
+
+        if obs_min is not None:
+            mask &= (obs >= obs_min)
+        if obs_max is not None:
+            mask &= (obs <= obs_max)
+
+        if model_min is not None:
+            if model_index_for_mask is None:
+                mask &= np.all(model >= model_min, axis=0)
+            else:
+                mask &= (model[int(model_index_for_mask), :] >= model_min)
+        if model_max is not None:
+            if model_index_for_mask is None:
+                mask &= np.all(model <= model_max, axis=0)
+            else:
+                mask &= (model[int(model_index_for_mask), :] <= model_max)
+
+        if extra_mask is not None:
+            extra_mask = np.asarray(extra_mask, dtype=bool).ravel()
+            if extra_mask.size != obs.size:
+                raise ValueError("extra_mask must have shape (N,)")
+            mask &= extra_mask
+
+        lat_f = lat[mask]
+        lon_f = lon[mask]
+        obs_f = obs[mask]
+        model_f = model[:, mask]
+        return lat_f, lon_f, model_f, obs_f
+
+    # -----------------------------
+    # Gridding
+    # -----------------------------
+    @staticmethod
+    def _bin_centers(x, d):
+        # center bins like floor(x/d)*d + d/2
+        return (np.floor(x / d) * d) + (d / 2.0)
+
+    @staticmethod
+    def _centers_to_edges(centers, d):
+        centers = np.asarray(centers, dtype=float)
+        centers = np.sort(np.unique(centers))
+        # edges length = n+1
+        return np.concatenate(([centers[0] - d / 2.0], centers + d / 2.0))
+
+    def gridded_bias_rmse(
+        self,
+        dlat=1.0,
+        dlon=1.0,
+        lon_0_360=True,
+        min_count=10,
+        latmin=-60.0,
+        latmax=60.0,
+        qc_kwargs=None,
+    ):
+        """
+        Compute gridded bias/rmse/count per (lat,lon) bin.
+
+        Returns
+        -------
+        lat_centers : (nlat,)
+        lon_centers : (nlon,)
+        bias        : (M, nlat, nlon)
+        rmse        : (M, nlat, nlon)
+        count       : (M, nlat, nlon)
+        """
+        qc_kwargs = qc_kwargs or {}
+        lat, lon, model, obs = self.apply_qc(
+            latmin=latmin,
+            latmax=latmax,
+            lon_0_360=lon_0_360,
+            **qc_kwargs,
+        )
+
+        if lat.size == 0:
+            raise ValueError("No data left after QC/filtering.")
+
+        lat_bin = self._bin_centers(lat, dlat)
+        lon_bin = self._bin_centers(lon, dlon)
+
+        lat_centers = np.sort(np.unique(lat_bin))
+        lon_centers = np.sort(np.unique(lon_bin))
+
+        nlat = lat_centers.size
+        nlon = lon_centers.size
+        M = model.shape[0]
+
+        lat_index = {v: i for i, v in enumerate(lat_centers)}
+        lon_index = {v: j for j, v in enumerate(lon_centers)}
+
+        # accumulators
+        sum_err = np.zeros((M, nlat, nlon), dtype=float)
+        sum_err2 = np.zeros((M, nlat, nlon), dtype=float)
+        cnt = np.zeros((M, nlat, nlon), dtype=float)
+
+        # vectorized mapping to indices
+        ii = np.fromiter((lat_index[v] for v in lat_bin), dtype=int, count=lat_bin.size)
+        jj = np.fromiter((lon_index[v] for v in lon_bin), dtype=int, count=lon_bin.size)
+
+        # accumulate per model
+        for m in range(M):
+            err = model[m, :] - obs
+            # all arrays are 1D same length
+            np.add.at(sum_err[m], (ii, jj), err)
+            np.add.at(sum_err2[m], (ii, jj), err * err)
+            np.add.at(cnt[m], (ii, jj), 1.0)
+
+        bias = np.full((M, nlat, nlon), np.nan, dtype=float)
+        rmse = np.full((M, nlat, nlon), np.nan, dtype=float)
+
+        valid = cnt >= float(min_count)
+        bias[valid] = (sum_err[valid] / cnt[valid])
+        rmse[valid] = np.sqrt(sum_err2[valid] / cnt[valid])
+
+        return lat_centers, lon_centers, bias, rmse, cnt
+
+    def global_plot_like_arrays(
+        self,
+        dlat=1.0,
+        dlon=1.0,
+        lon_0_360=True,
+        min_count=10,
+        latmin=-60.0,
+        latmax=60.0,
+        qc_kwargs=None,
+    ):
+        """
+        Convenience: returns mesh edges + grids for pcolormesh.
+        """
+        latc, lonc, bias, rmse, cnt = self.gridded_bias_rmse(
+            dlat=dlat,
+            dlon=dlon,
+            lon_0_360=lon_0_360,
+            min_count=min_count,
+            latmin=latmin,
+            latmax=latmax,
+            qc_kwargs=qc_kwargs,
+        )
+
+        lon_edges = self._centers_to_edges(lonc, dlon)
+        lat_edges = self._centers_to_edges(latc, dlat)
+        LON_edges, LAT_edges = np.meshgrid(lon_edges, lat_edges)
+
+        return LON_edges, LAT_edges, latc, lonc, bias, rmse, cnt
+
+    # -----------------------------
+    # Plotting (global_plot.py style)
+    # -----------------------------
+    def plot_global_like_global_plot(
+        self,
+        metric="bias",          # "bias" or "rmse"
+        model_index=0,
+        dlat=1.0,
+        dlon=1.0,
+        lon_0_360=True,
+        min_count=10,
+        latmin=-60.0,
+        latmax=60.0,
+        qc_kwargs=None,
+        vmax=None,              # required for exact matching scale
+        cmap=None,              # default matches global_plot choices
+        title=None,
+        cbar_label=None,
+        outfile=None,           # if provided, saves figure
+        dpi=150,
+        figsize=(14, 4),
+        show=False,
+        use_pandas=True,
+        required_mask_arrays=None,
+    ):
+        """
+        Produce a pcolormesh plot matching global_plot.py style.
+
+        Notes
+        -----
+        - For bias: uses symmetric vmin/vmax = (-vmax, +vmax) with RdBu_r
+        - For rmse: uses vmin=0, vmax=vmax with jet
+        """
+        def _grid_pandas(lat, lon, model_1d, obs_1d, dlat, dlon, min_count):
+            import pandas as _pd
+            import numpy as _np
+
+            df = _pd.DataFrame({
+                "latitude": _np.asarray(lat, dtype=float),
+                "longitude": _np.asarray(lon, dtype=float),
+                "model": _np.asarray(model_1d, dtype=float),
+                "obs": _np.asarray(obs_1d, dtype=float),
+            })
+
+            # Drop rows with missing critical values (exactly like global_plot.py)
+            df = df.dropna(subset=["latitude", "longitude", "model", "obs"])
+
+            # Errors
+            df["err"] = df["model"] - df["obs"]
+
+            # Bin centers (floor + half-bin)
+            lon_norm = (df["longitude"].to_numpy() + 360.0) % 360.0
+            df["lat_bin"] = (_np.floor(df["latitude"].to_numpy() / dlat) * dlat) + dlat / 2.0
+            df["lon_bin"] = (_np.floor(lon_norm / dlon) * dlon) + dlon / 2.0
+
+            grouped = df.groupby(["lat_bin", "lon_bin"])
+
+            stats = grouped.agg(
+                count=("err", "size"),
+                bias=("err", "mean"),
+                mse=("err", lambda x: _np.mean(_np.asarray(x, dtype=float) ** 2)),
+            ).reset_index()
+
+            stats["rmse"] = _np.sqrt(stats["mse"])
+
+            lat_centers = _np.sort(stats["lat_bin"].unique())
+            lon_centers = _np.sort(stats["lon_bin"].unique())
+
+            nlat = len(lat_centers)
+            nlon = len(lon_centers)
+
+            bias_grid = _np.full((nlat, nlon), _np.nan, dtype=float)
+            rmse_grid = _np.full((nlat, nlon), _np.nan, dtype=float)
+            count_grid = _np.full((nlat, nlon), _np.nan, dtype=float)
+
+            lat_index = {v: i for i, v in enumerate(lat_centers)}
+            lon_index = {v: j for j, v in enumerate(lon_centers)}
+
+            for _, row in stats.iterrows():
+                i = lat_index[row["lat_bin"]]
+                j = lon_index[row["lon_bin"]]
+                bias_grid[i, j] = row["bias"]
+                rmse_grid[i, j] = row["rmse"]
+                count_grid[i, j] = row["count"]
+
+            # Build edges for pcolormesh
+            lon_edges = _np.concatenate(([lon_centers[0] - dlon / 2.0], lon_centers + dlon / 2.0))
+            lat_edges = _np.concatenate(([lat_centers[0] - dlat / 2.0], lat_centers + dlat / 2.0))
+            LON_edges, LAT_edges = _np.meshgrid(lon_edges, lat_edges)
+
+            # Mask bins with too few obs
+            bias_plot = _np.where(count_grid >= min_count, bias_grid, _np.nan)
+            rmse_plot = _np.where(count_grid >= min_count, rmse_grid, _np.nan)
+
+            return LON_edges, LAT_edges, bias_plot, rmse_plot, count_grid
+
+        if metric not in ("bias", "rmse"):
+            raise ValueError("metric must be 'bias' or 'rmse'")
+
+        if model_index < 0 or model_index >= self.M:
+            raise ValueError("model_index out of range")
+
+        if vmax is None:
+            raise ValueError("vmax must be provided to match global_plot.py scaling")
+
+        # Build gridded fields
+        if use_pandas:
+            # QC like global_plot.py + optional additional required arrays (e.g., wind, fcst_hr)
+            qc_kwargs2 = dict(qc_kwargs or {})
+            qc_kwargs2.setdefault("latmin", latmin)
+            qc_kwargs2.setdefault("latmax", latmax)
+            qc_kwargs2.setdefault("lon_0_360", lon_0_360)
+
+            extra_mask = None
+            if required_mask_arrays is not None:
+                # Require all provided arrays to be finite (mimics df.dropna on those fields)
+                extra_mask = np.ones(self.obs.size, dtype=bool)
+                for _k, _arr in dict(required_mask_arrays).items():
+                    _a = np.asarray(_arr, dtype=float).ravel()
+                    if _a.size != self.obs.size:
+                        raise ValueError(f"required_mask_arrays['{_k}'] length mismatch")
+                    extra_mask &= np.isfinite(_a)
+                qc_kwargs2["extra_mask"] = extra_mask
+
+            lat_f, lon_f, model_f, obs_f = self.apply_qc(
+                model_index_for_mask=model_index,
+                **qc_kwargs2,
+            )
+            model_1d = model_f[model_index, :]
+
+            # Also enforce lon normalization here (global_plot does it before binning)
+            if lon_0_360:
+                lon_f = (lon_f + 360.0) % 360.0
+
+            LONe, LATe, bias_plot, rmse_plot, cnt = _grid_pandas(
+                lat_f, lon_f, model_1d, obs_f, dlat, dlon, min_count
+            )
+            field = bias_plot if metric == "bias" else rmse_plot
+
+        else:
+            LONe, LATe, latc, lonc, bias, rmse, cnt = self.global_plot_like_arrays(
+                dlat=dlat,
+                dlon=dlon,
+                lon_0_360=lon_0_360,
+                min_count=min_count,
+                latmin=latmin,
+                latmax=latmax,
+                qc_kwargs=qc_kwargs,
+            )
+            field = bias[model_index] if metric == "bias" else rmse[model_index]
+
+        if metric == "bias":
+            vmin, vmax2 = -float(vmax), float(vmax)
+            if cmap is None:
+                cmap = "RdBu_r"
+            if cbar_label is None:
+                cbar_label = "Bias (model − obs)"
+        else:
+            vmin, vmax2 = 0.0, float(vmax)
+            if cmap is None:
+                cmap = "jet"
+            if cbar_label is None:
+                cbar_label = "RMSE"
+
+        fig = plt.figure(figsize=figsize, dpi=dpi)
+        ax = plt.gca()
+
+        pcm = ax.pcolormesh(
+            LONe, LATe, field,
+            shading="auto",
+            cmap=cmap,
+            vmin=vmin,
+            vmax=vmax2,
+        )
+
+        cb = plt.colorbar(pcm, ax=ax, orientation="horizontal" if metric == "rmse" else "vertical")
+        cb.set_label(cbar_label)
+
+        if title:
+            ax.set_title(title)
+
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+        if lon_0_360:
+            ax.set_xlim(0, 360)
+        ax.set_ylim(latmin, latmax)
+
+        # mimic global_plot style: no coastlines, no grid by default
+        ax.grid(False)
+
+        if outfile is not None:
+            outdir = os.path.dirname(outfile)
+            if outdir:
+                os.makedirs(outdir, exist_ok=True)
+            plt.savefig(outfile, bbox_inches="tight")
+            plt.close(fig)
+        else:
+            if show:
+                plt.show()
+
+        return
