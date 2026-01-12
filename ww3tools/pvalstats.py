@@ -1337,6 +1337,29 @@ class GlobalMapPlot:
 
 #-------------------------------------------------------------
 #-------- global bias and rmse -------------------------------
+#-------------------------------------------------------------
+#
+# How to plot:
+# 1. create global map class
+#    example:
+#    gsm = GlobalSkillMap(lat=lat, lon=lon, model=model_hs, obs=obs_hs, mlabels=[model_key])
+# 2. plot using gsm
+#    example:
+#    gsm.plot_global(
+#        metric="bias",
+#        model_index=0,
+#        dlat=DLAT,
+#        dlon=DLON,
+#        lon_0_360=True,
+#        min_count=MIN_COUNT,
+#        latmin=LATMIN,
+#        latmax=LATMAX,
+#        qc_kwargs=QC_HS,
+#        vmax=HS_BIAS_VMAX,
+#        title=f"Hs Bias – {filename} ({model_key} vs {satellite_name})",
+#        outfile=os.path.join(out_model_dir, f"plot_Hs_{filename}_{satellite_name}_global_Bias.png"),
+#    )
+
 class GlobalSkillMap:
     """
     GlobalSkillMap
