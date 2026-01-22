@@ -7,16 +7,16 @@ import glob
 ## ===================== Setting (modified as needed) =========================
 # directory settings
 rootdir = os.path.join('/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata', 'jobinterp')
-MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/gfsv16"
+MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01"
 SAT_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/combineoutmonthly"
-OUTDIR_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/outinterp/GFSv16"
+OUTDIR_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/outinterp/retrov17_01"
 
 # satellite and model settings
 satellites=['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A', 'SENTINEL3B', 'SENTINEL6A']
-model='GFSv16'
+model='retrov17_01'
 tz_list = ["00","06","12","18"]
 grid = "global.0p25"
-MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
+MODEL_DATA_PATTERN_TEMPLATE = "gfs.t{tz}z.{grid}.f*.grib2"
 
 # process script
 PROC_SCRIPT = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/ww3tools/ProcSat_interpolation.py"
@@ -117,7 +117,8 @@ for cdate in cdates:
         continue
 
     for tz in tz_list:
-        model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "wave", "gridded")
+        model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "products", "wave", "gridded","global.0p25")
+        #model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "wave", "gridded")
         if not os.path.isdir(model_gridded_dir):
             skipped_no_model_gribs += 1
             missing_cycles.append(f"{cdate}{tz}")
@@ -164,7 +165,8 @@ for cdate in cdates:
             f.write(f"OUTDIR={OUTDIR_BASE}\n")
             f.write("mkdir -p ${OUTDIR}\n\n")
 
-            f.write(f"MODEL_DATA_DIR={MODEL_BASE}/gfs.${{DATE}}/${{TZ}}/wave/gridded\n")
+            f.write(f"MODEL_DATA_DIR={MODEL_BASE}/gfs.${{DATE}}/${{TZ}}/products/wave/gridded/global.0p25\n")
+            #f.write(f"MODEL_DATA_DIR={MODEL_BASE}/gfs.${{DATE}}/${{TZ}}/wave/gridded\n")
             f.write(f"MODEL_DATA_PATTERN='{pattern}'\n\n")
 
             for sat in satellites:
