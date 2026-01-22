@@ -1,0 +1,19 @@
+#!/bin/sh
+
+#SBATCH --nodes=1
+#SBATCH -q debug
+#SBATCH -t 00:30:00
+#SBATCH -A marine-cpu
+#SBATCH -J hrstatsplot
+#SBATCH -o hrstatsplot.out
+
+
+module use /scratch4/NCEPDEV/marine/Saeideh.Banihashemi/installs/python-modules/
+module load Ursa_ENV
+
+#export PYTHONPATH=/scratch1/NCEPDEV/climate/Jessica.Meixner/uifcwhreval/WW3-tools/ww3tools:${PYTHONPATH}
+export PYTHONPATH=/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/emcpy/src:${PYTHONPATH}
+
+
+python makeplotsofstats.py
+#python makeplotsofstats_cal.py
