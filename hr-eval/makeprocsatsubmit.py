@@ -1,54 +1,159 @@
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import os
+import sys
 
-rootdir = os.path.join('/work2/noaa/marine/jmeixner/processsatdata', 'jobsubs')
+# ================================================
+#           USER-EDITABLE CONFIGURATION
+# ================================================
 
-startdate = dt.datetime(2019,12,1)
-enddate = dt.datetime(2023,12,31)
+ROOTDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/jobsubs"   # output jobcards directory
+THISDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/HR_eval/hr-eval"               # working directory
+PATHTOWW3TOOLS = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/HR_eval/ww3tools"       # ww3tools directory (ProcSat_Altimeter.py)
 
-nowdate = startdate
+STARTDATE = "2024-11-15" # start date with formats YYYY-MM-DD or YYYYMMDD
+ENDDATE   = "2025-01-15" # end date with formats YYYY-MM-DD or YYYYMMDD
+
+SATELLITES = "JASON3,CRYOSAT2,SARAL,SENTINEL3A" # satellites using comma or space separated
+
+# SLURM settings
+SBATCH_QUEUE     = "batch"
+SBATCH_ACCOUNT   = "marine-cpu"
+SBATCH_WALLTIME  = "08:00:00"
+
+SBATCH_EXCLUSIVE = True # True: exclusive mode (whole node)
+
+  # if SBATCH_EXCLUSIVE = True, the settings below are ignored
+SBATCH_NODES         = "1"
+SBATCH_NTASKS         = "1"
+SBATCH_CPUS_PER_TASK  = "4"
+SBATCH_MEM            = "16G"
+
+SET_THREAD_ENVS       = True # Set OMP_NUM_THREADS, MKL_NUM_THREADS, etc.
+
+# Module commands (different machines have different module builds and directories)
+MODULE_USE_PATH = "/scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles"
+MODULE_LOAD     = "ww3tools"
+
+# ===============================================
+
+# Check required directories exist
+if not os.path.isdir(THISDIR):
+    print(f"ERROR: THISDIR does not exist: {THISDIR}", file=sys.stderr)
+    sys.exit(1)
+
+if not os.path.isdir(PATHTOWW3TOOLS):
+    print(f"ERROR: PATHTOWW3TOOLS does not exist: {PATHTOWW3TOOLS}", file=sys.stderr)
+    sys.exit(1)
+
+# Create output directory if missing
+if not os.path.isdir(ROOTDIR):
+    try:
+        os.makedirs(ROOTDIR)
+        print(f"Created output directory: {ROOTDIR}")
+    except Exception as e:
+        print(f"ERROR: Cannot create ROOTDIR: {e}", file=sys.stderr)
+        sys.exit(1)
+
+# Parse satellite list
+sats = [s.strip() for s in SATELLITES.replace(",", " ").split() if s.strip()]
+if not sats:
+    print("ERROR: No valid satellites provided", file=sys.stderr)
+    sys.exit(1)
+
+# Parse dates
+def parse_date(s):
+    s = s.strip()
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            return dt.datetime.strptime(s, fmt)
+        except ValueError:
+            continue
+    print(f"ERROR: Invalid date format: '{s}'. Use YYYY-MM-DD or YYYYMMDD.", file=sys.stderr)
+    sys.exit(1)
+
+# Generate date pairs (15-day steps + monthly overlap pattern)
 dates1 = []
 dates2 = []
 
-while nowdate <= enddate:
-    dates1.append(nowdate.strftime('%Y%m%d'))
-    dates2.append((nowdate + dt.timedelta(days=15)).strftime('%Y%m%d'))
-    dates1.append((nowdate + dt.timedelta(days=15)).strftime('%Y%m%d'))
-    nowdate = nowdate + relativedelta(months=+1)
-    dates2.append(nowdate.strftime('%Y%m%d'))
-    
-    
-print(dates1)
-print(dates2)
-satelites=['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A'] #JASON3,JASON2,CRYOSAT2,JASON1,HY2,SARAL,SENTINEL3A,ENVISAT,ERS1,ERS2,GEOSAT,GFO,TOPEX,SENTINEL3B,CFOSAT
+current = parse_date(STARTDATE)
+enddate = parse_date(ENDDATE)
+
+while current <= enddate:
+    d1 = current.strftime("%Y%m%d")
+    d2 = (current + dt.timedelta(days=15)).strftime("%Y%m%d")
+    dates1.append(d1)
+    dates2.append(d2)
+
+    dates1.append(d2)
+    current += relativedelta(months=+1)
+    dates2.append(current.strftime("%Y%m%d"))
+
+job_count = 0
+
 for i in range(len(dates1)):
-    for j in range(len(satelites)): 
-        outfile = os.path.join(rootdir, f"job_{satelites[j]}_{dates1[i]}.sh")
-        with open(outfile, 'w') as f:
-            f.write('#!/bin/bash\n')
-            sbatch = f"""#SBATCH --nodes=1
-#SBATCH -q batch
-#SBATCH -t 08:00:00
-#SBATCH -A marine-cpu
-#SBATCH -J procsat_{satelites[j]}_{dates1[i]} 
-#SBATCH -o run_{satelites[j]}_{dates1[i]}.o%j
-#SBATCH --partition=orion
-#SBATCH --exclusive
+    for sat in sats:
+        jobname = f"job_{sat}_{dates1[i]}.sh"
+        filepath = os.path.join(ROOTDIR, jobname)
 
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("#!/bin/bash\n\n")
 
-module use /work2/noaa/marine/jmeixner/general/modulefiles
-module load ww3tools
+            # Common SLURM directives
+            f.write(f"#SBATCH --nodes={SBATCH_NODES}\n")
+            f.write(f"#SBATCH -q {SBATCH_QUEUE}\n")
+            f.write(f"#SBATCH -t {SBATCH_WALLTIME}\n")
+            f.write(f"#SBATCH -A {SBATCH_ACCOUNT}\n")
+            f.write(f"#SBATCH -J procsat_{sat}_{dates1[i]}\n")
+            f.write(f"#SBATCH -o run_{sat}_{dates1[i]}.o%j\n")
 
-ThisDir=/work2/noaa/marine/jmeixner/processsatdata
-PathToWW3TOOLS=/work2/noaa/marine/jmeixner/processsatdata/ww3-tools/ww3tools
+            # Exclusive vs explicit resources
+            if SBATCH_EXCLUSIVE:
+                f.write("#SBATCH --exclusive\n")
+            else:
+                f.write(f"#SBATCH --ntasks={SBATCH_NTASKS}\n")
+                f.write(f"#SBATCH --cpus-per-task={SBATCH_CPUS_PER_TASK}\n")
+                f.write(f"#SBATCH --mem={SBATCH_MEM}\n")
 
-SAT={satelites[j]}
+            f.write("\n")
 
-IDATE={dates1[i]}00
-EDATE={dates2[i]}00
+            # Module environment
+            if MODULE_USE_PATH.strip():
+                f.write(f"module use {MODULE_USE_PATH}\n")
+            if MODULE_LOAD.strip():
+                f.write(f"module load {MODULE_LOAD}\n")
+            if MODULE_USE_PATH.strip() or MODULE_LOAD.strip():
+                f.write("\n")
 
-"""
-            f.write(sbatch)
-            f.write('YAMLFILE=${ThisDir}/configs/${SAT}.yaml \n')
-            f.write('python ${PathToWW3TOOLS}/ProcSat_Altimeter.py --satelite ${SAT} --initdate ${IDATE} --enddate ${EDATE} --timestep 1.0 --yaml ${YAMLFILE} \n')
+            # Thread environment control (only in shared mode)
+            if SET_THREAD_ENVS and not SBATCH_EXCLUSIVE:
+                f.write("# Control number of threads for performance & memory\n")
+                f.write(f"export OMP_NUM_THREADS={SBATCH_CPUS_PER_TASK}\n")
+                f.write(f"export MKL_NUM_THREADS={SBATCH_CPUS_PER_TASK}\n")
+                f.write(f"export NUMEXPR_NUM_THREADS={SBATCH_CPUS_PER_TASK}\n")
+                f.write(f"export OPENBLAS_NUM_THREADS={SBATCH_CPUS_PER_TASK}\n")
+                f.write("\n")
+
+            # Job variables
+            f.write(f'ThisDir="{THISDIR}"\n')
+            f.write(f'PathToWW3TOOLS="{PATHTOWW3TOOLS}"\n')
+            f.write(f'SAT="{sat}"\n')
+            f.write(f'IDATE="{dates1[i]}00"\n')
+            f.write(f'EDATE="{dates2[i]}00"\n\n')
+
+            # The processing command
+            f.write('YAMLFILE="${ThisDir}/configs/${SAT}.yaml"\n')
+            f.write('python "${PathToWW3TOOLS}/ProcSat_Altimeter.py" \\\n')
+            f.write('    --satelite "${SAT}" \\\n')
+            f.write('    --initdate "${IDATE}" \\\n')
+            f.write('    --enddate "${EDATE}" \\\n')
+            f.write('    --timestep 1.0 \\\n')
+            f.write('    --yaml "${YAMLFILE}"\n')
+
+        # Make executable
+        os.chmod(filepath, 0o755)
+        job_count += 1
+        print(f"Created: {jobname}")
+
+print(f"\nDone. Generated {job_count} job script(s) in:")
+print(ROOTDIR)

@@ -4,12 +4,15 @@
 # text string for identification. This will be included in the name of the output files.
 ftag: ww3tools
 # output path, where results will be saved
-path_out: /work2/noaa/marine/jmeixner/processsatdata/out/SARAL
+path_out: /scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/out/SARAL
 
 # Data paths where the observations are saved
-path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
-path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
-path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
+#path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
+#path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
+#path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
+path_alt: /scratch3/NCEPDEV/climate/Jessica.Meixner/Data/AODN/altimeter
+path_ndbc: /scratch3/NCEPDEV/climate/Jessica.Meixner/Data/buoys/NDBC/ncformat/wparam
+path_copernicus: /scratch3/NCEPDEV/climate/Jessica.Meixner/Data/buoys/Copernicus/wtimeseries
 
 # WAVEWATCHIII field output, for the scripts to obtain the latitude and longitude
 # grid_info: /work/noaa/marine/ricardo.campos/work/ww3tools/tests/ww3gfs_met5_2022061600.nc
