@@ -6,10 +6,12 @@ import sys
 # ================================================
 #           USER-EDITABLE CONFIGURATION
 # ================================================
+MACHINE = "ursa" # or orion/herculus
 
 ROOTDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/jobsubs"   # output jobcards directory
-THISDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/HR_eval/hr-eval"               # working directory
-PATHTOWW3TOOLS = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/HR_eval/ww3tools"       # ww3tools directory (ProcSat_Altimeter.py)
+THISDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/hr-eval"               # working directory
+PATHTOWW3TOOLS = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/ww3tools"       # ww3tools directory (ProcSat_Altimeter.py)
+OUT_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/out" # output directory for processed data (origional defined in .yaml)
 
 STARTDATE = "2024-11-15" # start date with formats YYYY-MM-DD or YYYYMMDD
 ENDDATE   = "2025-01-15" # end date with formats YYYY-MM-DD or YYYYMMDD
@@ -31,11 +33,24 @@ SBATCH_MEM            = "16G"
 
 SET_THREAD_ENVS       = True # Set OMP_NUM_THREADS, MKL_NUM_THREADS, etc.
 
-# Module commands (different machines have different module builds and directories)
-MODULE_USE_PATH = "/scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles"
-MODULE_LOAD     = "ww3tools"
-
 # ===============================================
+
+MACHINE = MACHINE.strip().lower()
+
+# Module commands (different machines have different module builds and directories)
+if MACHINE == "ursa":
+    MODULE_USE_PATH = "/scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles"
+    MODULE_LOAD     = "ww3tools"
+    YAML_CONFIG_SUBDIR = "configs_ursa"
+
+elif MACHINE in ("orion", "hercules"):
+    MODULE_USE_PATH = "/work2/noaa/marine/jmeixner/general/modulefiles"
+    MODULE_LOAD     = "ww3tools"
+    YAML_CONFIG_SUBDIR = "configs_orion"
+
+else:
+    print(f"ERROR: Unsupported MACHINE='{MACHINE}'. Use Ursa, Orion, or Hercules.", file=sys.stderr)
+    sys.exit(1)
 
 # Check required directories exist
 if not os.path.isdir(THISDIR):
@@ -142,13 +157,15 @@ for i in range(len(dates1)):
             f.write(f'EDATE="{dates2[i]}00"\n\n')
 
             # The processing command
-            f.write('YAMLFILE="${ThisDir}/configs/${SAT}.yaml"\n')
+            f.write(f'YAMLFILE="${{ThisDir}}/{YAML_CONFIG_SUBDIR}/${{SAT}}.yaml"\n')
+            f.write(f'OUT_BASE="{OUT_BASE}"\n\n')
             f.write('python "${PathToWW3TOOLS}/ProcSat_Altimeter.py" \\\n')
             f.write('    --satelite "${SAT}" \\\n')
             f.write('    --initdate "${IDATE}" \\\n')
             f.write('    --enddate "${EDATE}" \\\n')
             f.write('    --timestep 1.0 \\\n')
-            f.write('    --yaml "${YAMLFILE}"\n')
+            f.write('    --yaml "${YAMLFILE}" \\\n')
+            f.write('    --out_base "${OUT_BASE}"\n')
 
         # Make executable
         os.chmod(filepath, 0o755)
