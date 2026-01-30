@@ -3,7 +3,8 @@ function [xss,yss]=SmoothSubSampleCoastlineFast(x,y,DI,lambda);
 %Sub sample coastline at dsmooth (m) distance. Boxcar smooth coastline to 
 % dsmooth*lambda distance   
 itz=0;
-[xi,yi]=InterpCoastline1(x,y,DI,itz);
+[xi,yi]=InterpCoastline(x,y,DI,itz);
+%[xi,yi]=InterpCoastline1(x,y,DI,itz);%Creates problems with long
 gamma=2*lambda+1;
 ic=lambda+1;
 W=ones(1,gamma)/gamma;

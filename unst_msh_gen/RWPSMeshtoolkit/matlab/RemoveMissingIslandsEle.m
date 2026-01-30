@@ -27,7 +27,9 @@ jp=intersect(jx,jy);
 p0=subpslgFast(p,jp);
 
 x=g0.x;y=g0.y;z=g0.z;e=g0.e;
-chains=edges2chains(p0.edges);
+chains=edges2chainsG(p0.edges);
+%chains=edges2chains(p0.edges);
+
 if isplot,
     figure(1);clf;ph=patch(x(e'),y(e'),z(e'));cm=colormap('jet');shading interp;colorbar;axis equal;
     hold on;plot(p0.x(p0.edges'),p0.y(p0.edges'),'k.-');
@@ -42,7 +44,10 @@ for k=1:nc
     if length(n)>2,
         if n(1)==n(end),
             %jins=find(inside(x,y,p0.x(n),p0.y(n)));
-            jins=find(inside(x,y,p0.x(n),p0.y(n))==1);
+            %jins=find(inside(x,y,p0.x(n),p0.y(n))==1);
+            [inP,onP]=insidepoly(x,y,p0.x(n),p0.y(n));
+            jins=find(or(inP,onP));
+
             jb0=[jb0;jins(:)];
             IsClosed(k)=1;
             hold on;plot(p0.x(n),p0.y(n),'gx-')
