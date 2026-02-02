@@ -1,4 +1,8 @@
 function MakeCoastalBoundariesOSM
+
+% Script to use Open Street Map(OSM) coastline to create global land boundaries
+% https://osmdata.openstreetmap.de/download/land-polygons-complete-4326.zip
+
 %Islands smaller than a threshold area are excluded.
 %Narrow islands(some atolls) with less than critical area are included if 
 %perimeter is longer than minPerimeter.  Global and Pacific values are treated differently
@@ -27,8 +31,8 @@ PacLat=[-20,40];
 
 earth=referenceSphere('Earth')
 
-%gcfl='/mnt/sda/keston/RWPS/Data/GlobalCoast/GSHHS_shp/f/GSHHS_f_L1.shp'
-gcfl='../RWPS/Data/openstreetmap_land/land_polygons.shp'
+gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/openstreetmap_land/land_polygons.shp'
+
 S = shaperead(gcfl);
 N=length(S);
 isisland=zeros(N,1);

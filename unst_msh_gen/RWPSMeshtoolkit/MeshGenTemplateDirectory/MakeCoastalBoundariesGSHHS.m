@@ -1,5 +1,8 @@
 function MakeCoastalBoundariesGSHHS
 
+% Script to use Global Self-consistent, Hierarchical, High-resolution Geography Database (GSHHG) to create global land boundaries
+% Data available at https://www.ngdc.noaa.gov/mgg/shorelines/shorelines.html
+
 % make coastlines for mesh generation.  
 %Islands smaller than a threshold area are excluded.
 %Narrow islands(some attols) with less than critical area are included if 
@@ -9,6 +12,7 @@ function MakeCoastalBoundariesGSHHS
 
 
 clear
+
 isplot=0
 deg2km=111.132954
 deg2rad=pi/180
@@ -23,13 +27,14 @@ minPerimeterG=10;% km
 
 geom.mshID='EUCLIDEAN-MESH'
 geom.fileV = 3
-%filter out small islands
+
+%Use different island filtering with in Pacific rectangle:
 PacLon=[-140,140]
 PacLat=[-20,40];
 
 earth=referenceSphere('Earth')
 
-gcfl='../RWPS/Data/GlobalCoast/GSHHS_shp/f/GSHHS_f_L1.shp'
+gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/GlobalCoast/GSHHS_shp/f/GSHHS_f_L1.shp'
 S = shaperead(gcfl);
 N=length(S);
 isisland=zeros(N,1);

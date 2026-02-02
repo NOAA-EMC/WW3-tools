@@ -1,16 +1,33 @@
 
+%script to handle all post jigsaw mesh editing.
+%Post processing steps are as follows
+% (A) Remove sand points
+% (B) Merge inland lakes --> 'RWPS.WW3a.lakes.msh'
+% (C) Remove islands that jigsaw has meshed over 
+% (D) Remove sand points that can be created (rarely) with island removal --> 'RWPS.WW3a1.lakes.msh'
+% INACTIVE (E) Examine Pacific island resolution and make changes to island editing if needed --> 'RWPS.WW3b.lakes.msh'
+% INACTIVE (F) Examine mesh near New Orleans where boundary has been merged to reflect new marine zones --> 'RWPS.WW3c.lakes.msh'
+% INACTIVE (G) Remove sand points that can be created (rarely) with New Orleans editing --> 'RWPS.WW3d.lakes.msh'
+% (H) Stretch open ocean boundary nodes back to origonal specified boundary rectangle --> 'RWPS.WW3e.lakes.msh'
+%       this is an artificat of the projection used in jigsaw
+% (I) Remove sand points that can be created (Should not matter) with boundary node stretching --> 'RWPS.WW3f.lakes.msh'
+% (J) Write final WW3 mesh --> 'RWPS.WW3g.lakes.msh'
+%       this is the mesh to run WW3 on.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
 isplot=0;
 outdir='RWPSMeshOSMxGSHHS.BoxesFiles/'
 pslgfile='PSLGboundaryOSMxGSHHS1kmBOXES.msh'
 jigsawout='RWPS.F.LLH'
 
-%g=loadmsh('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.msh')
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g=loadmsh([outdir,jigsawout,'.msh']);
 
 %remove sand points on boundary
-%RemoveSandPoints('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.msh','PSLGboundaryOSMxGSHHS1kmBOXES.msh',...
-%    'RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.msh','RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');%ileOutJigsawMesh,FileOutWW3)
+
 RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'],[outdir,jigsawout,'.NSP.WW3.msh']);
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (B) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Add Lakes to Mesh
 %g=loadmshWW3('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');
@@ -38,6 +55,8 @@ end
 
 WriteWW3MeshX(g,'RWPS.WW3a.lakes.msh');
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (C) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %clear
 g=loadmshWW3('RWPS.WW3a.lakes.msh')
@@ -82,7 +101,12 @@ end
     
 
 g=gnew
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (D) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 g=RemoveSandPointsWW3(g,'RWPS.WW3a1.lakes.msh')
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (E) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 p=loadmsh(pslgfile);
 p.x=p.point.coord(:,1);p.x=p.x-360;p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
@@ -140,7 +164,8 @@ end
 WriteWW3MeshX(gnew,'RWPS.WW3b.lakes.msh')
 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (F) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %fix new orleans
 clear
 g=loadmshWW3('RWPS.WW3b.lakes.msh')
@@ -172,11 +197,13 @@ else
 end
    
 WriteWW3MeshX(gnew,'RWPS.WW3c.lakes.msh')
-%confirm no introduction of sand points
-g=RemoveSandPointsWW3(gnew,'RWPS.WW3d.lakes.msh')
-%WriteWW3MeshX(g,'RWPS.WW3d.lakes.msh')
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%confirm no introduction of sand points
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (G) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+g=RemoveSandPointsWW3(gnew,'RWPS.WW3d.lakes.msh')
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (H) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Fix boundary warping from projection in mesh generation
 clear
 close all
@@ -213,12 +240,16 @@ js=find(and( g.x(jb)<max(Blon),g.x(jb)>max(Blon)-dx  ));
 g.x(jb(js))=max(Blon);
 if isplot,plot(g.x(jb(js)),g.y(jb(js)),'r.');end
 WriteWW3MeshX(g,'RWPS.WW3e.lakes.msh')
+
 %confirm no introduction of sand points
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (I) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g0=RemoveSandPointsWW3(g,'RWPS.WW3f.lakes.msh')
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (J) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Some Plotting
 if isplot,
     g=g0;
