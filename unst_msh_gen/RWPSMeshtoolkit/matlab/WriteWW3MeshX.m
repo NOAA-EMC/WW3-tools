@@ -1,7 +1,7 @@
 
 function WriteWW3MeshX(g,WW3FileOut)
 
-OpenBndNodes=FindOuterBndWW3(g,0)
+OpenBndNodes=FindOuterBndWW3(g,1)
 
 x=g.x;y=g.y;z=g.z;e=g.e;
 
