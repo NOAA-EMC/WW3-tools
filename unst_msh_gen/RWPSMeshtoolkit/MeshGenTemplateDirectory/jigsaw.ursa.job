@@ -29,4 +29,4 @@ module load py-netcdf4/1.7.1.post2
 source ../../UrsaMeshgenEnv/jigsawenv/bin/activate
 pip list -v
 
-python3 RWPS.ng.NoFiltrsOpts.py > NonGlobalMeshGen.out.txt
+python3 RWPSMeshGenScript.py > NonGlobalMeshGen.out.txt
