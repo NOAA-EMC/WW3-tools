@@ -1,10 +1,7 @@
 
 
-%OSMmsh='./PSLGboundary1kmP_NewOrleans.OSM.msh'
-%GSHHGmsh='./PSLGboundary1kmP_NewOrleansB.msh'
-isplot=0
-OSMmsh='./GlobalCoastlineOSM.PSLG.msh' 
-GSHHGmsh='./GlobalCoastlineGSHHS.PSLG.msh'
+OSMmsh='./PSLGboundary1kmP_NewOrleans.OSM.msh'
+GSHHGmsh='./PSLGboundary1kmP_NewOrleansB.msh'
 p0=loadmsh(OSMmsh)
 p1=loadmsh(GSHHGmsh)
 
@@ -17,29 +14,35 @@ p1.x=p1.point.coord(:,1);
 p1.y=p1.point.coord(:,2);
 p1.edges=p1.edge2.index(:,1:2);
 
+close all
+clf;
+plot(p0.x,p0.y,'b.',p1.x,p1.y,'r.');
+axis equal;
+hold on
 axAS =  [183.0293  191.6089  -24.5496  -11.9295]
+BoundingBox(axAS(1:2),axAS(3:4),'c')
+
 axPalau =[  130.8368  141.8230    3.9914   10.1256]
+BoundingBox(axPalau(1:2),axPalau(3:4),'c')
+
 axSP =[  211.0219  220.1817  -18.9565  -13.8421]
+BoundingBox(axSP(1:2),axSP(3:4),'c')
+
 axCP =[  151.1962  152.3336    6.9451    7.5801]
+BoundingBox(axCP(1:2),axCP(3:4),'c')
+
 axGOM =[  290.8507  291.1934   43.7119   43.9032]
+BoundingBox(axGOM(1:2),axGOM(3:4),'c')
+
 axCar =[  272.0041  272.7733   17.1417   17.5712]
+BoundingBox(axCar(1:2),axCar(3:4),'c');
+
 axCarB =[  272.9356  274.2177   16.0475   16.7634];
+BoundingBox(axCarB(1:2),axCarB(3:4),'c');
 
 AX=[axAS;axPalau;axSP;axCP;axGOM;axCar;axCarB]
-[nax,four]=size(AX)
 
-if isplot,
-    close all
-    clf;
-    plot(p0.x,p0.y,'b.',p1.x,p1.y,'r.');
-    axis equal;
-    hold on
-    for k=1:nax
-        ax=AX(k,:);
-        BoundingBox(ax(1:2),ax(3:4),'c');
-    end
-end
-
+[nax,four]=size(AX);
 p=p1;%gshhs baseline
 for k=1:nax
     j0=FindPointsAx(AX(k,:),p0.x,p0.y);
@@ -53,11 +56,11 @@ for k=1:nax
 end
 
 pslg=p;
-save pslgOSMxGSHHS.BOXES.mat pslg
+save pslgOSMxGSHHS1kmBOXES.mat pslg
 
 geom=pslg2geom(pslg)
 
-savemsh('PSLGboundaryOSMxGSHHS.BOXES.msh',geom)
+savemsh('PSLGboundaryOSMxGSHHS1kmBOXES.msh',geom)
 
 hold on;
 plot(p.x,p.y,'k.');
