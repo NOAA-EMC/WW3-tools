@@ -1,4 +1,8 @@
 
+addpath ../matlab
+addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
+addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
+
 %script to handle all post jigsaw mesh editing.
 %Post processing steps are as follows
 % (A) Remove sand points
@@ -16,8 +20,8 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
 isplot=0;
-outdir='RWPSMeshOSMxGSHHS.BoxesFiles/'
-pslgfile='PSLGboundaryOSMxGSHHS1kmBOXES.msh'
+outdir='RWPSWithNewOrleans/'
+pslgfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS1kmBOXES.msh'
 jigsawout='RWPS.F.LLH'
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -35,9 +39,9 @@ g=loadmshWW3( [outdir,jigsawout,'.NSP.WW3.msh']);
 
 gS=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Sebago.NWPS.WW3.msh');
 gS.x=gS.x-360;
-gW=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes//RWPSLakes/Winnipesaukee.NWPS.WW3.msh')
+gW=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Winnipesaukee.NWPS.WW3.msh')
 gW.x=gW.x-360;
-gO=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes//RWPSLakes/Okeechobee.NWPS.WW3.msh')
+gO=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Okeechobee.NWPS.WW3.msh')
 gO.x=gO.x-360;
 
 g=CombineMesh(g,gO);

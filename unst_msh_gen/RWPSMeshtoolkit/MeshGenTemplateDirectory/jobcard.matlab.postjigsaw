@@ -5,8 +5,8 @@
 #SBATCH -q batch
 #SBATCH -t 08:00:00
 #SBATCH -A marine-cpu
-#SBATCH -J ml_test
-#SBATCH -o ml_test.out
+#SBATCH -J MeshPostProcess
+#SBATCH -o MeshPostProcess.out
 
 
 # Load the MATLAB module
