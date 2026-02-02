@@ -64,8 +64,8 @@ def inject_dem():
     #dem_file = configurations['dem_file']
     #data = nc.Dataset(dem_file,"r")
 
-    data = nc.Dataset("../RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc","r")
-
+#    data = nc.Dataset("../RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc","r")
+    data = nc.Dataset("/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc","r")
     xlon = np.asarray(data["lon"][:])
     ylat = np.asarray(data["lat"][:])
     elev = np.asarray(data["bed_elevation"][:]) + \

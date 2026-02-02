@@ -10,14 +10,19 @@ import jigsawpy
 from scipy.interpolate import RegularGridInterpolator
 
 #-------------------Input Files----------------------------------------
+
+"""
+#GSHHS coastline
 PSLGFile="GlobalCoastlineOSM.PSLG.msh"
 DistanceToCoastFile="DFun.GlobalCoastlineOSM.PSLG.msh"
 TopographyFile="Topo.DFun.GlobalCoastlineOSM.PSLG.msh"
 
+#OSM coastline 
 PSLGFile="PSLGboundaryGSHHS.msh"
 DistanceToCoastFile="GlobalCoastlineGSHHS.PSLG.msh"
 TopographyFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
-
+"""
+# GSHHS except identified problem spots (i.e. American Samoa) where OSM is used 
 #jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
 PSLGFile="PSLGboundaryOSMxGSHHS.BOXES.msh"
 #jigsaw gridded .msh format Distance to taget poings
