@@ -1,16 +1,29 @@
+######################################################################
+# This is the main interpolation engine.  This script reads in a list 
+# of nodes created by DivideMeshNodes.py and interpolates bathymetry 
+# from a list of bathymetry data files to the nodes in the assigned
+# list.  The intent is to run this in NPart parallel jobs for a 
+# partition of mesh nodes into NPart sets.
+#
+# The user is responsible for specifing the bathymetry data sets
+# in list "flnms" as well as the type of data each of these files 
+# in list "filetype". filetype[k] = 0 gridded local data, 1 gridded 
+# global data and 2 for scattered data. 
+#
+# The user should define there observational error model and bacground
+# process statistical model. 
+#
 import os
 import argparse
 import time
 import numpy as np
 import netCDF4 as nc
-import csv
 
 #import jigsawpy
 import sys
 from scipy.interpolate import RegularGridInterpolator
-import re
-#import ComputeMeshToMeshInterpWeights as mshint
 import math
+
 #from geopy import distance
 import itertools
 #from geopy.distance import haversine
@@ -19,10 +32,17 @@ import itertools
 import FiniteElementMeshRoutines as FE
 import GaussMarkov as GM
 
-import gc
-
+# TextOutput = True # prints lots of information durring interpolation (may cause slowdown)
 TextOutput = False
+
+#  directory containg all of the bahymetry data files specified in flnms
 BathyDir="/mnt/sda/keston/CoastalReliefModel/"
+
+########################################################
+# processed netcdf bathymetry files with variables:
+# lon, lat and z. Specify corresponding file type, gridded or scattered,
+# in list "filetype" below.
+########################################################
 flnms=[
     "cmems_obs-sdb_glo_phy-comp_my-oa-100m-l4-s2_static.PointValues500m.nc",
     "crm_vol1_2023.nc.S250m.VB.nc",
@@ -54,10 +74,13 @@ flnms=[
     "RTopo_2_0_4_GEBCO_v2023_60sec_pixel.CRMformat.nc"
     ]
 ########################################################
-#set filetype to 
+
+########################################################
+# Set filetype corresponding to files in flnms 
 # 0 : for gridded local data and 
 # 1 : for gridded global data and 
 # 2 : for scattered global data
+########################################################
 nf=len(flnms)
 filetype=np.zeros(nf, dtype=int)
 filetype[0]=2
@@ -144,13 +167,10 @@ for k in range(nn):
     yil[k]=yi[j]
     LSl[k]=lsN[j]
 
-#del xi yi ei lsN #clear global mesh variables
-#gc.collect()
-
 nn=len(xil)
 
-#set search width for each data set based on expected
-#number of points to interpolate
+# set search width for each data set based on expected
+# number of points to interpolate
 SearchWidth=np.zeros(nf)
 for j in range(nf):
     x=np.array(xlist[j][:])
@@ -173,22 +193,29 @@ stdiGMN=np.zeros(nn)
 ziClosest=np.zeros(nn)
 LocalLengthScale=np.zeros(nn)
 
-t0 = time.time()
+######################################################################
+# For each scattered data set, read in the scattered data here to
+# one dimensional arrays x0, y0, and z0.  This should be looped to
+# accumulate all of the scatted datasets together. The only scattered
+# data set used here is
+# "cmems_obs-sdb_glo_phy-comp_my-oa-100m-l4-s2_static.PointValues500m.nc",
+# so this is simply loaded here.
+######################################################################
 fl=flnms[0]                
 data = nc.Dataset(fl,"r")
 x0=data["lon"][:]
 x0=x0%360
 y0=data["lat"][:]
 z0=data["z"][:]
-#z0=float(z0.data)
+######################################################################
+
+t0 = time.time()
 for n in range(nn):
     xp=xil[n]%360
     yp=yil[n]
-
+# Set local length scale to use in Gauss Markov smoothing at node n
 #    LSp=2.*LSl[n] #probably better choice for spherical covarianve function
     LSp=1.*LSl[n] #choice for exponential covarianve function
-#    LSp=0.25*LSl[n] 
-#    LSp=LSl[n] #Local length scale for interpolation
     LocalLengthScale[n]=LSp 
     xs=[]
     ys=[]
@@ -261,7 +288,7 @@ for n in range(nn):
     
     Npoints=len(xs)
     NumPoints[n]=Npoints
-   
+
     #limit total number of points in interpolation (shouldn't come into effect much in practice)
     if Npoints > NpointsMax:
         if TextOutput:
@@ -282,12 +309,12 @@ for n in range(nn):
         
 ##### Specify priori error statistics here#############################        
 # Here some simple error statistics are given: These can be made dataset 
-# depent, depth dependent etc.
+# dependent, depth dependent, etc.
 # Assumptions regarding observation standard error:         
     ObsErr= max(1. , np.mean(np.abs(zs))/100. ) # 1 percent of local mean depth (m)
     VarObs=ObsErr**2 #(m^2)
 #Specify assumptions regarding background variance:         
-    VarBG=10.*VarObs #(m^2)
+    VarBG=10.*VarObs #(m^2) Background variance = 10 observation error variance
 ##### Done specify priori error statistics ############################        
 
     
@@ -305,7 +332,7 @@ for n in range(nn):
         print("GMU: est= "+str(ziGMU[n])+", err= "+str(stdiGMU[n]))
 
 # Gauss-Markov smoothing with known mean (like simple kriging). Assumed mean is closest observation 
-    ziGMN[n], stdiGMN[n]=GM.GaussMarkov(xs, ys, zs, xp, yp, LSp, VarObs,VarBG,"Nearest",True) #gives good results to eye
+    ziGMN[n], stdiGMN[n]=GM.GaussMarkov(xs, ys, zs, xp, yp, LSp, VarObs,VarBG,"Nearest",True)
     if TextOutput: 
         print("GMN: est= "+str(ziGMN[n])+", err= "+str(stdiGMN[n]))
 
@@ -320,7 +347,7 @@ for n in range(nn):
     jc=np.argmin(D)
     ziClosest[n]=zs[jc]
     
-
+###### Output estimates and other statistics to text files ###########        
 np.savetxt(floutID ,  ziID , fmt='%.6f', delimiter='\n')
 np.savetxt(floutGMN,  ziGMN, fmt='%.6f', delimiter='\n')
 np.savetxt(floutGMNerr, stdiGMN, fmt='%.6f', delimiter='\n')
