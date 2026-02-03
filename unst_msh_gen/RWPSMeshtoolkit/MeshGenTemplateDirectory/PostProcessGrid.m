@@ -20,7 +20,7 @@ addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
 isplot=0;
-outdir='RWPSWithNewOrleans/'
+outdir='testOSMxGSHHS.BOXES/'
 pslgfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS1kmBOXES.msh'
 jigsawout='RWPS.F.LLH'
 
@@ -62,7 +62,7 @@ WriteWW3MeshX(g,'RWPS.WW3a.lakes.msh');
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (C) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%clear
+%%clear
 g=loadmshWW3('RWPS.WW3a.lakes.msh')
 %Remove key islands remaining in mesh that are present in the PSLG file
 
@@ -171,7 +171,7 @@ WriteWW3MeshX(gnew,'RWPS.WW3b.lakes.msh')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (F) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %fix new orleans
-clear
+%clear
 g=loadmshWW3('RWPS.WW3b.lakes.msh')
 %Examine and Hand Edit Mesh around new orleans to relect changes if nescesary
 %Should not be nescesary with 
@@ -209,7 +209,7 @@ g=RemoveSandPointsWW3(gnew,'RWPS.WW3d.lakes.msh')
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (H) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Fix boundary warping from projection in mesh generation
-clear
+%clear
 close all
 g=loadmshWW3('RWPS.WW3d.lakes.msh')
 g0=g;
@@ -259,7 +259,7 @@ if isplot,
     g=g0;
 
 
-    clear
+    %clear
     g=loadmshWW3('RWPS.WW3g.lakes.msh')%RWPS.PIXAllLnwps.PP.WW3c.msh');
     x=g.x;y=g.y;z=g.z;e=g.e;
     LS=ComputeLengthScale_wgs84_MEL(x,y,e);LSn=Ele2Nodes(x,y,e,LS);
