@@ -24,6 +24,7 @@ outdir='testGSHHS/'
 pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
 jigsawout='RWPS.F.LLH'
 
+WW3FileOut='RWPS.GSHHS.WW3.msh'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g=loadmsh([outdir,jigsawout,'.msh']);
 
@@ -251,8 +252,8 @@ g0=RemoveSandPointsWW3(g,'RWPS.WW3f.lakes.msh')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (J) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
-
+%WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
+WriteWW3MeshX(g0,WW3FileOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Some Plotting
 if isplot,
