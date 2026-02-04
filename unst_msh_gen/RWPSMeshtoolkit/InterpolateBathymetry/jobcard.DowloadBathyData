@@ -4,7 +4,7 @@
 #SBATCH --error=download_data_%j.err  # Standard error log
 #SBATCH --account=marine-cpu 
 #SBATCH --nodes=1                     # Run on 1 node
-#SBATCH --ntasks=1                    # Run a single task
+###SBATCH --ntasks=1                    # Run a single task
 #SBATCH --time=08:00:00               # Time limit hrs:min:sec
 
 #############################################################################################################
