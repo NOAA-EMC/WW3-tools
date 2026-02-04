@@ -20,8 +20,8 @@ addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
 isplot=0;
-outdir='testOSMxGSHHS.BOXES/'
-pslgfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS1kmBOXES.msh'
+outdir='testGSHHS/'
+pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
 jigsawout='RWPS.F.LLH'
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
