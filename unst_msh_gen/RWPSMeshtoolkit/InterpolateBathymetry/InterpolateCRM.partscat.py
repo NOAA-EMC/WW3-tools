@@ -351,15 +351,21 @@ for n in range(nn):
     ziClosest[n]=zs[jc]
     
 ###### Output estimates and other statistics to text files ###########        
+#Inverse distance output
 np.savetxt(floutID ,  ziID , fmt='%.6f', delimiter='\n')
+#Gauss Markov smoothing with known mean output
 np.savetxt(floutGMN,  ziGMN, fmt='%.6f', delimiter='\n')
+#Std error (m) for Gauss Markov smoothing with known mean output
 np.savetxt(floutGMNerr, stdiGMN, fmt='%.6f', delimiter='\n')
-#np.savetxt(floutGMM,  ziGMM, fmt='%.6f', delimiter='\n')
-#np.savetxt(floutGM0,  ziGM0, fmt='%.6f', delimiter='\n')
+#Gauss Markov smoothing with unknown mean output
 np.savetxt(floutGMU,  ziGMU, fmt='%.6f', delimiter='\n')
+#Std error (m) for Gauss Markov smoothing with unknown mean output
 np.savetxt(floutGMUerr,  stdiGMU, fmt='%.6f', delimiter='\n')
+#Nearest neighbor estimate
 np.savetxt(floutClosest,  ziClosest, fmt='%.6f', delimiter='\n')
+#Number of bathymetry observations used for each node
 np.savetxt(floutNpts, NumPoints, fmt='%i', delimiter='\n')
+#Mesh length scale approcimation at nodes
 np.savetxt(floutLLS, LocalLengthScale, fmt='%.6f', delimiter='\n')
     
     
