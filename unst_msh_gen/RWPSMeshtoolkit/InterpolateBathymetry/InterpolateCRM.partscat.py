@@ -32,11 +32,17 @@ import itertools
 import FiniteElementMeshRoutines as FE
 import GaussMarkov as GM
 
+# Name of mesh to interpolate bathymetry to
+mshnm="HawaiiTest"
+
+mesh="meshes/"+mshnm+".msh"
+OutDir=mshnm+".files/"
+
 # TextOutput = True # prints lots of information durring interpolation (may cause slowdown)
 TextOutput = False
 
 #  directory containg all of the bahymetry data files specified in flnms
-BathyDir="/mnt/sda/keston/CoastalReliefModel/"
+BathyDir="/scratch3/NCEPDEV/climate/Keston.Smith/CoastalReliefModel/"
 
 ########################################################
 # processed netcdf bathymetry files with variables:
@@ -127,9 +133,6 @@ def ZeroPadIntStr(N,K):
     ZPNs=str(N).zfill(K)
     return ZPNs
 
-mshnm="HawaiiTest"
-mesh="meshes/"+mshnm+".msh"
-OutDir=mshnm+".files/"
 
 xi, yi, ei = FE.loadWW3MeshCoords(mesh)
 
@@ -202,7 +205,7 @@ LocalLengthScale=np.zeros(nn)
 # so this is simply loaded here.
 ######################################################################
 fl=flnms[0]                
-data = nc.Dataset(fl,"r")
+data = nc.Dataset(BathyDir+fl,"r")
 x0=data["lon"][:]
 x0=x0%360
 y0=data["lat"][:]
