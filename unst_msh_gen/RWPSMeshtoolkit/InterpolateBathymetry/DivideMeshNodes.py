@@ -15,6 +15,16 @@
 # This script should be run after the bathymetry data sets specified in 
 # InterpolateCRM.partscat.py are present
 #
+"""
+Ursa environment
+
+module purge
+module use /scratch3/NCEPDEV/climate/Keston.Smith/global-workflowA/sorc/ufs_model.fd/modulefiles
+module load ufs_ursa.intel
+module load py-scipy/1.14.1
+module load py-netcdf4/1.7.1.post2
+pip list
+"""
 
 import os
 import argparse
@@ -53,8 +63,7 @@ def WriteInterpJobscript(fl,N, ComputeNodes):
         f.write(" \n")
 
         f.write("module purge \n")
-        #f.write("module use /scratch4/NCEPDEV/marine/Ali.Salimi/Hera_Data/HR4-OPT/FromJessica/Keston/ICunstructuredRuns15km-implicit-450s/global-workflow/sorc/ufs_model.fd/modulefiles \n")
-        f.write("module use /scratch4/NCEPDEV/marine/Keston.Smith/global-workflowA/sorc/ufs_model.fd/modulefiles \n")
+        f.write("module use /scratch3/NCEPDEV/climate/Keston.Smith/global-workflowA/sorc/ufs_model.fd/modulefiles \n")
         f.write("module load ufs_ursa.intel \n")
         f.write("module load py-scipy/1.14.1 \n")
         f.write("module load py-netcdf4/1.7.1.post2 \n")
