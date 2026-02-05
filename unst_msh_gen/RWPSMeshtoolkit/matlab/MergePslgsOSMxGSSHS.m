@@ -1,7 +1,6 @@
+% Script to merge PSLG created from GSHHS coastline with PSLG created from OSM coastline data.
+% GSHHS coastline is used everywhere except with in rectangles described in rows of AX.
 
-
-%OSMmsh='./PSLGboundary1kmP_NewOrleans.OSM.msh'
-%GSHHGmsh='./PSLGboundary1kmP_NewOrleansB.msh'
 isplot=0
 OSMmsh='./GlobalCoastlineOSM.PSLG.msh' 
 GSHHGmsh='./GlobalCoastlineGSHHS.PSLG.msh'

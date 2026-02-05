@@ -1,9 +1,10 @@
 function gnew=RemoveMissingIslandsEle(g,ax,p,MinBndDist,isplot);
 
 % Remove parts of mesh, g inside closed curves defined in pslg
-% p.  The action is preformed only within the axis ax. The
-% frame work is intended to expand to moving nodes, removing elements, etc
-%This wont touch nodes within MinBndDist (m) of existing boundary
+% p. Only nodes for which all adjoining elements are inside closed curve are removed.
+% The action is preformed only within the axis ax.
+% This wont touch nodes within MinBndDist (m) of existing boundary
+
 if nargin<4
     MinBndDist=1000;
 end

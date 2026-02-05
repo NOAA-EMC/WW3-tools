@@ -1,5 +1,9 @@
 function topo=BoxSmoothTopo(fl,k)
-   
+%function topo=BoxSmoothTopo(fl,k)
+% Apply 2D Boxcar smoothing and sub sampling of bathymetry in file fl.
+% retuns topo a gridded jigsaw structure.
+
+ 
 lon=ncread(fl,'lon');
 lat=ncread(fl,'lat');
 z=ncread(fl,'bed_elevation');

@@ -1,4 +1,23 @@
-function g=read_msh(fl)
+function g=loadmshWW3(fl)
+% function g=loadmshWW3(fl)
+%
+% load WW3 .msh format mesh see:
+% https://polar.ncep.noaa.gov/waves/wavewatch/manual.v5.16.pdf
+% 
+% mesh structure g has fields:
+%
+%          x: longitute
+%          y: latitude
+%          z: bathymetric depth 
+%          e: (ne x 3) element list
+%      etype: element type
+%      ntags: 
+%    PhsEnty: 
+%     EleNum: 
+%    ElemUnk: 
+%        bnd: open ocean boundary nodes
+%    BndType: 
+%    BndGeom: 
 
 %$MeshFormat
 %2 0 8

@@ -1,9 +1,9 @@
 function gnew=RemoveMissingIslands(g,ax,p,MinBndDist,isplot);
-%function gnew=HandEditMesh(g,ax,p);
-% Remove parts of mesh, g inside closed curves defined in pslg
-% p.  The action is preformed only within the axis ax. The
-% frame work is intended to expand to moving nodes, removing elements, etc
+%function gnew=RemoveMissingIslands(g,ax,p,MinBndDist,isplot);
+% Remove nodes of mesh, g inside closed curves defined in pslg
+% p.  The action is preformed only within the axis ax.
 %This wont touch nodes within MinBndDist (m) of existing boundary
+
 if nargin<4
     MinBndDist=1000;
 end

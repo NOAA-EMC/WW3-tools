@@ -1,5 +1,5 @@
 %This script creates a "Distance to Coast file" using a us coastline file
-%and custom specification of 
+%and custom specification of other points.  
 
 clear
 close all
@@ -7,13 +7,15 @@ isplot=0
 
 %Input files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
-%PSLGfile='GlobalCoastlineOSM.PSLG.msh'
-PSLGfile='PSLGboundaryOSMxGSHHS.BOXES.msh'
+%Jigsaw .msh format file with PSLG geometry:
+PSLGfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS.BOXES.msh' % mesh boundary PSLG file
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Global Bathymetry file (netcdf)
-GlobalTopoFile='../RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
-%Shape file with US coastline 
-uscl='../RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
+GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc' % global topography file
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%Shapefile with US coastline 
+uscl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp' % us coastline file
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

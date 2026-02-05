@@ -1,4 +1,12 @@
 function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
+%function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
+% This is a function format of what is probably better written as a script. for examples see:
+%
+% unst_msh_gen/RWPSMeshtoolkit/MeshGenTemplateDirectory/BuildBoundaryPSLGwGSHHS.m or:
+% unst_msh_gen/RWPSMeshtoolkit/MeshGenTemplateDirectory/BuildBoundaryPSLGwOSM.m
+%
+
+
 %CoastLineFile = 'GlobalCoastlineOSM.shp'
 %CoastLineFile = 'GlobalCoastlineGSHHS.shp'
 %lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;

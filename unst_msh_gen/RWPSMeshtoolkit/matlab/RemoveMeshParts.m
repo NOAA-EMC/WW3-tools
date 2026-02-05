@@ -1,4 +1,5 @@
 function gnew=RemoveMeshParts(g,ax,S,ca);
+
 %function gnew=HandEditMesh(g,ax,p);
 % Remove parts of mesh, g inside closed curves defined in pslg
 % p.  The action is preformed only within the axis ax. The
