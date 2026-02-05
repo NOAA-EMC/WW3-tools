@@ -1,6 +1,12 @@
 function pslg=joinpslg(pslg1,pslg2,mergeDist);
-%mergepslg::join two pslgs together.
-%XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+% function pslg=joinpslg(pslg1,pslg2,mergeDist);
+% mergepslg::join two pslgs together.
+%   inputs: 
+%       pslg1,pslg2 : pslg structures with form
+%       pslg.x : [n] point list of longitude
+%       pslg.y : [n] point list of latitude
+%       pslg.edges : [nedge x 2] list of edges in pslg (point adjacency)
+%%XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 %Keston Smith 2022
 %XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
 pslg1.x=pslg1.x(:)';

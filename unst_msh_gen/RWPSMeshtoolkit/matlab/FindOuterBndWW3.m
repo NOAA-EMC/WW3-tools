@@ -1,5 +1,17 @@
 function OpenBndNodes=FindOuterBndWW3(g,ComputeBndy)
-Dmin=4000;
+% function OpenBndNodes=FindOuterBndWW3(meshflin,ComputeBndy)
+% find the open boundary nodes from jigsaw format .msh file
+% representing an unstructured mesh, and find the estimated 
+% open ocean boundary nodes assuming the mesh is on an oriented 
+% rectangle.
+%
+%   inputs:
+%       meshflin : jigsaw format .msh file representing an unstructured mesh
+%       ComputeBndy : ComputeBndy =1 in all cases
+%   output: 
+%       OpenBndNodes : list of open ocean boundary nodes numbers
+%
+Dmin=4000;%critical distance in meters to find boundary nodes
 
 %g=loadmsh(meshflin)
 if isfield(g,'x')

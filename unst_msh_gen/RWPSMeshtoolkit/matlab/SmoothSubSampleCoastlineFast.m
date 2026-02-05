@@ -1,10 +1,18 @@
 function [xss,yss]=SmoothSubSampleCoastlineFast(x,y,DI,lambda);
-%function [xs,ys]=SmoothSubSampleCoastline(x,y,dsmooth,lambda);
-%Sub sample coastline at dsmooth (m) distance. Boxcar smooth coastline to 
-% dsmooth*lambda distance   
+% function [xss,yss]=SmoothSubSampleCoastline(x,y,dsmooth,lambda);
+% Smooth and subsample coastline at dsmooth (m) distance. The coastline is first interpolated
+% to uniform spacing and then a boxcar smoother of width DI*(2*lambda+1)is applied.
+%   Inputs:
+%       x,y :   longitude, latitude points along a coastline. 
+%               If the coastline defines an island 
+%               then x(1)==x(end) and y(1)==y(end),
+%       DI: distance in meters to interpolate the coastline to
+%       lambda : integer coastline is smoothed to DI*(2*lambda+1) and resampled lambda*DI spacing
+%   outputs : 
+%       xss,yss : longitude, latitude points the smoothed and subsampled coastline
+%
 itz=0;
 [xi,yi]=InterpCoastline(x,y,DI,itz);
-%[xi,yi]=InterpCoastline1(x,y,DI,itz);%Creates problems with long
 gamma=2*lambda+1;
 ic=lambda+1;
 W=ones(1,gamma)/gamma;

@@ -1,9 +1,8 @@
 function gnew=HandEditMesh(g,ax,p);
 %function gnew=HandEditMesh(g,ax,p);
-% Remove parts of mesh, g inside closed curves defined in pslg
-% p.  The action is preformed only within the axis ax. The
-% frame work is intended to expand to moving nodes, removing elements, etc
-%This wont touch nodes within MinBndDist (m) of existing boundary
+% Hand remove parts of mesh, g, inside closed curves defined in pslg p.
+% The action is preformed only within the axis ax=[min x, max x, min y , max y].
+% The frame work is intended to expand to moving nodes, removing elements, etc
 
 
 jx=find(and(g.x>ax(1),g.x<ax(2)));

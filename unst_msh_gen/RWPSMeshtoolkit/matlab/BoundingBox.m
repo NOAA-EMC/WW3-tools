@@ -1,6 +1,7 @@
 function h=BoundingBox(x,y,c);
 %function h=BoundingBox(x,y,c);
-% draw bounding rectanble around points x, y in color c
+% draw a bounding rectanble around points x, y in color c. 
+% Note, x and y can be different lengths here.
 
 if nargin<3,c='k';end
 x0=min(min(x));

@@ -1,25 +1,13 @@
 function geom=BoundaryShape2msh(S,flout)
-% make coastlines for various smoothings of coastlines
+% function geom=BoundaryShape2msh(S,flout)
+% make coastline read from a shape file into a jigsaw format mesh file.
+%   inputs:
+%       S: shapefile structure, i.e. S=shaperead('us_coastline.shp');
+%       flout: file to write jigsaw format .msh file representing S
+%   outputs: 
+%       geom : jigsaw structure representing S
+%           
 
-%from example 6 aust.msh 
-
-%geom = 
-%    point: [1×1 struct]
-%    edge2: [1×1 struct]
-%    mshID: 'EUCLIDEAN-MESH'
-%    fileV: 3
-
-%geom.point.coord(1:10,:)
-%  146.2929  -39.0150         0
-%  146.2937  -39.0192         0
-%  146.2846  -39.0242         0
-
-%geom.edge2.index(1:10,:)
-%           1           2           0
-%           1       27577           0
-%           2           3           0
-           
-%1km 
 clear geom
 geom.mshID='EUCLIDEAN-MESH'
 geom.fileV = 3

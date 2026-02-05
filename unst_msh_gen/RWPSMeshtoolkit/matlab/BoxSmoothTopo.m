@@ -1,7 +1,21 @@
 function topo=BoxSmoothTopo(fl,k)
 %function topo=BoxSmoothTopo(fl,k)
-% Apply 2D Boxcar smoothing and sub sampling of bathymetry in file fl.
-% retuns topo a gridded jigsaw structure.
+% Apply 2D boxcar smoothing and sub sampling of bathymetry in file fl.
+% jigsaw can sometimes run into memory problems with large stuctures 
+% of this type when generating non-global meshes. Retuns topo, a 
+% gridded jigsaw structure.
+%   inputs: 
+%       fl : filename pointing to a netcdf bathymetry file with variables
+%           lon : length (nx+1) longitude of grid
+%           lat : length (ny+1) latitude of grid
+%           bed_elevation : ( nx by ny)  average bathymetric depth in cell
+%       k : integer to resample the bathymetry at.The smoothing is carried
+%           out using a 2 D Boxcar smoother (square average) with sides of
+%           length (2 k + 1) and resampled every k points
+%   output:
+%       topo :  jigsaw format girdded data representing the smoothed resampled 
+%               data.  
+%
 
  
 lon=ncread(fl,'lon');

@@ -1,4 +1,6 @@
 function g=CombineMesh(g0,g1);
+% function g=CombineMesh(g0,g1);
+% Combine 2 non intersecting mesh structures g0 and g1 to get their union g.
 
 nn=length(g0.x);
 g.x=[g0.x(:);g1.x(:)];

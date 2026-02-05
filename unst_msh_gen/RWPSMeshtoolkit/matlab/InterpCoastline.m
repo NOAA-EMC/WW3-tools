@@ -1,7 +1,16 @@
 function [xi,yi]=interpCoastline(x,y,dsmooth,itz);
 %function [xs,ys]=SmoothSubSampleCoastline(x,y,dsmooth,lambda);
-%Sub sample coastline at dsmooth (m) distance. Boxcar smooth coastline to 
-% dsmooth*lambda distance   
+%interpolate coastline segment at uniform dsmooth (m) distance. 
+%   input:
+%       x,y :   longitude, latitude points along a coastline. 
+%               If the coastline defines an island 
+%               then x(1)==x(end) and y(1)==y(end),
+%       dsmooth: distance in meters to interpolate the coastline to
+%       itz: replace points at longitude 180, -180 with nans to supress artifacts
+%
+%   outputs : 
+%       xi,yi : longitude, latitude points the coastline resampled at dsmooth distance
+%
 if nargin<4,itz=0;end
 if itz,j=find(or(x==-180,x==180));end
 z=x+i*y;
