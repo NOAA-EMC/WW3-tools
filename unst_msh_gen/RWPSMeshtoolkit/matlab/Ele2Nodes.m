@@ -1,5 +1,15 @@
 function  Fnode = Ele2Nodes(lon,lat,e,Fele)
-%crude compute element Area
+%function  Fnode = Ele2Nodes(lon,lat,e,Fele)
+% Approximate element averages for field supported on elements 
+% at nodes.  Uses average weighted by elment areas
+% inputs:
+%       lon : (nn x 1) longitude coordinates of nodes
+%       lat : (nn x 1) latitude coordinates of nodes
+%       e   : (ne x 3) element matrix
+%       Fele   : (ne x 1) field average on elements
+% output:
+%       Fnode : (nn x 1) approximation of Fele at nodes 
+%
 
 A=EleArea(lon,lat,e);
 nn=length(lon);
