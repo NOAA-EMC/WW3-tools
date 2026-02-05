@@ -1,5 +1,14 @@
-
 function WriteWW3MeshX(g,WW3FileOut)
+% function WriteWW3Mesh(g,WW3FileOut)
+% Output unstructured mesh to WW3 .msh format
+%
+% inputs:
+%       g - finite element mesh structure with fields:
+%           g.x (nn x 1) longitude coordinates of nodes
+%           g.y (nn x 1) latitude coordinates of nodes
+%           g.e (ne x 3) element matrix
+%       WW3FileOut (output file name)
+%
 
 OpenBndNodes=FindOuterBndWW3(g,1)
 

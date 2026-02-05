@@ -1,7 +1,15 @@
-
 function WriteWW3Mesh(mshFileInJigsawFormat,pslgFilelInJigsawFormat,WW3FileOut)
-%If Outer edges aren't curved too much don't need PSLG
-%OpenBndNodes=FindOuterBnd(mshFileInJigsawFormat,pslgFilelInJigsawFormat);
+% function WriteWW3Mesh(mshFileInJigsawFormat,pslgFilelInJigsawFormat,WW3FileOut)
+% or
+% function WriteWW3Mesh(mshFileInJigsawFormat,[],WW3FileOut)
+%Convert unstructured triangular mesh in jigsaw format to WW3 .msh format
+%
+% inputs:
+%       mshFileInJigsawFormat (input file name)
+%       pslgFilelInJigsawFormat (not used can be empty)
+%       WW3FileOut (output file name)
+%
+
 
 OpenBndNodes=FindOuterBndNoPSLG(mshFileInJigsawFormat);
 
