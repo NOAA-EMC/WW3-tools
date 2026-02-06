@@ -1,10 +1,19 @@
 function gnew=RemoveMeshParts(g,ax,S,ca);
 
 %function gnew=HandEditMesh(g,ax,p);
-% Remove parts of mesh, g inside closed curves defined in pslg
-% p.  The action is preformed only within the axis ax. The
-% frame work is intended to expand to moving nodes, removing elements, etc
-%This wont touch nodes within MinBndDist (m) of existing boundary
+% Graphical interface to remove parts of mesh, g inside axis, where ax=[xmin, xmax,ymin, ymax].
+% The frame work is intended to expand to moving nodes, removing elements, etc
+%
+%   inputs:
+%           g : FE mesh structure with fields
+%               g.x : longitute
+%               g.y : latitude
+%               g.z : bathymetric depth 
+%               g.e : (ne x 3) element list
+%           ax : output of axis for figure, i.e. ax=axis or prespecified as ax=[xmin, xmax,ymin, ymax]
+%           S : structure output from S=shaperead(CoastLineFile) etc.
+%           ca : [1,2] caxis for colorfield based on g.z ca=[min(g.z),max(g.z)]
+%
 
 jx=find(and(g.x>ax(1),g.x<ax(2)));
 jy=find(and(g.y>ax(3),g.y<ax(4)));

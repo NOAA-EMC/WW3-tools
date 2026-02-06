@@ -2,7 +2,21 @@ function gnew=RemoveMissingIslands(g,ax,p,MinBndDist,isplot);
 %function gnew=RemoveMissingIslands(g,ax,p,MinBndDist,isplot);
 % Remove nodes of mesh, g inside closed curves defined in pslg
 % p.  The action is preformed only within the axis ax.
-%This wont touch nodes within MinBndDist (m) of existing boundary
+% This wont touch nodes within MinBndDist (m) of existing boundary
+%   input:
+%          g : FE mesh structure with fields
+%               g.x : longitute
+%               g.y : latitude
+%               g.z : bathymetric depth 
+%               g.e : (ne x 3) element list
+%          ax : output of axis for figure, i.e. ax=axis or prespecified as ax=[xmin, xmax,ymin, ymax]
+%          p: a Planar Straight Line Graph (pslg) structure with fields
+%               p.x : (nn x 1) x coordinates of nodes
+%               p.y : (nn x 1 )y coordinates of nodes
+%               p.edges : (nedges x 2) list of edges between nodes
+%          isplot=0 for no ploting and isplot=1 to plot mesh editing
+%
+
 
 if nargin<4
     MinBndDist=1000;

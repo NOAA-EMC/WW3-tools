@@ -1,4 +1,15 @@
 function topo=topo2msh(fl,flout)
+% convert bathymetry in netcdf file fl to jigsaw m.msh format
+% Retuns topo, a gridded jigsaw structure.
+%   inputs: 
+%       fl : filename pointing to a netcdf bathymetry file with variables
+%           lon : length (nx+1) longitude of grid
+%           lat : length (ny+1) latitude of grid
+%           bed_elevation : ( nx by ny)  average bathymetric depth in cell
+%       flout : jigsaw .msh file to write topo to.
+%   output:
+%       topo :  jigsaw format girdded data representing the data in fl
+%
 
 x=ncread(fl,'lon');
 y=ncread(fl,'lat');

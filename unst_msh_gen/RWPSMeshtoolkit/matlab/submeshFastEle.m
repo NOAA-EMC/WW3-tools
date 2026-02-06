@@ -1,4 +1,20 @@
 function [h,k]=submeshFastEle(g,jBadNodes)
+%
+% Make the subset of unstructured mesh g consisting only of
+% elements with no nodes in jBadNodes 
+%
+%   input:
+%          g : FE mesh structure with fields
+%               g.x : longitute
+%               g.y : latitude
+%               g.z : bathymetric depth 
+%               g.e : (ne x 3) element list
+%          jBadNodes : list of nodes to throw out
+%
+%   output:
+%          h : portion of FE mesh structure with no elements made entirely of
+%              nodes in list jBadNodes
+%
 
 [ne,three]=size(g.e);
 A=ismember(g.e,jBadNodes);

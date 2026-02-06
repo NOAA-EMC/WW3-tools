@@ -1,4 +1,20 @@
 function RemoveSandPoints(FileInJigsawMesh,FileInJigsawPSLG,FileOutJigsawMesh,FileOutWW3)
+%function RemoveSandPoints(FileInJigsawMesh,FileInJigsawPSLG,FileOutJigsawMesh,FileOutWW3)
+% Find and remove sandpoints from fininte element mesh structure g
+% Because removal of sand points can create new sand points, the process is run iteratively
+% within this routine. Usually, 1-3 iterations are required to clear all sandpoints in large 
+% ~ 5 million node meshes generated with jigsaw. 
+
+% A sandpoint is a boundary node with more than two adjacent boundary nodes.  Sandpoints are 
+% flagged in WW3 and WW3 will not run with a mesh containing sandpoints(error in grid.out).
+%
+%   input:
+%       FileInJigsawMesh : jigsaw format .msh file describing a finite element mesh(jigsaw output)
+%       FileInJigsawPSLG : jigsaw format .msh file describing the geometry of the PSLG used 
+%                          to create the mesh defined in  FileInJigsawMesh
+%       FileOutJigsawMesh : jisaw format .msh file with sandpoints removed
+%       FileOutWW3 : WW3 .msh file with sandpoints removed
+%       
 
 %g=loadmsh('output/RWPS.F.LLH.msh');
 %g=loadmsh('../RWPSMeshTest/output.1km.10km/RWPS.F.LLH.msh');

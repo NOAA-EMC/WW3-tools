@@ -1,4 +1,24 @@
 function g=RemoveSandPointsWW3(g,FileOutWW3)
+%function g=RemoveSandPointsWW3(g,FileOutWW3)
+% Find and remove sandpoints from fininte element mesh structure g
+% Because removal of sand points can create new sand points, the process is run iteratively
+% within this routine. Usually, 1-3 iterations are required to clear all sandpoints in large 
+% ~ 5 million node meshes generated with jigsaw. 
+
+% A sandpoint is a boundary node with more than two adjacent boundary nodes.  Sandpoints are 
+% flagged in WW3 and WW3 will not run with a mesh containing sandpoints(error in grid.out).
+%
+%   input:
+%          g : FE mesh structure with fields
+%               g.x : longitute
+%               g.y : latitude
+%               g.z : bathymetric depth 
+%               g.e : (ne x 3) element list
+%          FileOutWW : file name to write WW3 msh file for g 
+%
+%   outputs:
+%           g : input mesh with all sandpoints removed by deletion
+%       
 
 close all;
 count=0;
