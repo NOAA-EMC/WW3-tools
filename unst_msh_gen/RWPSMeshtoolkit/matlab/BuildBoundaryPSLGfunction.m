@@ -19,8 +19,8 @@ function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNor
 %
 % CoastLineFile = 'GlobalCoastlineOSM.shp'
 % CoastLineFile = 'GlobalCoastlineGSHHS.shp'
-% lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;
-% or : ax=axis;lonWest=ax(1),lonEast=ax(2),latSouth=ax(3),latNorth=ax(4)
+% set:>> lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;
+% or :>> ax=axis;lonWest=ax(1),lonEast=ax(2),latSouth=ax(3),latNorth=ax(4)
 % run:>> BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
 
 S=shaperead(CoastLineFile)
@@ -57,9 +57,11 @@ N=length(S);
 S=S(j);% sort to descending in length
 ns=ns(j);% sort to descending in length
 
-lon=Blon;j=find(lon<90);lon(j)=180+(lon(j)+180);
+lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
 Blon=lon;
 
+%Define ordered corners within mesh from south-west counter clockwise
+% to north-west. 
 CornerX=[min(Blon),max(Blon),max(Blon),min(Blon)];
 CornerY=[min(Blat),min(Blat),max(Blat),max(Blat)];
 
@@ -190,7 +192,8 @@ for k=1:N
 end
 
 %OK - now revisit outer boundary!
-eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
+eval(['save -v7.3 ',FileOutMatlab]);
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Intermission
@@ -199,25 +202,10 @@ eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
 
 
 eval(['load ',FileOutMatlab]);
-lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
-Blon=lon;
-%Make Bounding rectangle
-Bx=[Blon(1),Blon(2),Blon(2),Blon(1),Blon(1)]
-By=[Blat(1),Blat(1),Blat(2),Blat(2),Blat(1)]
 
 nc=length(pslg.chains);
 n=length(pslg.x);
 
-%IsInSW=0;IsInSE=1;IsInNE=1;IsInNW=1;
-%IsCornerIn=[IsInSW,IsInSE,IsInNE,IsInNW];
-
-%Define ordered corners within mesh from south-west counter clockwise
-% to north-west. 
-CornerX=[min(Blon),max(Blon),max(Blon),min(Blon)];
-CornerY=[min(Blat),min(Blat),max(Blat),max(Blat)];
-
-
-n=length(pslg.x);
 %add southeast, northwest and northeast box corner nodes
 pslg.x=[pslg.x,CornerX];
 pslg.y=[pslg.y,CornerY];
@@ -369,7 +357,7 @@ NOE=length(epiv)
 OutterEdges=[epiv(1:NOE-1),epiv(2:NOE)];
 pslg.edges=[pslg.edges;OutterEdges];
 
-eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
+eval(['save -v7.3 ',FileOutMatlab]);
 
 nodelist=[];
 chn=[];
@@ -385,7 +373,7 @@ for k=1:nc
     end
 end
 
-eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot nodelist epi chn']);
+eval(['save -v7.3 ',FileOutMatlab]);
 
 pslg.chains=pslg.chains(chn);
 nc=length(pslg.chains);
@@ -398,6 +386,7 @@ pslgb=subpslgFast(pslg,nodelistXB);
 %z=pslgb.x+i*pslgb.y;
 %[zu,j,k]=unique(z);
 %pslgc=subpslgFast(pslgb,j);
+
 pslgc=pslgb
 
 %remove duplicate edges
@@ -407,7 +396,7 @@ pslgc.edges=pslgc.edgesSU;
 
 pslg=pslgc
 
-eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
+eval(['save -v7.3 ',FileOutMatlab]);
 
 %save PSLG to jigsaw .msh format
 geom=pslg2geom(pslg)
