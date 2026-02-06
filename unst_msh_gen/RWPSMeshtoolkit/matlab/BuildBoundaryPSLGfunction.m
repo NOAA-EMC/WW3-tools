@@ -1,36 +1,37 @@
-function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
-%function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
-% This is a function format of what is probably better written as a script. for examples see:
+function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth,FileOutJigsaw)
+% BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth,FileOutJigsaw[optional])
+% Build a boundary Planer Straight Line Graph (PSLG) from a coastline .msh file and 
+% Bounded oriented lat lon rectangle.
+%   inputs:
+%       CoastLineFile : shapefile describing an appropriately smoothed coastline
+%                       for example one created with scripts: MakeCoastalBoundariesGSHHS.m
+%                       in unst_msh_gen/RWPSMeshtoolkit/MeshGenTemplateDirectory/
+%       lonWest  : bounding west longitude
+%       lonEast  : bounding east longitude
+%       latSouth : bounding south latitude
+%       latNorth : bounding north latitude
+%       FileOutJigsaw : file name to output jigsaw format .msh file
 %
-% unst_msh_gen/RWPSMeshtoolkit/MeshGenTemplateDirectory/BuildBoundaryPSLGwGSHHS.m or:
-% unst_msh_gen/RWPSMeshtoolkit/MeshGenTemplateDirectory/BuildBoundaryPSLGwOSM.m
+% NOTE: If the south west corner (lonWest,latSouth ) is not in the grid (i.e. on land) then the next
+% crossing point,moving to the east along the south boundary, should be into
+% the intended connected part of the mesh.  This has to do with finding and outer boundary in the PSLG
+% and could be adjusted near line 271 if needed.
 %
-
-
-%CoastLineFile = 'GlobalCoastlineOSM.shp'
-%CoastLineFile = 'GlobalCoastlineGSHHS.shp'
-%lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;
-%run:>> BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
+% CoastLineFile = 'GlobalCoastlineOSM.shp'
+% CoastLineFile = 'GlobalCoastlineGSHHS.shp'
+% lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;
+% or : ax=axis;lonWest=ax(1),lonEast=ax(2),latSouth=ax(3),latNorth=ax(4)
+% run:>> BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
 
 S=shaperead(CoastLineFile)
-FileOutJigsaw=[CoastLineFile(1:end-4),'.PSLG.msh']
+if nargin<6
+    FileOutJigsaw=[CoastLineFile(1:end-4),'.PSLG.msh']
+end
 FileOutMatlab=[CoastLineFile(1:end-4),'.PSLGtmp.mat']
 isplot=0;
 
-%load GlobalCoastlineOSM.mat
-
-
-%The overall objective of this project is to develop and implement into operations
-% a  Regional Wave Prediction System (RWPS) that fulfills the needs of NWS marine coastal, 
-% offshore, and high seas areas of responsibility. The domain of the RWPS will cover the Atlantic,
-% Pacific, and Arctic oceans equal to the bounds of the Oceanic Domain as developed for the 
-% National Blend of Models (NBM). For reference the NBM Oceanic Domain has corner points of LL - 30.42S - 129.91E UR - 79.99N - 10.71E. 
-
-%Blon=[129.91 10.71];
-%Blat=[-30.42 79.99];
 Blon=[lonWest, lonEast];
 Blat=[latSouth,latNorth];
-
 
 N=length(S);
 N1=N;
@@ -59,14 +60,29 @@ ns=ns(j);% sort to descending in length
 lon=Blon;j=find(lon<90);lon(j)=180+(lon(j)+180);
 Blon=lon;
 
-%Make Bounding rectangle
-Bx=[Blon(1),Blon(2),Blon(2),Blon(1),Blon(1)]
-By=[Blat(1),Blat(1),Blat(2),Blat(2),Blat(1)]
-             
+CornerX=[min(Blon),max(Blon),max(Blon),min(Blon)];
+CornerY=[min(Blat),min(Blat),max(Blat),max(Blat)];
+
+%Make closed bounding rectangle
+Bx=[CornerX,CornerX(1)];
+By=[CornerY,CornerY(1)];
 clear pslg
+
+
+N=length(S);
+IsCornerIn=ones(1,4);
+
+for k=1:N
+    x=S(k).X(1:end);% remove trailing nan (-1) and endpoint==startpoint (-2)
+    y=S(k).Y(1:end);
+    [isin,ison]=insidepoly(CornerX,CornerY,x,y) ;
+    IsCornerIn=IsCornerIn-isin;
+    if mod(k,1000)==0,disp(['Checking boundary corners for land part compleate: ',num2str(k/N)]);,end
+end
+display(['IsCornerIn?, [SW,SE,NE,NW] = ',int2str(IsCornerIn)])
+
 sxp=[];syp=[ ];
 xc=[];yc=[];
-N=length(S);
 pslg.x=[];
 pslg.y=[];
 pslg.edges=[];
@@ -76,10 +92,10 @@ minedeges=4
 minarea=1
 
 earth=referenceSphere('Earth');
-DXM=10^10;%DXM=1
-mdx=inf+ones(N,1);
+% Loop handles all intersections of coastline with bounding rectangle boundaries
+% elliminates portion outside of the rectangle, adds intersection points and
+% creates all "chains" of nodes in this structure/
 for k=1:N
-    isinbox(k)=0;
     x=S(k).X(1:end-1);% remove trailing nan (-1) and endpoint==startpoint (-2)
     y=S(k).Y(1:end-1);
     mx=mean(x);
@@ -102,30 +118,6 @@ for k=1:N
                         xs=[xia(j),x( iis(j)+1:iis(j+1) ),xia(j+1)];
                         ys=[yia(j),y( iis(j)+1:iis(j+1) ),yia(j+1)];
                         dx=abs(xs(2:end)-xs(1:end-1) +i*[ys(2:end)-ys(1:end-1)] );
-                        mdx(k)=max(dx);
-
-                        if max(dx)<DXM,
-                            n0=length(pslg.x);
-                            pslg.x=[pslg.x,xs];
-                            pslg.y=[pslg.y,ys];
-                            n1=length(pslg.x);
-                            nedges=[[n0+1:n1-1];[n0+2:n1]]';
-                            pslg.edges=[pslg.edges;nedges];
-                            nc=nc+1;pslg.chains(nc).nodes=[n0+1:n1];
-                            pslg.chains(nc).index=k;
-                            pslg.chains(nc).type='starts outside';
-                            pslg.chains(nc).BI=1;
-                        end
-                    end
-                else % segment starts inside outer boundary
-                    nseg=length(xia);
-                    xs=[xia(end),x( iis(end)+1:end ),x(1:iis(1) ),xia(1)];
-                    ys=[yia(end),y( iis(end)+1:end ),y(1:iis(1) ),yia(1)];
-
-                    dx=abs(xs(2:end)-xs(1:end-1) +i*[ys(2:end)-ys(1:end-1)] );
-                    mdx(k)=max(dx);
-
-                    if max(dx)<DXM,
                         n0=length(pslg.x);
                         pslg.x=[pslg.x,xs];
                         pslg.y=[pslg.y,ys];
@@ -134,26 +126,43 @@ for k=1:N
                         pslg.edges=[pslg.edges;nedges];
                         nc=nc+1;pslg.chains(nc).nodes=[n0+1:n1];
                         pslg.chains(nc).index=k;
-                        pslg.chains(nc).type='starts inside, first seg';
+                        pslg.chains(nc).type='starts outside';
                         pslg.chains(nc).BI=1;
+
                     end
+                else % segment starts inside outer boundary
+                    nseg=length(xia);
+                    xs=[xia(end),x( iis(end)+1:end ),x(1:iis(1) ),xia(1)];
+                    ys=[yia(end),y( iis(end)+1:end ),y(1:iis(1) ),yia(1)];
+
+                    dx=abs(xs(2:end)-xs(1:end-1) +i*[ys(2:end)-ys(1:end-1)] );
+                    n0=length(pslg.x);
+                    pslg.x=[pslg.x,xs];
+                    pslg.y=[pslg.y,ys];
+                    n1=length(pslg.x);
+                    nedges=[[n0+1:n1-1];[n0+2:n1]]';
+                    pslg.edges=[pslg.edges;nedges];
+                    nc=nc+1;pslg.chains(nc).nodes=[n0+1:n1];
+                    pslg.chains(nc).index=k;
+                    pslg.chains(nc).type='starts inside, first seg';
+                    pslg.chains(nc).BI=1;
+
                     for j=2:2:nseg-1,
                         xs=[xia(j),x( iis(j):iis(j+1) ),xia(j+1)];
                         ys=[yia(j),y( iis(j):iis(j+1) ),yia(j+1)];
                         
                         dx=abs(xs(2:end)-xs(1:end-1) +i*[ys(2:end)-ys(1:end-1)] );
-                        if max(dx)<DXM,
-                            n0=length(pslg.x);
-                            pslg.x=[pslg.x,xs];
-                            pslg.y=[pslg.y,ys];
-                            n1=length(pslg.x);
-                            nedges=[[n0+1:n1-1];[n0+2:n1]]';
-                            pslg.edges=[pslg.edges;nedges];
-                            nc=nc+1;pslg.chains(nc).nodes=[n0+1:n1];
-                            pslg.chains(nc).type='starts inside';
-                            pslg.chains(nc).index=k;
-                            pslg.chains(nc).BI=1;
-                        end
+                        n0=length(pslg.x);
+                        pslg.x=[pslg.x,xs];
+                        pslg.y=[pslg.y,ys];
+                        n1=length(pslg.x);
+                        nedges=[[n0+1:n1-1];[n0+2:n1]]';
+                        pslg.edges=[pslg.edges;nedges];
+                        nc=nc+1;pslg.chains(nc).nodes=[n0+1:n1];
+                        pslg.chains(nc).type='starts inside';
+                        pslg.chains(nc).index=k;
+                        pslg.chains(nc).BI=1;
+
                     end
                 end
                 
@@ -161,7 +170,7 @@ for k=1:N
                 xs=[x(1:end-1)];
                 ys=[y(1:end-1)];
                 dx=abs(xs(2:end)-xs(1:end-1) +i*[ys(2:end)-ys(1:end-1)] );
-                if and(length(xs)>2,max(dx)<DXM) %no degenerate islands
+                if length(xs)>2,%no degenerate islands
                     n0=length(pslg.x);
                     pslg.x=[pslg.x,xs];
                     pslg.y=[pslg.y,ys];
@@ -174,7 +183,7 @@ for k=1:N
                     pslg.chains(nc).index=k;
                     pslg.chains(nc).BI=0;
                 end
-        end
+            end
         end
     end % if n>3, ar>
      if mod(k,1000)==0,disp(['Land segments compleate: ',num2str(k/N)]);,end
@@ -184,45 +193,90 @@ end
 eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%restart script from here if needed
+% Intermission
+% restart script from here if needed
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-%clear
-%close all
+
 eval(['load ',FileOutMatlab]);
-%load pslgOSM.mat
-%%Bx=[Blon(1),Blon(2),Blon(2),Blon(1),Blon(1)]
-%%By=[Blat(1),Blat(1),Blat(2),Blat(2),Blat(1)]
+lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
+Blon=lon;
+%Make Bounding rectangle
+Bx=[Blon(1),Blon(2),Blon(2),Blon(1),Blon(1)]
+By=[Blat(1),Blat(1),Blat(2),Blat(2),Blat(1)]
 
-%make outer bound
+nc=length(pslg.chains);
 n=length(pslg.x);
-%pslg.x=[pslg.x,Bx(3:4)];%add northwest and north east box corner nodes
-%pslg.y=[pslg.y,By(3:4)];
-pslg.x=[pslg.x,Bx(2:4)];%add northwest and north east box corner nodes
-pslg.y=[pslg.y,By(2:4)];
 
-nc=length(pslg.chains);%add northwest and north east box corner chains
-pslg.chains(nc+1).nodes=n+1;
-nc=length(pslg.chains);
-pslg.chains(nc+1).nodes=n+2;
-nc=length(pslg.chains);
-pslg.chains(nc+1).nodes=n+3;
-nc=length(pslg.chains);
+%IsInSW=0;IsInSE=1;IsInNE=1;IsInNW=1;
+%IsCornerIn=[IsInSW,IsInSE,IsInNE,IsInNW];
 
-xx =153.0400 %south east corner of Austrilia
-yy = Blat(1) %check that these are the endpoints described for j0, j1!!
-[m0,j0]=min(abs(pslg.x+i*pslg.y-xx-i*yy))
-if isplot,plot(xx,yy,'ro',pslg.x(j0),pslg.y(j0),'bx');end
+%Define ordered corners within mesh from south-west counter clockwise
+% to north-west. 
+CornerX=[min(Blon),max(Blon),max(Blon),min(Blon)];
+CornerY=[min(Blat),min(Blat),max(Blat),max(Blat)];
 
-xx =  288.3143%check that these are the endpoints described for j0, j1!!
-yy =  Blat(1) %south west corner of S. America
-[m1,j1]=min(abs(pslg.x+i*pslg.y-xx-i*yy))
-if isplot,plot(xx,yy,'ro',pslg.x(j1),pslg.y(j1),'bx');end
+
+n=length(pslg.x);
+%add southeast, northwest and northeast box corner nodes
+pslg.x=[pslg.x,CornerX];
+pslg.y=[pslg.y,CornerY];
+nc=length(pslg.chains);
+cc=0;
+for k=1:4
+    if IsCornerIn(k),
+        cc=cc+1;
+        pslg.x(n+cc)=CornerX(k);
+        pslg.y(n+cc)=CornerY(k);
+        pslg.chains(nc+cc).nodes=n+cc;%chain pointing to self
+        pslg.chains(nc+cc).BI=1;%chain on bndy
+    end
+end
+nc=length(pslg.chains);
+n=length(pslg.x);
+
+%find end points of chains on boundary
+xbn=[];
+ybn=[];
+chn=[];nb=[];
+figure;
+for k=1:nc,
+    if pslg.chains(k).BI==1,
+        nb=[nb;pslg.chains(k).nodes(1),pslg.chains(k).nodes(end)];
+        %chn=[chn;[k,k]];
+        chn=[chn;k];
+        xbn=[xbn;[pslg.x( pslg.chains(k).nodes(1)), pslg.x( pslg.chains(k).nodes(end))]];
+        ybn=[ybn;[pslg.y( pslg.chains(k).nodes(1)), pslg.y( pslg.chains(k).nodes(end))]];
+        plot(pslg.x( pslg.chains(k).nodes), pslg.y( pslg.chains(k).nodes));
+        hold on
+    end
+end
+plot(xbn,ybn,'ro')
+
+Deps1=10^-10; %tolerance for finding boundary points
+%traverse south edge from west to east
+[jS,cS]=find(abs(ybn-min(By)) < Deps1);
+xS=[];
+yS=[];
+for k=1:length(jS),
+    xS=[xS,xbn(jS(k),cS(k))];
+    yS=[yS,xbn(jS(k),cS(k))];
+    if cS(k)==1,
+        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(1)
+    else
+        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(end)
+    end
+end
+
+[xx,mm]=mink(xS,2);%Find two western most intersections on South boundary 
+
+j0=nS(mm(1));
+j1=nS(mm(2));
 
 nc=length(pslg.chains);
 pslg.chains(nc+1).nodes=[j0,j1];
+pslg.chains(nc+1).BI=1;
 nc=length(pslg.chains);
-
 for k=1:nc
     if mod(k,100)==0,disp(['Labeling chains compleate: ',num2str(k/nc)]);end
     spx(k)=pslg.x(pslg.chains(k).nodes(1));
@@ -234,7 +288,6 @@ for k=1:nc
 %make boundary order index along boundary for start points
 SN=10.*[max(abs(pslg.x))+max(abs(pslg.y))];%large number to seperate edges
 c=0*spy;
-Deps1=10^-10
 j=find(abs(spy-By(1))<Deps1);
 c(j)=SN+spx(j);
 j=find(abs(spx-Bx(2))<Deps1);
@@ -255,7 +308,6 @@ d(j)=3*SN-epx(j);
 j=find(abs(epx-Bx(4))<Deps1);
 d(j)=4*SN-epy(j);
 
-
 if isplot==1,figure;plot(pslg.x,pslg.y,'k.');hold on;end
 epi=j0;%start at lower left boundary corner
 obc=[nc];%start at lower left boundary corner
@@ -274,8 +326,9 @@ while isempty( find(epi(2:end)==epi(1)) )
     l=j(m)
     epi=[epi,pslg.chains(l).nodes];
     obc=[obc,l];
-  if isplot==1,  plot(pslg.x(epi),pslg.y(epi),'r.-');pause(.001);end
+  if isplot==1,  plot(pslg.x(epi),pslg.y(epi),'r.-');pause(.01);end
 end
+
 j=find(epi(2:end)==epi(1));
 epi=epi(1:(j+1));
 %vvvvvvvvvvv Add fixed grid points on open boundary
@@ -319,6 +372,7 @@ pslg.edges=[pslg.edges;OutterEdges];
 eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot']);
 
 nodelist=[];
+chn=[];
 for k=1:nc
     if mod(k,100)==0,disp(['Finding interior chains compleate: ',num2str(k/nc)]);,end
     if pslg.chains(k).nodes(1)==pslg.chains(k).nodes(end)
@@ -326,11 +380,16 @@ for k=1:nc
         [inpoly,onpoly]=insidepoly( pslg.x(n), pslg.y(n),xob,yob);
         if and(inpoly==1,onpoly==0)
            nodelist=union(nodelist,pslg.chains(k).nodes);
+           chn=[chn,k];
         end
     end
 end
 
-eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot nodelist epi']);
+eval(['save -v7.3 ',FileOutMatlab,' pslg Blon Blat isplot nodelist epi chn']);
+
+pslg.chains=pslg.chains(chn);
+nc=length(pslg.chains);
+pslg.chains(nc+1).nodes=epi;
 
 nodelistXB=union(nodelist,epi);
 pslgb=subpslgFast(pslg,nodelistXB);
