@@ -1,7 +1,6 @@
 
-addpath ../matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
+
+SetPath
 
 %script to handle all post jigsaw mesh editing.
 %Post processing steps are as follows
@@ -21,10 +20,13 @@ addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
 isplot=0;
 outdir='testGSHHS/'
-pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
+%pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
+pslgfile=PSLGfile, %global variable filename set in SetPath
+
 jigsawout='RWPS.F.LLH'
 
 WW3FileOut='RWPS.GSHHS.WW3.msh'
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g=loadmsh([outdir,jigsawout,'.msh']);
 

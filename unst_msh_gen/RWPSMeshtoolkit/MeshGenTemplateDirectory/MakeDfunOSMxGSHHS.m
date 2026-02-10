@@ -12,7 +12,9 @@ isplot=0
 %Coastline Boundary file
 PSLGfile='PSLGboundaryOSMxGSHHS.BOXES.msh'
 %Global Bathymetry file (netcdf)
-GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
+%GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
+%GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
+GlobalTopoFile='../Data/Bathymetry/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
 %Shape file with US coastline 
 uscl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
 

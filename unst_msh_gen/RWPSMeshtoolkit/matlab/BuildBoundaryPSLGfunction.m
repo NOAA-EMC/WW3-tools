@@ -23,6 +23,10 @@ function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNor
 % or :>> ax=axis;lonWest=ax(1),lonEast=ax(2),latSouth=ax(3),latNorth=ax(4)
 % run:>> BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
 
+%Note: One could eliminate the path in the input and use
+%SetPath
+%CoastLineFile='GlobalCoastline.msh'
+
 S=shaperead(CoastLineFile)
 if nargin<6
     FileOutJigsaw=[CoastLineFile(1:end-4),'.PSLG.msh']
@@ -273,16 +277,22 @@ for k=1:nc
     epy(k)=pslg.y(pslg.chains(k).nodes(end));
  end
  
-%make boundary order index along boundary for start points
-SN=10.*[max(abs(pslg.x))+max(abs(pslg.y))];%large number to seperate edges
+
+%The function c runs from lowest on the South West corner of the mesh,
+%increasing moving east along the South bounding line. It then increases
+%moving North along the East Boundary, then increases moving West Along the
+% North Boundary before increaing moving South along the West Boundary.
+
+%make boundary order index along boundary for start points of outer boundary segments
+SN=10.*[max(abs(pslg.x))+max(abs(pslg.y))];%large number to seperate edges S,E, N, W boundaries
 c=0*spy;
-j=find(abs(spy-By(1))<Deps1);
+j=find(abs(spy-By(1))<Deps1);%South Boundary
 c(j)=SN+spx(j);
-j=find(abs(spx-Bx(2))<Deps1);
+j=find(abs(spx-Bx(2))<Deps1);%East Boundary
 c(j)=2*SN+spy(j);
-j=find(abs(spy-By(3))<Deps1);
+j=find(abs(spy-By(3))<Deps1);%North Boundary
 c(j)=3*SN-spx(j);
-j=find(abs(spx-Bx(4))<Deps1);
+j=find(abs(spx-Bx(4))<Deps1);%West Boundary
 c(j)=4*SN-spy(j);
 
 %make boundary order index along boundary for end points

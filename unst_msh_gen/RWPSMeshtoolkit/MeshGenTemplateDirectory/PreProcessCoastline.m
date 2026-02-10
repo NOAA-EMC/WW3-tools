@@ -2,8 +2,8 @@
 
 SetPath
 
-MakeCoastalBoundariesGSHHS
-BuildBoundaryPSLGwGSHHS
+%MakeCoastalBoundariesGSHHS
+%BuildBoundaryPSLGwGSHHS
 MakeDfunGSHHS
 
 

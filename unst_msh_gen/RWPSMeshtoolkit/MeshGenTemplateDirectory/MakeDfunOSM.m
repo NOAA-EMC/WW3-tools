@@ -2,7 +2,8 @@
 % and custom specification of other designated points.  The PSLG intended for creation of the boundary
 % is used as well as a global bathymetry file and US coastline shapefile.
 
-clear
+%clear
+SetPath
 close all
 isplot=0
 
@@ -12,9 +13,13 @@ isplot=0
 %Coastline Boundary file
 PSLGfile='GlobalCoastlineOSM.PSLG.msh'
 %Global Bathymetry file (netcdf)
-GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
+%GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
+%GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
+%GlobalTopoFile='../Data/Bathymetry/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
+GlobalTopoFile, %set as a global variable in SetPath
 %Shape file with US coastline 
-uscl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
+%uscl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
+uscl, %set as a global variable in SetPath
 
 %Output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
