@@ -3,9 +3,6 @@ addpath ../matlab
 addpath ../matlab/jigsaw-matlab
 addpath ../matlab/inpoly
 
-%addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
-%addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
-
 
 % set global variables defining paths to different data sets
 global GlobalTopoFile uscl gcfl gcflGSHHS gcflOSM PSLGfile
@@ -27,4 +24,8 @@ gcfl=gcflGSHHS
 
 %Output file from BuildBoundaryPSLGwGSHHS and input to MakeDfunGSHHS
 PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
+
+%For NWcoastal mesh uncomment the following lines
+%gcfl=gcflOSM
+%PSLGfile='NWcoastal.PSLG.msh'
 
