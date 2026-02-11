@@ -11,8 +11,7 @@ function MakeCoastalBoundariesGSHHS
 %various smoothings of coastlines
 
 
-clear
-
+SetPath
 isplot=0
 deg2km=111.132954
 deg2rad=pi/180
@@ -34,7 +33,7 @@ PacLat=[-20,40];
 
 earth=referenceSphere('Earth')
 
-gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/GlobalCoast/GSHHS_shp/f/GSHHS_f_L1.shp'
+%gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/GlobalCoast/GSHHS_shp/f/GSHHS_f_L1.shp'
 S = shaperead(gcfl);
 N=length(S);
 isisland=zeros(N,1);
@@ -138,5 +137,5 @@ save -v7.3 GlobalCoastlineGSHHS.mat S
 S=rmfield(S,'X0')
 S=rmfield(S,'Y0')
 
-BoundaryShape2msh(S,'GlobalCoastlineGSHHS.msh');
+%BoundaryShape2msh(S,'GlobalCoastlineGSHHS.msh');
 shapewrite(S, 'GlobalCoastlineGSHHS.shp');

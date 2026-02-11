@@ -9,8 +9,7 @@ function MakeCoastalBoundariesOSM
 %Coastline is smoothed and subsampled to usefull scale for mesh generation in RWPS
 %various smoothings of coastlines
 
-
-clear
+SetPath
 isplot=0
 deg2km=111.132954
 deg2rad=pi/180
@@ -31,7 +30,7 @@ PacLat=[-20,40];
 
 earth=referenceSphere('Earth')
 
-gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/openstreetmap_land/land_polygons.shp'
+%gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/openstreetmap_land/land_polygons.shp'
 
 S = shaperead(gcfl);
 N=length(S);
@@ -70,6 +69,7 @@ n=0;
 
 for k=1:N
     x=S(k).X(1:end-2);%unique* points
+    x=LonCon(x);
     y=S(k).Y(1:end-2);
     zz=x+i*y;
     [zzu,j]=unique(zz);%find unique points before end
@@ -81,7 +81,6 @@ for k=1:N
     x=[x,x(1)];%close loop
     y=[y,y(1)];
     [xs,ys]=SmoothSubSampleCoastlineFast(x,y,50.,10);%500 m coastline
-
 
     zs=xs+i*ys;
     dz=abs(zs(2:end)-zs(1:end-1));
@@ -171,5 +170,5 @@ save -v7.3 GlobalCoastlineOSM.mat S
 S=rmfield(S,'X0')
 S=rmfield(S,'Y0')
 
-BoundaryShape2msh(S,'GlobalCoastlineOSM.msh');
+%BoundaryShape2msh(S,'GlobalCoastlineOSM.msh');
 shapewrite(S, 'GlobalCoastlineOSM.shp');

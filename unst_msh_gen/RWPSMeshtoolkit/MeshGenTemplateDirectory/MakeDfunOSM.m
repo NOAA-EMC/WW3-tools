@@ -156,17 +156,16 @@ xus=[xus,coord(2)];yus=[yus,coord(1)];
  
 Blon=[129.91 10.71];
 Blat=[-30.42 79.99];
-lon=Blon;j=find(lon<90);lon(j)=180+(lon(j)+180);
-Blon=lon;
-xusp=xus;j=find(xus>0);xusp(j)=xus(j)-360;
+Blon=LonCon(Blon)
 
+xusp=LonCon(xus);
 if isplot,
     clf;
     plot(xusp(1:n0)    ,yus(1:n0),'k.',...
      xusp(n0+1:n1) ,yus(n0+1:n1),'co', ...
      xusp(n1+1:end),yus(n1+1:end),'rx');
     hold on
-    BoundingBox(Blon-360,Blat,'r');
+    BoundingBox(Blon,Blat,'r');
     grid on;
     title('Updated RWPS high res target points');
     kprint('RWPSHighResPointsX.jpg');
@@ -179,7 +178,8 @@ lat = topo.point.coord{:,2};
 %p=loadmsh('PSLGboundaryOSMxGSHHS1km.msh');
 p=loadmsh(PSLGfile);
 
-p.x=p.point.coord(:,1)-360;
+%p.x=p.point.coord(:,1)-360;
+p.x=LonCon(p.x);
 p.y=p.point.coord(:,2);
 p.edges=p.edge2.index(:,1:2);
 plot(p.x,p.y,'g.');
@@ -192,8 +192,9 @@ j=find(p.y<max(p.y)-dx);p=subpslgFast(p,j);
 j=find(p.y>min(p.y)+dx);p=subpslgFast(p,j);
 plot(p.x,p.y,'y.');
 
-j=find(xus>90);
-xus(j)=xus(j)-360;
+%j=find(xus>90);
+%xus(j)=xus(j)-360;
+xus=LonCon(xus)
 
 %This loop Takes a few min:Find PSLG points near us coastline
 deg2km=111.132954
@@ -279,7 +280,7 @@ topo=BoxSmoothTopo(GlobalTopoFile,2);
 Dfun=topo;
  
 lon=Dfun.point.coord{:,1};
-j=find(lon<90);lon(j)=180+(lon(j)+180);
+j=find(lon<90);lon(j)=lon(j)+360;
 j0=setdiff(1:length(lon),j);j0=j0(:);
 lon=lon([j0(:);j(:)]);
 D1=[D(:,j0),D(:,j)];
@@ -300,7 +301,7 @@ topo=BoxSmoothTopo(GlobalTopoFile,2);
 
 D=topo.value;
 lon=topo.point.coord{:,1};
-j=find(lon<90);lon(j)=180+(lon(j)+180);
+j=find(lon<90);lon(j)=lon(j)+360;
 j0=setdiff(1:length(lon),j);j0=j0(:);
 lon=lon([j0(:);j(:)]);
 D1=[D(:,j0),D(:,j)];

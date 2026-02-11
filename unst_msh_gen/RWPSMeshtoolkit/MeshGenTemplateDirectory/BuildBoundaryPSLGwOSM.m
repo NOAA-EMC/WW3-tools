@@ -48,7 +48,7 @@ N=length(S);
 S=S(j);% sort to descending in length
 ns=ns(j);% sort to descending in length
 
-lon=Blon;j=find(lon<90);lon(j)=180+(lon(j)+180);
+lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
 Blon=lon;
 
 %Make Bounding rectangle

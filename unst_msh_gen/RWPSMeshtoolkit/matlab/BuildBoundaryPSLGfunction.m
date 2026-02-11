@@ -1,4 +1,4 @@
-function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth,FileOutJigsaw)
+function BuildBoundaryPSLGfunctionLC(CoastLineFile,lonWest,lonEast,latSouth,latNorth,FileOutJigsaw)
 % BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth,FileOutJigsaw[optional])
 % Build a boundary Planer Straight Line Graph (PSLG) from a coastline .msh file and 
 % Bounded oriented lat lon rectangle.
@@ -23,6 +23,8 @@ function BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNor
 % or :>> ax=axis;lonWest=ax(1),lonEast=ax(2),latSouth=ax(3),latNorth=ax(4)
 % run:>> BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
 
+% >>west=-127,east=-121,south=45.5,north=50
+% >>BuildBoundaryPSLGfunction('GlobalCoastlineOSM.shp',west,east,south,north)
 %Note: One could eliminate the path in the input and use
 %SetPath
 %CoastLineFile='GlobalCoastline.msh'
@@ -44,14 +46,18 @@ for k=1:N
     lon=S(k).X(1:end-1);%remove trailing nan 
     lat=S(k).Y(1:end-1);
     ns(k)=length(lon);
-    jWest=find(lon<90);
-    if(length(jWest)==ns(k));
-        S(k).X=[lon+360,NaN];
+    
+    lonp=LonCon(lon);
+    mvp=sum(lon~=lonp);%find how many points change due to LonCon in this segment
+    if(mvp==ns(k));% if all move then just move boundary
+        S(k).X=[LonCon(lon),NaN];
     end
-    if and(0<length(jWest),ns(k)>length(jWest)),%make translated copy
+    if and(mvp>0,mvp<ns(k)),%Other wise make translated copy
+        j=find(lonp~=lon);
+        shift=lonp(j(1))-lon(j(1));
         display(['duplicating coastal segment: ',int2str(k), ', nseg=',int2str(ns(k))])
         N1=N1+1;
-        S(N1).X=[lon+360,NaN];
+        S(N1).X=[lon+shift,NaN];
         S(N1).Y=[lat,NaN];
         ns(N1)=length(lon);
     end
@@ -61,8 +67,7 @@ N=length(S);
 S=S(j);% sort to descending in length
 ns=ns(j);% sort to descending in length
 
-lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
-Blon=lon;
+Blon=LonCon(Blon)
 
 %Define ordered corners within mesh from south-west counter clockwise
 % to north-west. 
@@ -74,14 +79,14 @@ Bx=[CornerX,CornerX(1)];
 By=[CornerY,CornerY(1)];
 clear pslg
 
-
 N=length(S);
 IsCornerIn=ones(1,4);
 
 for k=1:N
     x=S(k).X(1:end);% remove trailing nan (-1) and endpoint==startpoint (-2)
     y=S(k).Y(1:end);
-    [isin,ison]=insidepoly(CornerX,CornerY,x,y) ;
+%    [isin,ison]=insidepoly(CornerX,CornerY,x,y) ;
+    isin=insidepoly(CornerX,CornerY,x,y)' ;
     IsCornerIn=IsCornerIn-isin;
     if mod(k,1000)==0,disp(['Checking boundary corners for land part compleate: ',num2str(k/N)]);,end
 end
@@ -211,8 +216,9 @@ nc=length(pslg.chains);
 n=length(pslg.x);
 
 %add southeast, northwest and northeast box corner nodes
-pslg.x=[pslg.x,CornerX];
-pslg.y=[pslg.y,CornerY];
+%pslg.x=[pslg.x,CornerX];
+%pslg.y=[pslg.y,CornerY];
+
 nc=length(pslg.chains);
 cc=0;
 for k=1:4
@@ -254,9 +260,9 @@ for k=1:length(jS),
     xS=[xS,xbn(jS(k),cS(k))];
     yS=[yS,xbn(jS(k),cS(k))];
     if cS(k)==1,
-        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(1)
+        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(1);
     else
-        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(end)
+        nS(k)=pslg.chains( chn(jS(k)) ) .nodes(end);
     end
 end
 
@@ -375,8 +381,10 @@ for k=1:nc
     if mod(k,100)==0,disp(['Finding interior chains compleate: ',num2str(k/nc)]);,end
     if pslg.chains(k).nodes(1)==pslg.chains(k).nodes(end)
         n=pslg.chains(k).nodes(1);
-        [inpoly,onpoly]=insidepoly( pslg.x(n), pslg.y(n),xob,yob);
-        if and(inpoly==1,onpoly==0)
+ %       [inpoly,onpoly]=insidepoly( pslg.x(n), pslg.y(n),xob,yob);
+ %       if and(inpoly==1,onpoly==0)
+        inpoly=insidepoly( pslg.x(n), pslg.y(n),xob,yob);
+        if inpoly==1,
            nodelist=union(nodelist,pslg.chains(k).nodes);
            chn=[chn,k];
         end

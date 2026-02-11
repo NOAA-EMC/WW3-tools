@@ -26,6 +26,10 @@ t0=now;
 LambdaBox=10;%only use points within 5 degrees lat for 10x+ speed up
 latP=latP(:);
 lonP=lonP(:);
+
+lonP=LonCon(lonP);
+lon=LonCon(lon);
+
 for j=1:ny % this loop takes ~16 hours
    t00=now;
    j/ny

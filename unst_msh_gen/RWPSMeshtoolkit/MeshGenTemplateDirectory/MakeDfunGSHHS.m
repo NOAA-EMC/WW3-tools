@@ -154,7 +154,7 @@ xus=[xus,coord(2)];yus=[yus,coord(1)];
  
 Blon=[129.91 10.71];
 Blat=[-30.42 79.99];
-lon=Blon;j=find(lon<90);lon(j)=180+(lon(j)+180);
+lon=Blon;j=find(lon<90);lon(j)=lon(j)+360;
 Blon=lon;
 xusp=xus;j=find(xus>0);xusp(j)=xus(j)-360;
 
@@ -277,7 +277,7 @@ topo=BoxSmoothTopo(GlobalTopoFile,2);
 Dfun=topo;
  
 lon=Dfun.point.coord{:,1};
-j=find(lon<90);lon(j)=180+(lon(j)+180);
+j=find(lon<90);lon(j)=lon(j)+360;
 j0=setdiff(1:length(lon),j);j0=j0(:);
 lon=lon([j0(:);j(:)]);
 D1=[D(:,j0),D(:,j)];
@@ -298,7 +298,7 @@ topo=BoxSmoothTopo(GlobalTopoFile,2);
 
 D=topo.value;
 lon=topo.point.coord{:,1};
-j=find(lon<90);lon(j)=180+(lon(j)+180);
+j=find(lon<90);lon(j)=lon(j)+360;
 j0=setdiff(1:length(lon),j);j0=j0(:);
 lon=lon([j0(:);j(:)]);
 D1=[D(:,j0),D(:,j)];

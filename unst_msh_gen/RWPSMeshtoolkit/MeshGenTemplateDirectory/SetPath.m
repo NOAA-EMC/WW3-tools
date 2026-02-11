@@ -1,7 +1,10 @@
 
 addpath ../matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
+addpath ../matlab/jigsaw-matlab
+addpath ../matlab/inpoly
+
+%addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
+%addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 
 
 % set global variables defining paths to different data sets
