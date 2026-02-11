@@ -69,8 +69,13 @@ n=0;
 
 for k=1:N
     x=S(k).X(1:end-2);%unique* points
-    x=LonCon(x);
     y=S(k).Y(1:end-2);
+%deal with "messy" OpenStreetMap coasts
+    jb=find(isnan(x+y));
+    if ~isempty(jb)
+        x=x(1:[min(jb)-1]);
+        y=y(1:[min(jb)-1]);%truncate coastline at first discontinuity
+    end
     zz=x+i*y;
     [zzu,j]=unique(zz);%find unique points before end
     j=sort(j);
@@ -78,28 +83,32 @@ for k=1:N
         x=x(j);
         y=y(j);
     end
-    x=[x,x(1)];%close loop
-    y=[y,y(1)];
-    [xs,ys]=SmoothSubSampleCoastlineFast(x,y,50.,10);%500 m coastline
 
-    zs=xs+i*ys;
-    dz=abs(zs(2:end)-zs(1:end-1));
-    j=find(dz>1);
-    if length(j)>0
-        ji=1:j(1);
-        xs=xs(ji);ys=ys(ji);
-    end
+    if length(x)>2
+        x=[x,x(1)];%close loop
+        y=[y,y(1)];
+        [xs,ys]=SmoothSubSampleCoastlineFast(x,y,50.,10);%500 m coastline
+
+        zs=xs+i*ys;
+        dz=abs(zs(2:end)-zs(1:end-1));
+        j=find(dz>1);
+        if length(j)>0
+            ji=1:j(1);
+            xs=xs(ji);ys=ys(ji);
+        end
     
-    if length(xs)>2,
-        n=n+1;
-        S0(n).X=[xs(:);NaN]';
-        S0(n).Y=[ys(:);NaN]';
-        S0(n).X0=S(n).X;
-        S0(n).Y0=S(n).Y;
-        S0(n).area = areaint(ys,xs,earth) / 10^6;
-        S0(n).perim=sum( deg2km*abs(  cos(deg2rad*mean(ys))*(  xs(2:end)-xs(1:end-1) ) + i*(ys(2:end)-ys(1:end-1)) ) );
-        S0(n).Geometry=S(k).Geometry;
+        if length(xs)>2,
+            n=n+1;
+            S0(n).X=[xs(:);NaN]';
+            S0(n).Y=[ys(:);NaN]';
+            S0(n).X0=S(n).X;
+            S0(n).Y0=S(n).Y;
+            S0(n).area = areaint(ys,xs,earth) / 10^6;
+            S0(n).perim=sum( deg2km*abs(  cos(deg2rad*mean(ys))*(  xs(2:end)-xs(1:end-1) ) + i*(ys(2:end)-ys(1:end-1)) ) );
+            S0(n).Geometry=S(k).Geometry;
+        end
     end
+
     if mod(k,1000)==0,
         disp(['progress a:', num2str(  sum(ns(1:k)) / sum(ns) ), ', progress b:', num2str(  k/N  )]);
     end

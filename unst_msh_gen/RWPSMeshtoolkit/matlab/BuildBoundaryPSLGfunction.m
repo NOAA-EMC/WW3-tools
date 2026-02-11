@@ -31,7 +31,9 @@ function BuildBoundaryPSLGfunctionLC(CoastLineFile,lonWest,lonEast,latSouth,latN
 
 S=shaperead(CoastLineFile)
 if nargin<6
-    FileOutJigsaw=[CoastLineFile(1:end-4),'.PSLG.msh']
+    SetPath
+    FileOutJigsaw=PSLGfile
+    %FileOutJigsaw=[CoastLineFile(1:end-4),'.PSLG.msh']
 end
 FileOutMatlab=[CoastLineFile(1:end-4),'.PSLGtmp.mat']
 isplot=0;

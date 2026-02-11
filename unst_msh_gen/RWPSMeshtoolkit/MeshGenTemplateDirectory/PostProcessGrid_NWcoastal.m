@@ -21,7 +21,7 @@ SetPath
 
 SetPath
 isplot=0;
-outdir='NWcoastral/'
+outdir='NWcoastal/'
 pslgfile=PSLGfile, %global variable filename set in SetPath
 
 jigsawout='RWPS.F.LLH'

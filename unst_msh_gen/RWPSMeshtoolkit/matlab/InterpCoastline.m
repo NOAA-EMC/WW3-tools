@@ -28,7 +28,10 @@ d=sqrt(  (dx.*lon2m).^2 + (dy.*lat2m).^2   );
 d=[0,cumsum(d)];%distance
 di=d(1):dsmooth:d(end);
 if itz,z(j)=NaN;end
-zi=interp1(d,z,di);
+%zi=interp1(d,z,di);
+[du,ju]=unique(d);
+ju=sort(ju);
+zi=interp1(d(ju),z(ju),di);%degenerate cases in OSM Antarctica
 if isisland
     zi=[zi,zi(1)];
 end
