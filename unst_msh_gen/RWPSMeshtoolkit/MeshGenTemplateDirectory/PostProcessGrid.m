@@ -42,16 +42,15 @@ RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'
 %g=loadmshWW3('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');
 g=loadmshWW3( [outdir,jigsawout,'.NSP.WW3.msh']);
 g.x=LonCon(g.x);
-LakeDir='/mnt/sda/keston/RWPSLakes/'
-%LakeDir='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/'
+
+%LakeDir='/mnt/sda/keston/RWPSLakes/'
+LakeDir='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/'
+
 gS=loadmshWW3([LakeDir,'Sebago.NWPS.WW3.msh']);
-%gS.x=gS.x-360;
 gS.x=LonCon(gS.x);
 gW=loadmshWW3([LakeDir,'Winnipesaukee.NWPS.WW3.msh'])
-%gW.x=gW.x-360;
 gW.x=LonCon(gW.x);
 gO=loadmshWW3([LakeDir,'Okeechobee.NWPS.WW3.msh'])
-%gO.x=gO.x-360;
 gO.x=LonCon(gO.x);
 
 g=CombineMesh(g,gO);
