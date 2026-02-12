@@ -127,7 +127,7 @@ g.y(jb(js))=max(Blat);
 if isplot,plot(g.x(jb(js)),g.y(jb(js)),'r.');end
 
 %dx=degree latitude delta to discriminate land points near boundary from open ocean boundary
-dx=.05;
+dx=.005;
 js=find(and( g.x(jb)>min(Blon),g.x(jb)<min(Blon)+dx  ));
 g.x(jb(js))=min(Blon);
 if isplot,plot(g.x(jb(js)),g.y(jb(js)),'r.');end
