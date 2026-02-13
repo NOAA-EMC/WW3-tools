@@ -16,7 +16,6 @@ satellites=['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A', 'SENTINEL3B', 'SENTINEL
 model='retrov17_01' # now only support model of GFSv16 and retrov17_01
 tz_list = ["00","06","12","18"]
 grid = "global.0p25"
-MODEL_DATA_PATTERN_TEMPLATE = "gfs.t{tz}z.{grid}.f*.grib2"
 
 # Slurm settings
 SBATCH_ACCOUNT   = "marine-cpu"
@@ -135,8 +134,10 @@ for cdate in cdates:
     for tz in tz_list:
         if model == "GFSv16":
             model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "wave", "gridded")
+            MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
         elif model == "retrov17_01":
             model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "products", "wave", "gridded","global.0p25")
+            MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
         else:
             print(f"ERROR: Unsupported Model.", file=sys.stderr)
             sys.exit(1)

@@ -32,7 +32,7 @@ SET_THREAD_ENVS       = True # Set OMP_NUM_THREADS, MKL_NUM_THREADS, etc.
 # ===============================================
 
 ROOTDIR = os.path.join(WORKDIR, "processsatdata", "jobsubs")    # output jobcards directory
-THISDIR = os.path.join(WORKDIR, "WW3-tools", "src")             # source script directory
+THISDIR = os.path.join(WORKDIR, "WW3-tools", "parm")            # config directory
 PATHTOWW3TOOLS = os.path.join(WORKDIR, "WW3-tools", "ww3tools") # ww3tools directory (ProcSat_Altimeter.py)
 OUT_BASE = os.path.join(WORKDIR, "processsatdata", "out")       # output directory for processed data (origional defined in .yaml)
 
