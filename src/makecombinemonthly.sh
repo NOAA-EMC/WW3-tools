@@ -9,19 +9,23 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=64G
 
+set -euo pipefail
+
 # ================= USER'S INPUT =======================
 MACHINE="ursa"
+WORKDIR="/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools"
 
-satoutdir=/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/out    # processed satellite data need to be combined
-basedir=/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/combineoutmonthly # output combined data
+satoutdir="/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/out"    # if satoutdir="", it will use default directory as ${WORKDIR}/processsatdata/out; or user can input directory
 
-SATS=('SENTINEL6A')
+SATS=("JASON3" "CRYOSAT2")
 
-months=("08"       "09"  "10"    "03"   "04"    "05"   "06"   "07"   "08"   "09"   "10"   "11"   "12"   "01"   "02"   "03"   "04"   "05")
-nextmonths=("08"   "09"  "10"    "04"   "05"    "06"   "07"   "08"   "09"   "10"   "11"   "12"   "01"   "02"   "03"   "04"   "05"   "06")
-years=("2022"      "2022" "2022" "2024" "2024"  "2024" "2024" "2024" "2024" "2024" "2024" "2024" "2024" "2025" "2025" "2025" "2025" "2025")
-nextyears=("2022"  "2022" "2022" "2024" "2024"  "2024" "2024" "2024" "2024" "2024" "2024" "2024" "2025" "2025" "2025" "2025" "2025" "2025")
+NTHREADS=8 # Threads for CDO (usually match cpus-per-task)
 # ======================================================
+basedir="${WORKDIR}/processsatdata/combineoutmonthly"
+
+if [[ -z "${satoutdir}" ]]; then
+    satoutdir="${WORKDIR}/processsatdata/out"
+fi
 
 if [[ "$MACHINE" == "ursa" ]]; then
     module use /contrib/spack-stack/spack-stack-1.9.2/envs/ue-oneapi-2024.2.1/install/modulefiles/Core
@@ -29,14 +33,12 @@ if [[ "$MACHINE" == "ursa" ]]; then
     module load stack-oneapi/2024.2.1
     module load stack-intel-oneapi-mpi/2021.13
     module load cdo/2.4.4
-
 elif [[ "$MACHINE" == "hercules" ]]; then
     module use /apps/contrib/spack-stack/spack-stack-1.9.2/envs/ue-oneapi-2024.1.0/install/modulefiles/Core
     module use /apps/contrib/spack-stack/spack-stack-1.9.2/envs/ue-oneapi-2024.1.0/install/modulefiles/intel-oneapi-mpi/2021.13-sqiixt7/gcc/13.3.0
     module load stack-oneapi/2024.2.1
     module load stack-intel-oneapi-mpi/2021.13
     module load cdo/2.4.4
-
 else
     echo "ERROR: No module configuration defined for machine $MACHINE"
     exit 1
@@ -52,10 +54,7 @@ fi
 
 if [[ ! -d "$basedir" ]]; then
     echo "Output directory does not exist → creating: $basedir"
-    mkdir -p "$basedir" || {
-        echo "ERROR: Failed to create basedir: $basedir"
-        exit 1
-    }
+    mkdir -p "$basedir"
 fi
 
 for SAT in "${SATS[@]}"; do
@@ -65,20 +64,53 @@ for SAT in "${SATS[@]}"; do
   echo "Processing satellite: ${SAT}"
   echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
-  cd ${basedir}
-  for i in ${!months[@]}; do
-    month=${months[$i]}
-    year=${years[$i]}
-    nextmonth=${nextmonths[$i]}
-    nextyear=${nextyears[$i]}
-    date=${year}${month}
-    mkdir ${date}${SAT}
-    cd ${date}${SAT}
-    cp ${satoutdir}/${SAT}/AltimeterAlongTrack_ww3tools_${SAT}_${date}*.nc .
-    cp ${satoutdir}/${SAT}/AltimeterAlongTrack_ww3tools_${SAT}_${nextyear}${nextmonth}01*.nc .
-    cdo mergetime AltimeterAlongTrack_ww3tools_${SAT}_*.nc Altimeter_${SAT}_${date}.nc
-    mv Altimeter_${SAT}_${date}.nc ${basedir}/
-    cd ${basedir}
-  done
+  in_dir="${satoutdir}/${SAT}"
+  if [[ ! -d "$in_dir" ]]; then
+    echo "WARNING: input directory not found for $SAT: $in_dir  -> skip"
+    continue
+  fi
+
+  shopt -s nullglob
+  all_files=( "${in_dir}/AltimeterAlongTrack_ww3tools_${SAT}_"*.nc )
+  shopt -u nullglob
+
+  if (( ${#all_files[@]} == 0 )); then
+    echo "WARNING: no input files found for $SAT in $in_dir"
+    continue
+  fi
+
+  # Extract unique YYYYMM from filenames
+  months=$(
+    printf "%s\n" "${all_files[@]}" \
+      | sed -E 's|.*_([0-9]{6})[0-9]{4}to.*|\1|' \
+      | sort -u
+  )
+
+  # Merge each month
+  while read -r ym; do
+    [[ -z "$ym" ]] && continue
+
+    shopt -s nullglob
+    month_files=( "${in_dir}/AltimeterAlongTrack_ww3tools_${SAT}_${ym}"*.nc )
+    shopt -u nullglob
+
+    if (( ${#month_files[@]} == 0 )); then
+      echo "  $ym: no files -> skip"
+      continue
+    fi
+
+    # Deterministic order
+    IFS=$'\n' month_files_sorted=($(printf "%s\n" "${month_files[@]}" | sort))
+    unset IFS
+
+    outfile="${basedir}/Altimeter_${SAT}_${ym}.nc"
+    echo "  $ym -> $(basename "$outfile") (nfiles=${#month_files_sorted[@]})"
+
+    # Combine along time dimension (correct for along-track data)
+    cdo -O -P "${NTHREADS}" mergetime "${month_files_sorted[@]}" "$outfile"
+
+  done <<< "$months"
 done
+
+echo ""
 echo "All processing completed."
