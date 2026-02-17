@@ -13,4 +13,4 @@
 module load matlab/R2024b  # Specify the version you need
 
 # Run your MATLAB script without a graphical interface
-matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline.m'); exit;"
+matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline_NWCoastalMesh.m'); exit;"

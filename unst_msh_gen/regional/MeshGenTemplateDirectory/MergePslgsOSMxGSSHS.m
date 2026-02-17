@@ -1,7 +1,9 @@
 
 
-OSMmsh='./PSLGboundary1kmP_NewOrleans.OSM.msh'
-GSHHGmsh='./PSLGboundary1kmP_NewOrleansB.msh'
+
+SetPath
+OSMmsh='RWPS.PSLG.NewOrleans.OSM.msh'
+GSHHGmsh='RWPS.PSLG.NewOrleans.GSHHS.msh'
 p0=loadmsh(OSMmsh)
 p1=loadmsh(GSHHGmsh)
 
@@ -60,8 +62,4 @@ save pslgOSMxGSHHS1kmBOXES.mat pslg
 
 geom=pslg2geom(pslg)
 
-savemsh('PSLGboundaryOSMxGSHHS1kmBOXES.msh',geom)
-
-hold on;
-plot(p.x,p.y,'k.');
-title('red-gshhs, blue- OSM, black- final')
+savemsh(PSLGfile,geom)

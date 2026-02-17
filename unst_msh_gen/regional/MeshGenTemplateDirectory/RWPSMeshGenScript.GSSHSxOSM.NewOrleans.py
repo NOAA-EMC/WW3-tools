@@ -10,36 +10,15 @@ import jigsawpy
 from scipy.interpolate import RegularGridInterpolator
 
 #-------------------Input Files----------------------------------------
-
-"""
-#OSM coastline
-PSLGFile="GlobalCoastlineOSM.PSLG.msh"
-DistanceToCoastFile="DFun.GlobalCoastlineOSM.PSLG.msh"
-TopographyFile="Topo.DFun.GlobalCoastlineOSM.PSLG.msh"
-"""
-
-#GSSH coastline 
-#jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
-PSLGFile="GlobalCoastlineGSHHS.PSLG.msh"
-#jigsaw gridded .msh format Distance to taget poings
-DistanceToCoastFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
-#jigsaw gridded .msh format topography on same grid as distance
-TopographyFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
-
-"""
 # GSHHS except identified problem spots (i.e. American Samoa) where OSM is used 
 #jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
-PSLGFile="PSLGboundaryOSMxGSHHS.BOXES.msh"
+PSLGFile="RWPS.GSHHSxOSM.NewOrleans.PSLG.msh"
 #jigsaw gridded .msh format Distance to taget poings
-DistanceToCoastFile="DFun.PSLGboundaryOSMxGSHHS.BOXES.msh"
+DistanceToCoastFile="DFun.RWPS.GSHHSxOSM.NewOrleans.PSLG.msh"
 #jigsaw gridded .msh format topography on same grid as distance
-TopographyFile="Topo.DFun.PSLGboundaryOSMxGSHHS.BOXES.msh"
-"""
-
+TopographyFile="Topo.DFun.RWPS.GSHHSxOSM.NewOrleans.PSLG.msh"
 # directory to write output files to
-OutDir='testGSHHS/'
-
-ww3_mesh_file='RWPS.GSHHS.WW3.msh'
+OutDir='RWPS.GSHHSxOSM.NewOrleans/'
 
 #-------------------Paramter Inputs------------------------------------
 #parameters for specifying resolution
@@ -50,7 +29,6 @@ Smin=0.5
 Smax=10.
 
 #-------------------Main Program---------------------------------------
-
 # Create the output directory------------------------------------------
 try:
     os.mkdir(OutDir)

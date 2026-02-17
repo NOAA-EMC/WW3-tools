@@ -1,5 +1,6 @@
 
 addpath ../matlab
+addpath ../matlab/graphics
 addpath ../matlab/jigsaw-matlab
 addpath ../matlab/inpoly
 
@@ -20,12 +21,12 @@ gcflGSHHS='../Data/GSHHS_shp/f/GSHHS_f_L1.shp'
 gcflOSM='../Data/openstreetmap_land/land-polygons-complete-4326/land_polygons.shp'
 
 %which Global coverage coastline file  is to be used
-gcfl=gcflGSHHS
+%gcfl=gcflGSHHS
 
 %Output file from BuildBoundaryPSLGwGSHHS and input to MakeDfunGSHHS
-PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
+%PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
 
 %For NWcoastal mesh uncomment the following lines
-%gcfl=gcflOSM
-%PSLGfile='NWcoastal.PSLG.msh'
+gcfl=gcflOSM
+PSLGfile='NWcoastal.PSLG.msh'
 

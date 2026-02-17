@@ -5,6 +5,9 @@ function lon=LonCon(lon)
 % dateline etc.
 
  
-%lon=lon;
-j=find(lon<90);lon(j)=lon(j)+360; % RWPS
-%j=find(lon>180);lon(j)=lon(j)-360;%
+lon=lon;
+
+%For RWPS meshes spanning 180W,180E but not 90E
+% use below:
+%j=find(lon<90);lon(j)=lon(j)+360; % RWPS
+

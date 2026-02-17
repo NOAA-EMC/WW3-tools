@@ -24,10 +24,10 @@ OutDir='NWcoastal/'
 
 #-------------------Paramter Inputs------------------------------------
 #parameters for specifying resolution
-d0=10000.
+d0=20000.
 d1=320000. - d0
-beta=1000.
-Smin=0.5 
+beta=3000.
+Smin=0.25 
 Smax=10.
 
 #-------------------Main Program---------------------------------------
