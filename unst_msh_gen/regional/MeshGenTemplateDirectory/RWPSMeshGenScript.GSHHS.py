@@ -11,35 +11,16 @@ from scipy.interpolate import RegularGridInterpolator
 
 #-------------------Input Files----------------------------------------
 
-"""
-#OSM coastline
-PSLGFile="GlobalCoastlineOSM.PSLG.msh"
-DistanceToCoastFile="DFun.GlobalCoastlineOSM.PSLG.msh"
-TopographyFile="Topo.DFun.GlobalCoastlineOSM.PSLG.msh"
-"""
-
 #GSSH coastline 
 #jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
 PSLGFile="GlobalCoastlineGSHHS.PSLG.msh"
 #jigsaw gridded .msh format Distance to taget poings
 DistanceToCoastFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
 #jigsaw gridded .msh format topography on same grid as distance
-TopographyFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
-
-"""
-# GSHHS except identified problem spots (i.e. American Samoa) where OSM is used 
-#jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
-PSLGFile="PSLGboundaryOSMxGSHHS.BOXES.msh"
-#jigsaw gridded .msh format Distance to taget poings
-DistanceToCoastFile="DFun.PSLGboundaryOSMxGSHHS.BOXES.msh"
-#jigsaw gridded .msh format topography on same grid as distance
-TopographyFile="Topo.DFun.PSLGboundaryOSMxGSHHS.BOXES.msh"
-"""
+TopographyFile="Topo.DFun.GlobalCoastlineGSHHS.PSLG.msh"
 
 # directory to write output files to
 OutDir='testRWPS.GSHHS/'
-
-ww3_mesh_file='RWPS.GSHHS.WW3.msh'
 
 #-------------------Paramter Inputs------------------------------------
 #parameters for specifying resolution

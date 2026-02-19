@@ -1,7 +1,6 @@
 
-addpath ../matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
+
+SetPath
 
 %script to handle all post jigsaw mesh editing.
 %Post processing steps are as follows
@@ -19,10 +18,16 @@ addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 %       this is the mesh to run WW3 on.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
+
+SetPath
 isplot=0;
-outdir='RWPS.OSMxGSHHS.NewOrl/'
-pslgfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS1kmBOXES.msh'
+outdir='testRWPS.GSHHS/'
+%pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
+pslgfile=PSLGfile, %global variable filename set in SetPath
+
 jigsawout='RWPS.F.LLH'
+
+WW3FileOut='RWPS.GSHHS.WW3.msh'
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g=loadmsh([outdir,jigsawout,'.msh']);
@@ -36,13 +41,17 @@ RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'
 %Add Lakes to Mesh
 %g=loadmshWW3('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');
 g=loadmshWW3( [outdir,jigsawout,'.NSP.WW3.msh']);
+g.x=LonCon(g.x);
 
-gS=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Sebago.NWPS.WW3.msh');
-gS.x=gS.x-360;
-gW=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Winnipesaukee.NWPS.WW3.msh')
-gW.x=gW.x-360;
-gO=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Okeechobee.NWPS.WW3.msh')
-gO.x=gO.x-360;
+%LakeDir='/mnt/sda/keston/RWPSLakes/'
+LakeDir='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/'
+
+gS=loadmshWW3([LakeDir,'Sebago.NWPS.WW3.msh']);
+gS.x=LonCon(gS.x);
+gW=loadmshWW3([LakeDir,'Winnipesaukee.NWPS.WW3.msh'])
+gW.x=LonCon(gW.x);
+gO=loadmshWW3([LakeDir,'Okeechobee.NWPS.WW3.msh'])
+gO.x=LonCon(gO.x);
 
 g=CombineMesh(g,gO);
 g=CombineMesh(g,gS);
@@ -71,7 +80,8 @@ p=loadmsh(pslgfile);
 p.x=p.point.coord(:,1);
 p.y=p.point.coord(:,2);
 p.edges=p.edge2.index(:,1:2);
-p.x=p.x-360;
+%p.x=p.x-360;
+p.x=LonCon(p.x);
 x=g.x;y=g.y;z=g.z;e=g.e;
 
 if isplot,
@@ -113,8 +123,8 @@ g=RemoveSandPointsWW3(g,'RWPS.WW3a1.lakes.msh')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (E) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 p=loadmsh(pslgfile);
-p.x=p.point.coord(:,1);p.x=p.x-360;p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
-
+p.x=p.point.coord(:,1);p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
+p.x=LonCon(p.x);
 x=g.x;y=g.y;z=g.z;e=g.e;
 if isplot,
     LS=ComputeLengthScale_wgs84_MEL(x,y,e);LSn=Ele2Nodes(x,y,e,LS);
@@ -126,7 +136,9 @@ if isplot,
 end
 
 p=loadmsh(pslgfile);
-p.x=p.point.coord(:,1);p.x=p.x-360;p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
+%p.x=p.point.coord(:,1);p.x=p.x-360;p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
+p.x=p.point.coord(:,1);p.y=p.point.coord(:,2);p.edges=p.edge2.index(:,1:2);
+p.x=LonCon(p.x);
 
 g0=g;
 gnew=g
@@ -216,7 +228,8 @@ g0=g;
 
 Blon=[129.91 10.71]
 Blat=[-30.42 79.99]
-Blon(1)=Blon(1)-360
+%Blon(1)=Blon(1)-360
+Blon=LonCon(Blon);
 x=g.x;y=g.y;z=g.z;e=g.e;
 jb=g.bnd;
 bnd0=detbndy(g.e)
@@ -251,8 +264,8 @@ g0=RemoveSandPointsWW3(g,'RWPS.WW3f.lakes.msh')
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (J) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
-
+%WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
+WriteWW3MeshX(g0,WW3FileOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Some Plotting
 if isplot,
