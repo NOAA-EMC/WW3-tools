@@ -9,10 +9,10 @@ MACHINE = "ursa" # machine name ursa/orion/hercules
 WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools"
 
 MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01"
-SAT_BASE = " "   # if empty, the default directory will be used as WORKDIR/processsatdata/combineoutmonthly
+SAT_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/combineoutmonthly"   # if empty, the default directory will be used as WORKDIR/processsatdata/combineoutmonthly
 
 # satellite and model settings
-satellites=['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A', 'SENTINEL3B', 'SENTINEL6A']
+satellites=['JASON3', 'CRYOSAT2']
 model='retrov17_01' # now only support model of GFSv16 and retrov17_01
 tz_list = ["00","06","12","18"]
 grid = "global.0p25"
@@ -92,10 +92,6 @@ def sat_month_available_all(sat_base: str, satellites, yyyymm: str) -> bool:
 
 cdates = discover_model_dates(MODEL_BASE)
 
-with open("cdates.txt", "w") as f:
-    for c in cdates:
-        f.write(c + "\n")
-
 total = len(cdates)
 covered = 0
 missing = 0
@@ -137,7 +133,7 @@ for cdate in cdates:
             MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
         elif model == "retrov17_01":
             model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "products", "wave", "gridded","global.0p25")
-            MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
+            MODEL_DATA_PATTERN_TEMPLATE = "gfs.t{tz}z.{grid}.f*.grib2"
         else:
             print(f"ERROR: Unsupported Model.", file=sys.stderr)
             sys.exit(1)
