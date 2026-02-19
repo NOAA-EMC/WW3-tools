@@ -1,76 +1,114 @@
 #!/bin/bash
+set -euo pipefail
 
-# Script to submit all job_*.sh scripts concurrently in the current directory using sbatch
-# Usage: ./run_all_jobs.sh [directory]
-# If no directory is provided, uses the current directory
+# =============================================================================
+# Auto-detect script directory (important!)
+# =============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${SCRIPT_DIR}"
 
-# Set default directory to current if not provided
-DIR="${1:-$(pwd)}"
+# =============================================================================
+# Configuration
+# =============================================================================
+JOB_GLOB="job_*.sh"
+BATCH=20
+MAX_WAIT_SECONDS=2400   # 40 minutes
 
-# Maximum number of concurrent jobs (optional, adjust based on Slurm limits)
-MAX_CONCURRENT_JOBS=24
+# Log file
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+LOG_FILE="${SCRIPT_DIR}/run_all_jobs_${TIMESTAMP}.log"
 
-# Check if directory exists
-if [ ! -d "$DIR" ]; then
-  echo "Error: Directory $DIR does not exist."
+# =============================================================================
+# Logging setup
+# =============================================================================
+echo "Starting master script at $(date)" | tee "${LOG_FILE}"
+echo "Running inside directory: ${SCRIPT_DIR}" | tee -a "${LOG_FILE}"
+echo "Job glob: ${JOB_GLOB}" | tee -a "${LOG_FILE}"
+echo "Batch size: ${BATCH}" | tee -a "${LOG_FILE}"
+echo "Max wait per batch: $((MAX_WAIT_SECONDS/60)) minutes" | tee -a "${LOG_FILE}"
+echo "===========================================" | tee -a "${LOG_FILE}"
+
+exec > >(tee -a "${LOG_FILE}") 2>&1
+
+# =============================================================================
+# Find job scripts
+# =============================================================================
+mapfile -t JOB_SCRIPTS < <(ls ${JOB_GLOB} 2>/dev/null | sort -V)
+
+if [[ ${#JOB_SCRIPTS[@]} -eq 0 ]]; then
+  echo "ERROR: No job scripts found matching ${JOB_GLOB}" >&2
   exit 1
 fi
 
-# Change to the specified directory
-cd "$DIR" || { echo "Error: Cannot change to directory $DIR"; exit 1; }
+echo "FOUND ${#JOB_SCRIPTS[@]} job scripts:"
+printf '%5s  %s\n' "#" "Filename"
+printf '%5s  %s\n' "-----" "------------------------------"
+for i in "${!JOB_SCRIPTS[@]}"; do
+  printf '%5d  %s\n' $((i+1)) "${JOB_SCRIPTS[$i]}"
+done
+echo "---------------------------------------"
+echo
 
-# Log file for tracking submissions
-LOGFILE="job_submission_$(date +%Y%m%d_%H%M%S).log"
+# =============================================================================
+# Submit in batches
+# =============================================================================
+total=${#JOB_SCRIPTS[@]}
+batch_id=1
+idx=0
 
-# Initialize counters
-submitted=0
-failed=0
-queued_jobs=0
+while [[ $idx -lt $total ]]; do
+  echo "=================================================="
+  echo "Batch ${batch_id}: submitting jobs $((idx+1)) to $((idx+BATCH < total ? idx+BATCH : total))"
+  echo "=================================================="
 
-echo "Starting job submission from $DIR at $(date)" | tee -a "$LOGFILE"
+  job_ids=()
 
-# Loop through all job_*.sh files
-for job_script in job_*.sh; do
-  # Check if any job scripts exist
-  if [ ! -e "$job_script" ]; then
-    echo "No job scripts (job_*.sh) found in $DIR" | tee -a "$LOGFILE"
-    exit 0
-  fi
+  for ((k=0; k<BATCH && idx<total; k++, idx++)); do
+    job_script="${JOB_SCRIPTS[$idx]}"
 
-  # Check if the file is executable
-  if [ ! -x "$job_script" ]; then
-    echo "Warning: $job_script is not executable. Making it executable." | tee -a "$LOGFILE"
-    chmod +x "$job_script"
-  fi
+    echo "Submitting: ${job_script}"
 
-  # Optional: Check number of currently queued/running jobs to avoid overwhelming Slurm
-  queued_jobs=$(squeue -u $USER -h | wc -l)
-  while [ $queued_jobs -ge $MAX_CONCURRENT_JOBS ]; do
-    echo "Too many jobs ($queued_jobs) queued. Waiting 10 seconds..." | tee -a "$LOGFILE"
-    sleep 10
-    queued_jobs=$(squeue -u $USER -h | wc -l)
+    submit_out=$(sbatch --parsable "${job_script}")
+    job_id="${submit_out%%;*}"
+
+    if [[ -n "${job_id}" ]]; then
+      job_ids+=("${job_id}")
+      echo "  -> JobID: ${job_id}"
+    else
+      echo "WARNING: Failed to parse JobID (${submit_out})"
+    fi
   done
 
-  # Submit the job using sbatch
-  echo "Submitting $job_script..." | tee -a "$LOGFILE"
-  sbatch_output=$(sbatch "$job_script" 2>&1)
-  if [ $? -eq 0 ]; then
-    echo "Success: $job_script submitted. Output: $sbatch_output" | tee -a "$LOGFILE"
-    ((submitted++))
-  else
-    echo "Error: Failed to submit $job_script. Output: $sbatch_output" | tee -a "$LOGFILE"
-    ((failed++))
+  # Wait for batch
+  if [[ ${#job_ids[@]} -gt 0 ]]; then
+    echo "Waiting for ${#job_ids[@]} jobs to finish..."
+
+    start_time=$(date +%s)
+    while true; do
+      remaining=$(squeue -h -j "$(IFS=,; echo "${job_ids[*]}")" --states=PENDING,RUNNING 2>/dev/null | wc -l || echo 0)
+
+      if [[ $remaining -eq 0 ]]; then
+        echo "Batch ${batch_id} completed."
+        break
+      fi
+
+      elapsed=$(( $(date +%s) - start_time ))
+      if [[ $elapsed -ge $MAX_WAIT_SECONDS ]]; then
+        echo "Batch ${batch_id} timeout reached. Continue next batch."
+        squeue -h -j "$(IFS=,; echo "${job_ids[*]}")" -o "%i %j %T %R" 2>/dev/null || true
+        break
+      fi
+
+      sleep 30
+    done
   fi
+
+  echo
+  batch_id=$((batch_id+1))
 done
 
-echo "Submission complete at $(date)" | tee -a "$LOGFILE"
-echo "Total jobs submitted: $submitted" | tee -a "$LOGFILE"
-echo "Total jobs failed: $failed" | tee -a "$LOGFILE"
-
-if [ $failed -gt 0 ]; then
-  echo "Warning: Some jobs failed to submit. Check $LOGFILE for details."
-  exit 1
-else
-  echo "All jobs submitted successfully."
-  exit 0
-fi
+echo "=================================================="
+echo "ALL JOBS SUBMITTED"
+echo "Finished at $(date)"
+echo "Log: ${LOG_FILE}"
+echo "=================================================="
