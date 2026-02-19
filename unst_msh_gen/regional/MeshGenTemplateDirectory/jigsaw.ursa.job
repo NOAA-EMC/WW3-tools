@@ -14,17 +14,9 @@
 
 
 module purge
-module use /scratch3/NCEPDEV/climate/Keston.Smith/global-workflowA/sorc/ufs_model.fd/modulefiles/
-module load ufs_ursa.intel
-module load stack-oneapi/2024.2.1
-module load python/3.11
-module load cmake/3.27.9
-module load py-numpy/1.26.4
-module load py-netcdf4/1.7.1.post2
-
-source /scratch3/NCEPDEV/climate/Keston.Smith/UrsaMeshgenEnv/jigsawenv/bin/activate
+source /scratch3/NCEPDEV/climate/Keston.Smith/UrsaMeshgenEnv3/jigsawenv/bin/activate
 pip list -v
 
-##python3 RWPSMeshGenScript.py > NonGlobalMeshGen.out.txt
+##python3 RWPSMeshGenScript.GSHHSpy > NonGlobalMeshGen.HSHHS.out
 ##python3 RWPSMeshGenScript.GSHHS.py >  RWPSMeshGenScript.GSHHS.out
 python3 MeshGenScript.NWcoastal.py > MeshGenScript.NWcoastal.out
