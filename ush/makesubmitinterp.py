@@ -8,12 +8,12 @@ import glob
 MACHINE = "ursa" # machine name ursa/orion/hercules
 WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools"
 
-MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01"
+MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/gfsv16"
 SAT_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/combineoutmonthly"   # if empty, the default directory will be used as WORKDIR/processsatdata/combineoutmonthly
 
 # satellite and model settings
 satellites=['JASON3', 'CRYOSAT2']
-model='retrov17_01' # now only support model of GFSv16 and retrov17_01
+model="GFSv16" # now only support model of GFSv16 and retrov17_01
 tz_list = ["00","06","12","18"]
 grid = "global.0p25"
 
@@ -216,4 +216,10 @@ if missing_cycles:
     for c in sorted(missing_cycles):
         print(f"    {c}")
 
-print(f"  Jobcards directory                             : {rootdir}")
+ush = os.path.join(WORKDIR, "WW3-tools", "ush", "run_all_jobs.sh")
+os.makedirs(jobdir, exist_ok=True)
+cmd = f"cp {ush} {jobdir}"
+os.system(cmd)
+
+
+print(f"  Jobcards directory                             : {jobdir}")
