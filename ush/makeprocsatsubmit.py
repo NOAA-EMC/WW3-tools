@@ -12,20 +12,20 @@ WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools" # working directory
 STARTDATE = "2024-11-15" # start date with formats YYYY-MM-DD or YYYYMMDD
 ENDDATE   = "2025-01-15" # end date with formats YYYY-MM-DD or YYYYMMDD
 
-SATELLITES = "JASON3,CRYOSAT2,SARAL,SENTINEL3A" # satellites using comma or space separated
+SATELLITES = "JASON3,CRYOSAT2" # satellites using comma or space separated
 
 # SLURM settings
 SBATCH_QUEUE     = "batch"
 SBATCH_ACCOUNT   = "marine-cpu"
 SBATCH_WALLTIME  = "08:00:00"
 
-SBATCH_EXCLUSIVE = True # True: exclusive mode (whole node)
+SBATCH_EXCLUSIVE = False # True: exclusive mode (whole node)
 
   # if SBATCH_EXCLUSIVE = True, the settings below are ignored
 SBATCH_NODES         = "1"
 SBATCH_NTASKS         = "1"
 SBATCH_CPUS_PER_TASK  = "4"
-SBATCH_MEM            = "16G"
+SBATCH_MEM            = "64G"
 
 SET_THREAD_ENVS       = True # Set OMP_NUM_THREADS, MKL_NUM_THREADS, etc.
 
