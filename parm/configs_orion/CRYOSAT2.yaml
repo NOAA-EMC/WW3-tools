@@ -3,11 +3,9 @@
 
 # text string for identification. This will be included in the name of the output files.
 ftag: ww3tools
-# output path, where results will be saved
-path_out: /work2/noaa/marine/jmeixner/processsatdata/out/SARAL
 
 # Data paths where the observations are saved
-path_alt: /work/noaa/marine/ricardo.campos/data/AODN/altimeter
+path_alt: /work/noaa/marine/jmeixner/Data/AODN/altimeter
 path_ndbc: /work/noaa/marine/ricardo.campos/data/buoys/NDBC/ncformat/wparam
 path_copernicus: /work/noaa/marine/ricardo.campos/data/buoys/Copernicus/wtimeseries
 
@@ -36,8 +34,8 @@ dlim: 5000.0
 # Maximum temporal distance (s) for pooling and averaging the data
 maxti: 1 
 # lat lon interval to read AODN altimeter data files (bins). Smaller areas read faster.
-latmin: -81.49
-latmax: 81.45
+latmin: -88.0
+latmax: 88.0
 lonmin: 0.
 lonmax: 360.
 # Apply Quality Control. 1(yes), 0(no)
