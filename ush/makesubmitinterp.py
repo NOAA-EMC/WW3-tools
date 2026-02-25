@@ -6,22 +6,16 @@ import glob
 
 ## ===================== Setting (modified as needed) =========================
 MACHINE = "ursa" # machine name ursa/orion/hercules
+WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools"
 
-# directory settings
-rootdir = os.path.join('/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata', 'jobinterp')
 MODEL_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/gfsv16"
-SAT_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/combineoutmonthly"
-OUTDIR_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/outinterp/GFSv16"
+SAT_BASE = "/scratch3/NCEPDEV/climate/Jessica.Meixner/WaveEvaluation/processsatdata/combineoutmonthly"   # if empty, the default directory will be used as WORKDIR/processsatdata/combineoutmonthly
 
 # satellite and model settings
-satellites=['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A', 'SENTINEL3B', 'SENTINEL6A']
-model='GFSv16' # now only support model of GFSv16 and retrov17_01
+satellites=['JASON3', 'CRYOSAT2']
+model="GFSv16" # now only support model of GFSv16 and retrov17_01
 tz_list = ["00","06","12","18"]
 grid = "global.0p25"
-MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
-
-# process script
-PROC_SCRIPT = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/ww3tools/ProcSat_interpolation.py"
 
 # Slurm settings
 SBATCH_ACCOUNT   = "marine-cpu"
@@ -44,6 +38,16 @@ elif MACHINE in ("orion", "hercules"):
 else:
     print(f"ERROR: Unsupported MACHINE='{MACHINE}'. Use Ursa, Orion, or Hercules.", file=sys.stderr)
     sys.exit(1)
+
+## --------------- Directory settings ------------------------------
+rootdir = os.path.join(WORKDIR, "processsatdata", "jobinterp")
+
+if not SAT_BASE or not SAT_BASE.strip():
+    SAT_BASE = os.path.join(WORKDIR, "processsatdata", "combineoutmonthly")
+
+OUTDIR_BASE = os.path.join(WORKDIR, "processsatdata", "outinterp", model)
+
+PROC_SCRIPT = os.path.join(WORKDIR, "WW3-tools", "ww3tools", "ProcSat_interpolation.py")
 
 ## --------------- Checking inputs and settings --------------------
 
@@ -88,10 +92,6 @@ def sat_month_available_all(sat_base: str, satellites, yyyymm: str) -> bool:
 
 cdates = discover_model_dates(MODEL_BASE)
 
-with open("cdates.txt", "w") as f:
-    for c in cdates:
-        f.write(c + "\n")
-
 total = len(cdates)
 covered = 0
 missing = 0
@@ -130,8 +130,10 @@ for cdate in cdates:
     for tz in tz_list:
         if model == "GFSv16":
             model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "wave", "gridded")
+            MODEL_DATA_PATTERN_TEMPLATE = "gfswave.t{tz}z.{grid}.f*.grib2"
         elif model == "retrov17_01":
             model_gridded_dir = os.path.join(MODEL_BASE, f"gfs.{cdate}", tz, "products", "wave", "gridded","global.0p25")
+            MODEL_DATA_PATTERN_TEMPLATE = "gfs.t{tz}z.{grid}.f*.grib2"
         else:
             print(f"ERROR: Unsupported Model.", file=sys.stderr)
             sys.exit(1)
@@ -214,4 +216,10 @@ if missing_cycles:
     for c in sorted(missing_cycles):
         print(f"    {c}")
 
-print(f"  Jobcards directory                             : {rootdir}")
+ush = os.path.join(WORKDIR, "WW3-tools", "ush", "run_all_jobs.sh")
+os.makedirs(jobdir, exist_ok=True)
+cmd = f"cp {ush} {jobdir}"
+os.system(cmd)
+
+
+print(f"  Jobcards directory                             : {jobdir}")

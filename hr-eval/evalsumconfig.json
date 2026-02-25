@@ -1,23 +1,27 @@
 {
     "directories": {
-        "HR3a": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/HR3a/hurricane",
-        "HR1": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/HR1/hurricane",
-        "HR2": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/HR2/hurricane",
-        "GFSv16": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/GFSv16/hurricane",
-        "MULTI1": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/MULTI1/hurricane",
-        "HR3b": "/scratch2/NCEPDEV/marine/Ghazal.Mohammadpour/transfer/validation/WW3-tools/ww3tools/ORION/WW3-tools/ww3tools/output/HR3b/hurricane"
+        "GFSv16": "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata_ursa/outcombine",
+        "Retrotests": "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata_ursa/outcombine"
     },
     "filenames": [
-        "filtered_3h_to_24h.nc",
-        "filtered_24h_to_48h.nc",
-        "filtered_48h_to_72h.nc",
-        "filtered_72h_to_96h.nc",
-        "filtered_96h_to_120h.nc",
-        "filtered_120h_to_144h.nc",
-        "filtered_144h_to_168h.nc"
+        "combined_day01",
+        "combined_day02",
+        "combined_day03",
+        "combined_day04",
+        "combined_day05",
+        "combined_day06",
+        "combined_day07",
+        "combined_day08",
+        "combined_day09",
+        "combined_day10",
+        "combined_day11",
+        "combined_day12",
+        "combined_day13",
+        "combined_day14",
+        "combined_day15",
+        "combined_day16"
     ],
-    "satellite_name": "CRYOSAT",
-    "season": "Hurricane",
-    "output_dir": "./plots/hurricane"
+    "satellite_name": "CRYOSAT2",
+    "season": "winter",
+    "output_dir": "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata_ursa/outeval/winter"
 }
-

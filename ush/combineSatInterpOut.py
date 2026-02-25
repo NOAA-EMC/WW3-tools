@@ -14,9 +14,7 @@ Create combined NetCDF files for easier post processing.
 # ================================================
 
 models = ['retrov17_01', 'GFSv16']
-
-INPUTDIR_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata_ursa/outinterp"
-OUTDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/outcombine"
+WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools"
 
 satellites = ['JASON3', 'CRYOSAT2', 'SARAL', 'SENTINEL3A']
 
@@ -35,6 +33,9 @@ output_all_in_one = True
 output_per_day    = True
 
 # =================================================
+
+INPUTDIR_BASE = os.path.join(WORKDIR, "processsatdata", "outinterp")
+OUTDIR = os.path.join(WORKDIR, "processsatdata", "outcombine")
 
 def determine_season(dt_obj):
     month = dt_obj.month

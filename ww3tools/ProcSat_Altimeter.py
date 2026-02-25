@@ -106,7 +106,7 @@ def along_track(AODN,atime,wconfig):
             # plot(AODN['LATITUDE'][indt],AODN['LONGITUDE'][indt],'.')
             lat=np.array(AODN['LATITUDE'][indt])
             lon=np.array(AODN['LONGITUDE'][indt]); lon[lon>360]=lon[lon>360]-360.
-              
+
             # Coordinates of a point
             firstcoord = (lat[0], lon[0])
             segtrack = list(zip(lat, lon))
@@ -269,7 +269,7 @@ def gridded(AODN,atime,wconfig):
                 ii=ii+len(indpqq)
 
             del auxfhsk, auxstdhsk, auxcounthsk, auxfhskcal, auxfwnd, auxfwndcal, indpqq
-				
+
         del indt
         print('PyResample kdtree, hourly time, '+repr(t)+' of '+repr(atime.shape[0]))
 
@@ -339,14 +339,14 @@ def savesat(AODN,wconfig,altsel):
     datein = datetime.utcfromtimestamp(AODN['TIME'].iloc[0]).strftime('%Y%m%d%H')
     datefin = datetime.utcfromtimestamp(AODN['TIME'].iloc[-1]).strftime('%Y%m%d%H')
 
-    #create path_out directory if it does not exist: 
+    #create path_out directory if it does not exist:
     if not os.path.isdir(wconfig['path_out']):
         os.makedirs(wconfig['path_out'])
 
     fname=wconfig['path_out']+"Altimeter"+smethod+"_"+wconfig['ftag']+"_"+altsel+"_"+datein+"to"+datefin
 
     # Save netcdf
-    ncfile = nc.Dataset(fname+".nc", "w", format=wconfig['fnetcdf']) 
+    ncfile = nc.Dataset(fname+".nc", "w", format=wconfig['fnetcdf'])
     ncfile.history=hmsg
     # create  dimensions.
     ncfile.createDimension('time' , len(AODN['TIME']))
@@ -448,25 +448,34 @@ if __name__ == "__main__":
     start = timeit.default_timer()
 
     ap = argparse.ArgumentParser()
-    ap.add_argument('-s', '--satelite', help="Satelite Name, one of JASON3,JASON2,CRYOSAT2,JASON1,HY2,SARAL,SENTINEL3A,ENVISAT,ERS1,ERS2,GEOSAT,GFO,TOPEX,SENTINEL3B,CFOSAT",required=True) 
+    ap.add_argument('-s', '--satelite', help="Satelite Name, one of JASON3,JASON2,CRYOSAT2,JASON1,HY2,SARAL,SENTINEL3A,ENVISAT,ERS1,ERS2,GEOSAT,GFO,TOPEX,SENTINEL3B,CFOSAT",required=True)
     ap.add_argument('-i', '--initdate', help="Initial Date (YYYYMMDDHH)", default='1985010100')
     ap.add_argument('-e', '--enddate', help="Final Date (YYYYMMDDHH)", default=datetime.utcnow().strftime("%Y%m%d%H"))
     ap.add_argument('-t', '--timestep', help="time step (in seconds) to build the final time array (regular)", default=float(3600.))
-    ap.add_argument('-y', '--yaml', help="WW3 tools yaml file", default='ww3tools.yaml') 
+    ap.add_argument('-y', '--yaml', help="WW3 tools yaml file", default='ww3tools.yaml')
+    ap.add_argument('-o', '--out_base', help="Base output directory. Final output will be out_base/<SAT>/", default=None)
 
     MyArgs = ap.parse_args()
-    
+
     # WW3-tools configuration file
     wconfig=wread.readconfig(MyArgs.yaml)
 
-    # Set Satelite 
+    # Optional override of output path from command line
+    if MyArgs.out_base:
+        wconfig['path_out'] = os.path.join(MyArgs.out_base, MyArgs.satelite) + os.sep
+    else:
+        # Ensure path_out ends with a separator to avoid string-concat path bugs
+        if 'path_out' in wconfig and wconfig['path_out'] and not wconfig['path_out'].endswith(os.sep):
+            wconfig['path_out'] = wconfig['path_out'] + os.sep
+
+    # Set Satelite
     altsel = MyArgs.satelite
     # Set date interval
     datemin = MyArgs.initdate
     datemax = MyArgs.enddate
     # Default time step (in seconds) to build the final time array (regular)
     time_step=np.double(MyArgs.timestep)
-    
+
     # read and organize AODN altimeter data for the mission and domain of interest
     AODN = wread.aodn_altimeter(altsel,wconfig,datemin,datemax)
     # AODN.to_csv(wconfig['path_out']+"AODN_altimeterSelection_"+datemin+"to"+datemax+".csv", index=False)
