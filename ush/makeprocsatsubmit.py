@@ -7,33 +7,34 @@ import sys
 #           USER-EDITABLE CONFIGURATION
 # ================================================
 MACHINE = "ursa" # or orion/herculus
-
-ROOTDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/jobsubs"   # output jobcards directory
-THISDIR = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/hr-eval"               # working directory
-PATHTOWW3TOOLS = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/WW3-tools/ww3tools"       # ww3tools directory (ProcSat_Altimeter.py)
-OUT_BASE = "/scratch4/NCEPDEV/marine/Ming.Chen/wave_eval/processsatdata/out" # output directory for processed data (origional defined in .yaml)
+WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools" # working directory including WW3-tools and processeddata
 
 STARTDATE = "2024-11-15" # start date with formats YYYY-MM-DD or YYYYMMDD
 ENDDATE   = "2025-01-15" # end date with formats YYYY-MM-DD or YYYYMMDD
 
-SATELLITES = "JASON3,CRYOSAT2,SARAL,SENTINEL3A" # satellites using comma or space separated
+SATELLITES = "JASON3,CRYOSAT2" # satellites using comma or space separated
 
 # SLURM settings
 SBATCH_QUEUE     = "batch"
 SBATCH_ACCOUNT   = "marine-cpu"
 SBATCH_WALLTIME  = "08:00:00"
 
-SBATCH_EXCLUSIVE = True # True: exclusive mode (whole node)
+SBATCH_EXCLUSIVE = False # True: exclusive mode (whole node)
 
   # if SBATCH_EXCLUSIVE = True, the settings below are ignored
 SBATCH_NODES         = "1"
 SBATCH_NTASKS         = "1"
 SBATCH_CPUS_PER_TASK  = "4"
-SBATCH_MEM            = "16G"
+SBATCH_MEM            = "64G"
 
 SET_THREAD_ENVS       = True # Set OMP_NUM_THREADS, MKL_NUM_THREADS, etc.
 
 # ===============================================
+
+ROOTDIR = os.path.join(WORKDIR, "processsatdata", "jobsubs")    # output jobcards directory
+THISDIR = os.path.join(WORKDIR, "WW3-tools", "parm")            # config directory
+PATHTOWW3TOOLS = os.path.join(WORKDIR, "WW3-tools", "ww3tools") # ww3tools directory (ProcSat_Altimeter.py)
+OUT_BASE = os.path.join(WORKDIR, "processsatdata", "out")       # output directory for processed data (origional defined in .yaml)
 
 MACHINE = MACHINE.strip().lower()
 
@@ -171,6 +172,11 @@ for i in range(len(dates1)):
         os.chmod(filepath, 0o755)
         job_count += 1
         print(f"Created: {jobname}")
+
+ush = os.path.join(WORKDIR, "WW3-tools", "ush", "run_all_jobs.sh")
+os.makedirs(ROOTDIR, exist_ok=True)
+cmd = f"cp {ush} {ROOTDIR}"
+os.system(cmd)
 
 print(f"\nDone. Generated {job_count} job script(s) in:")
 print(ROOTDIR)
