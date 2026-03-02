@@ -1,6 +1,6 @@
 
 SetPath
-MakeCoastalBoundariesGSHHSX
+MakeCoastalBoundariesGSHHS
 lonWest=129.91;lonEast=10.71;latSouth=-30.42;latNorth=79.99;
 CoastLineFile = 'GlobalCoastlineGSHHS.shp'
 BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth)
