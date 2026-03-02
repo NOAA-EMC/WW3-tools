@@ -1,8 +1,4 @@
 
-addpath ../matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/jigsaw-matlab
-addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
-
 %script to handle all post jigsaw mesh editing.
 %Post processing steps are as follows
 % (A) Remove sand points
@@ -18,19 +14,33 @@ addpath /scratch3/NCEPDEV/climate/Keston.Smith/MeshGenMatlabLibs/InsidePoly
 % (J) Write final WW3 mesh --> 'RWPS.WW3g.lakes.msh'
 %       this is the mesh to run WW3 on.
 
+SetPath
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%Input file from jigsaw and boundary file used in it's creation:
+
 isplot=0;
-outdir='RWPS.OSMxGSHHS.NewOrl/'
-pslgfile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundaryOSMxGSHHS1kmBOXES.msh'
+outdir='RWPS.GSHHSxOSM.NewOrleans/'
+pslgfile=PSLGfile
 jigsawout='RWPS.F.LLH'
+WW3FileOut='RWPS.GSHHSxOSM.NewOrleans.WW3.msh'
+ax=[-178,-154, 18,30]
+
+
+%parameters for graphics plotting
+%Local Plotting axis
+ax(1:2)=LonCon(ax(1:2))
+caxH=[0,5000],%color limits for bathymetry(m)
+caxLS=[0,12] %color limits for mesh length scale (km)
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (A) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 g=loadmsh([outdir,jigsawout,'.msh']);
+
+PlotJigsawUnstMesh([outdir,jigsawout,'.msh'],ax,caxH,caxLS);
 
 %remove sand points on boundary
 
 RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'],[outdir,jigsawout,'.NSP.WW3.msh']);
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (B) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Add Lakes to Mesh
@@ -109,6 +119,7 @@ g=gnew
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (D) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 g=RemoveSandPointsWW3(g,'RWPS.WW3a1.lakes.msh')
+PlotWW3Mesh('RWPS.WW3a1.lakes.msh',ax,caxH,caxLS);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (E) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -249,134 +260,8 @@ WriteWW3MeshX(g,'RWPS.WW3e.lakes.msh')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (I) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 g0=RemoveSandPointsWW3(g,'RWPS.WW3f.lakes.msh')
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (J) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-WriteWW3MeshX(g0,'RWPS.WW3g.lakes.msh')
-
+WriteWW3MeshX(g0,WW3FileOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %Some Plotting
-if isplot,
-    g=g0;
-
-
-    %clear
-    g=loadmshWW3('RWPS.WW3g.lakes.msh')%RWPS.PIXAllLnwps.PP.WW3c.msh');
-    x=g.x;y=g.y;z=g.z;e=g.e;
-    LS=ComputeLengthScale_wgs84_MEL(x,y,e);LSn=Ele2Nodes(x,y,e,LS);
-    clf;ph=patch(x(e'),y(e'),LSn(e'));cm=colormap('jet');shading interp;axis equal;
-    jb=g.bnd;
-    hold on;
-    plot(g.x(jb),g.y(jb),'k.');hold on
-
-
-    f=z;
-    clf;patch(x(e'),y(e'),f(e'));cm=colormap('jet');shading interp;axis equal;
-    colormap(flip(cm));
-    caxis([0,6000]);
-    kprint('Bathy.jpg');
-
-    clf;
-        caxis([0,6000]);
-    colormap(flip(cm));
-
-        hcb=colorbar('h','position',[.1,.075,.8,.025])
-        %hcb.Label.String='(km)'
-        set(gca,'visible','off')
-    kprint('BathyColorbarH.jpg');
-
-    clf;
-    colorbar;
-    colormap(flip(cm));
-    caxis([0,6000]);
-    kprint('BathyColorbarV.jpg');
-
-
-    LS=ComputeLengthScale_wgs84_MEL(x,y,e);
-    LSn=Ele2Nodes(x,y,e,LS);
-
-    clf;patch(x(e'),y(e'),LSn(e'));cm=colormap('jet');shading interp;axis equal;
-    colormap(flip(cm));
-    caxis([0,12]);
-    kprint('Lengthscale.jpg');
-
-
-    axCAR =[  -85.4065  -61.7227    8.8200   26.8661]
-    ax=axCAR
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('Caribean.jpg')
-
-
-    axAK =[ -192.1450 -152.2804   47.2479   77.6231]
-    ax=axAK
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('Alaska.jpg')
-
-    axHI =[ -179.5950 -152.9066   13.8641   34.1996]
-    ax=axHI
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('Hawaii.jpg')
-
-
-    axMI =[ -220.2161 -208.6314   12.5003   21.3274];
-    ax=axMI
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('MarianaIslands.jpg')
-
-    axAS =[ -173.3623 -168.3684  -16.4846  -12.0090]
-    ax=axAS
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('AmericanSamoa.jpg')
-
-
-    axMicro =[ -210.3818 -185.8701   -3.7494   15.5832]
-    ax=axMicro
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('Micronesia.jpg')
-
-    axWMicro =[ -226.6896 -214.3594    5.3753   15.1002]
-    ax=axWMicro
-    axis(ax);daspect([1,cos(pi*ax(3)/180),1])
-    kprint('WestMicronesia.jpg')
-
-
-    figure;
-    clf;
-        caxis([0,12]);
-    colormap(flip(cm));
-
-        hcb=colorbar('h','position',[.1,.075,.8,.025])
-        hcb.Label.String='(km)'
-        set(gca,'visible','off')
-    kprint('LengthScaleColorbarH.jpg');
-
-    clf
-        caxis([0,12]);
-    colormap(flip(cm));
-
-    % hcb=colorbar('v','position',[.1,.075,.8,.025])
-        vcb=colorbar('v','position',[.075,.1,.025,.8])
-        vcb.Label.String='(km)'
-        set(gca,'visible','off')
-    kprint('LengthScaleColorbarV.jpg');
-
-
-    clf
-    caxis([0,6000]);
-    colormap(flip(cm));
-
-        hcb=colorbar('h','position',[.1,.075,.8,.025])
-        hcb.Label.String='(m)'
-        set(gca,'visible','off')
-    kprint('BathyColorbarH.jpg');
-
-    clf
-        caxis([0,6000]);
-    colormap(flip(cm));
-
-    % hcb=colorbar('v','position',[.1,.075,.8,.025])
-        vcb=colorbar('v','position',[.075,.1,.025,.8])
-        vcb.Label.String='(m)'
-        set(gca,'visible','off')
-    kprint('BathyColorbarV.jpg');
-
-end
+PlotWW3Mesh(WW3FileOut,ax,caxH,caxLS);

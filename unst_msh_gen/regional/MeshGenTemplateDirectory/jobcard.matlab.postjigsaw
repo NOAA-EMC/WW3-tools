@@ -13,4 +13,6 @@
 module load matlab/R2024b  # Specify the version you need
 
 # Run your MATLAB script without a graphical interface
-matlab -nodisplay -nodesktop -r "run('./PostProcessGrid.m'); exit;"
+matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_NWcoastal.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_GSHHSxOSM_NewOrleans.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_GSHHS.m'); exit;"

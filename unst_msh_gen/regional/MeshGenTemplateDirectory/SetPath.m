@@ -1,5 +1,6 @@
 
 addpath ../matlab
+addpath ../matlab/graphics
 addpath ../matlab/jigsaw-matlab
 addpath ../matlab/inpoly
 
@@ -19,13 +20,18 @@ gcflGSHHS='../Data/GSHHS_shp/f/GSHHS_f_L1.shp'
 %Global coverage coastline file from OpenStreetMap
 gcflOSM='../Data/openstreetmap_land/land-polygons-complete-4326/land_polygons.shp'
 
-%which Global coverage coastline file  is to be used
-gcfl=gcflGSHHS
-
-%Output file from BuildBoundaryPSLGwGSHHS and input to MakeDfunGSHHS
-PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
+% File name for Boundary Piecewise straight Line Graph (PSLG). This is output from
+% BuildBoundaryPSLGfunction and must match file specification in python script. 
+% The file is also input for MakeDistanceToCoast
 
 %For NWcoastal mesh uncomment the following lines
-%gcfl=gcflOSM
-%PSLGfile='NWcoastal.PSLG.msh'
+gcfl=gcflOSM
+PSLGfile='NWcoastal.PSLG.msh'
 
+% For RWPS type mesh with GSHHS coastline set:
+%PSLGfile='GlobalCoastlineGSHHS.PSLG.msh'
+%gcfl=gcflGSHHS
+
+%For RWPS mesh with modified New Orleans coastline set:
+%PSLGfile='RWPS.GSHHSxOSM.NewOrleans.PSLG.msh'
+% this case does not require specification of gcfl

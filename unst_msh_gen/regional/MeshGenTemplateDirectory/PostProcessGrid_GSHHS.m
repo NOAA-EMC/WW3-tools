@@ -21,7 +21,7 @@ SetPath
 
 SetPath
 isplot=0;
-outdir='RWPS.1/'
+outdir='testRWPS.GSHHS/'
 %pslgfile='GlobalCoastlineGSHHS.PSLG.msh'
 pslgfile=PSLGfile, %global variable filename set in SetPath
 

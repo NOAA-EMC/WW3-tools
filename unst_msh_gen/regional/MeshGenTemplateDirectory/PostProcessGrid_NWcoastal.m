@@ -75,20 +75,23 @@ gnew=g;
 
 %go through all longitude and remove nodes 
 dx=2;
-dxb=10
+dxb=5
 %close all
 RemoveIsl=1;
 n=1
 if RemoveIsl,
+   
     for xx=(ceil(min(g.x))+dxb):dx:(floor(max(g.x))-dxb)
         ax11=[xx-dx,xx+dx,min(g.y)+dxb,max(g.y)-dxb]
         N(n)=length(gnew.x);
+%	ax11=[min(g.x)-dxb,max(g.x)+dxb, min(g.y)-dxb,max(g.y)+dxb]
         AX(n,:)=ax11;
         gnew=RemoveMissingIslandsEle(gnew,ax11,p,MinBndDist,0);
         n=n+1;
         length(gnew.x)
         %figure(3);clf;plot(N,'ko-');pause(.001)
     end
+
 end
 
 g=gnew
@@ -127,7 +130,7 @@ g.y(jb(js))=max(Blat);
 if isplot,plot(g.x(jb(js)),g.y(jb(js)),'r.');end
 
 %dx=degree latitude delta to discriminate land points near boundary from open ocean boundary
-dx=.05;
+dx=.005;
 js=find(and( g.x(jb)>min(Blon),g.x(jb)<min(Blon)+dx  ));
 g.x(jb(js))=min(Blon);
 if isplot,plot(g.x(jb(js)),g.y(jb(js)),'r.');end
@@ -143,3 +146,6 @@ g0=RemoveSandPointsWW3(g,'RWPS.WW3c.msh')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (J) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 WriteWW3MeshX(g0,WW3FileOut);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%Make plots of of the mesh and some input fields
+MakeFiguresNWCoastal
