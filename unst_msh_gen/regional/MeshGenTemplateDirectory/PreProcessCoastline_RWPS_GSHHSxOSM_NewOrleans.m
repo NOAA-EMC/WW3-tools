@@ -7,8 +7,14 @@
 
 SetPath
 
+%ursa
 system('cp /scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundary1kmP_NewOrleans.GSHHS.msh ./RWPS.PSLG.NewOrleans.GSHHS.msh')
 system('cp /scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/JigsawFormatFiles/PSLGboundary1kmP_NewOrleans.OSM.msh ./RWPS.PSLG.NewOrleans.OSM.msh')
+
+%orion
+%system('cp /work2/noaa/marine/keston/DATA/RWPSmshFiles/PSLGboundary1kmP_NewOrleans.GSHHS.msh ./RWPS.PSLG.NewOrleans.GSHHS.msh')
+%system('cp /work2/noaa/marine/keston/DATA/RWPSmshFiles/PSLGboundary1kmP_NewOrleans.OSM.msh ./RWPS.PSLG.NewOrleans.OSM.msh')
+
 MergePslgsOSMxGSSHS
 %use MakeDistanceToCoastRWPS rather than MakeDistanceToCoast for RWPS to deal with international dateline discontinuity.
 MakeDistanceToCoastRWPS

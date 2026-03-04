@@ -39,12 +39,8 @@ RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (B) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Add Lakes to Mesh
-%g=loadmshWW3('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');
 g=loadmshWW3( [outdir,jigsawout,'.NSP.WW3.msh']);
 g.x=LonCon(g.x);
-
-%LakeDir='/mnt/sda/keston/RWPSLakes/'
-LakeDir='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/'
 
 gS=loadmshWW3([LakeDir,'Sebago.NWPS.WW3.msh']);
 gS.x=LonCon(gS.x);

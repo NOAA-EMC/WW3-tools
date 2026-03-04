@@ -10,7 +10,8 @@
 
 
 # Load the MATLAB module
-module load matlab/R2024b  # Specify the version you need
+module load matlab/R2024b  # Ursa
+#module load matlab/2024b  # Orion
 
 # Run your MATLAB script without a graphical interface
 matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline_NWCoastalMesh.m'); exit;"

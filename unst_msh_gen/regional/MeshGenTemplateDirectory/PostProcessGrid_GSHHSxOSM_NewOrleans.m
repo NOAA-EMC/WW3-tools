@@ -44,14 +44,13 @@ RemoveSandPoints([outdir,jigsawout,'.msh'],pslgfile,[outdir,jigsawout,'.NSP.msh'
 %%%%%%%%%%%%%%%%%%%%%%%%%%%% STEP (B) %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %Add Lakes to Mesh
-%g=loadmshWW3('RWPSMeshOSMxGSHHS.BoxesFiles/RWPS.F.LLH.NSP.WW3.msh');
 g=loadmshWW3( [outdir,jigsawout,'.NSP.WW3.msh']);
 
-gS=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Sebago.NWPS.WW3.msh');
+gS=loadmshWW3([LakeDir,'Sebago.NWPS.WW3.msh']);
 gS.x=gS.x-360;
-gW=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Winnipesaukee.NWPS.WW3.msh')
+gW=loadmshWW3([LakeDir,'Winnipesaukee.NWPS.WW3.msh'])
 gW.x=gW.x-360;
-gO=loadmshWW3('/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/Okeechobee.NWPS.WW3.msh')
+gO=loadmshWW3([LakeDir,'Okeechobee.NWPS.WW3.msh'])
 gO.x=gO.x-360;
 
 g=CombineMesh(g,gO);

@@ -6,7 +6,10 @@ addpath ../matlab/inpoly
 
 
 % set global variables defining paths to different data sets
-global GlobalTopoFile uscl gcfl gcflGSHHS gcflOSM PSLGfile
+global GlobalTopoFile uscl gcfl gcflGSHHS gcflOSM PSLGfile LakeDir
+
+LakeDir='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/RWPSLakes/' %Ursa
+%LakeDir='/work2/noaa/marine/keston/DATA/NWPSLakes/' % Orion
 
 % Global coverage "low" resolution bathymetry file
 GlobalTopoFile='../Data/Bathymetry/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
