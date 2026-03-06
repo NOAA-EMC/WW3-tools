@@ -539,6 +539,8 @@ class ModelObsPlot:
         fig1 = plt.figure(1, figsize=(5, 4.5))
         ax = fig1.add_subplot(111)
 
+        stat_lines = []
+
         for i in range(0, self.model.shape[0]):
             # b = np.array(self.obs[0,::sk])
             # a = np.array(self.model[i,::sk])
@@ -582,6 +584,33 @@ class ModelObsPlot:
                 else:
                     print(self.ftag + "ScatterPlot: Slope " + str(np.round(float(r.slope), 5)) + ", Intercept "
                           + str(np.round(float(r.intercept), 5)))
+
+                # show stats on plot
+                N = int(a.size)
+                if N > 0:
+                    bias = float(np.nanmean(a - b))
+                    rmse = float(np.sqrt(np.nanmean((a - b) ** 2)))
+                    obs_mean = np.nanmean(b)
+                    si = rmse / obs_mean if obs_mean != 0 else np.nan
+                else:
+                    bias = np.nan
+                    rmse = np.nan
+                    si = np.nan
+
+                cc = float(r.rvalue) if np.isfinite(r.rvalue) else np.nan
+                r2 = (float(r.rvalue) ** 2) if np.isfinite(r.rvalue) else np.nan
+                eq = f"y={r.slope:.3f}x+{r.intercept:.3f}"
+
+                stat_lines.append(
+                    "N     {N:>7d}\n"
+                    "Bias  {bias:>7.3f}\n"
+                    "RMSE  {rmse:>7.3f}\n"
+                    "CC    {cc:>7.3f}\n"
+                    "SI    {si:>7.3f}\n"
+                    "{eq}"
+                    .format(N=N, bias=bias, rmse=rmse, cc=cc, si=si,  eq=eq)
+                )
+
                 del r, aregr
 
             del a, b
@@ -612,6 +641,22 @@ class ModelObsPlot:
         if np.size(self.mlabels) > 0:
             if self.mlabels[0] != '':
                 plt.legend(loc="upper left", fontsize=sl - 2)
+
+        if self.linreg and len(stat_lines) > 0:
+            # if multiple models, show one line per model; if single model, it’s already multi-line
+            if self.model.shape[0] > 1:
+                txt = "\n".join(stat_lines)
+            else:
+                txt = stat_lines[0]
+
+            ax.text(
+                0.02, 0.98, txt,
+                transform=ax.transAxes,
+                va="top", ha="left",
+                fontsize=max(8, sl - 5),
+                bbox=dict(boxstyle="round", facecolor="white", alpha=0.75, edgecolor="none"),
+                zorder=10
+            )
 
         plt.tight_layout()
         plt.savefig(self.ftag + 'ScatterPlot.png', dpi=200, facecolor='w', edgecolor='w', orientation='portrait',
@@ -1616,7 +1661,7 @@ class GlobalSkillMap:
         cbar_label=None,
         outfile=None,           # if provided, saves figure
         dpi=150,
-        figsize=(14, 4),
+        figsize=(12, 4),
         show=False,
         use_pandas=True,
         required_mask_arrays=None,
@@ -1771,7 +1816,7 @@ class GlobalSkillMap:
             vmax=vmax2,
         )
 
-        cb = plt.colorbar(pcm, ax=ax, orientation="horizontal" if metric == "rmse" else "vertical")
+        cb = plt.colorbar(pcm, ax=ax, orientation="vertical")
         cb.set_label(cbar_label)
 
         if title:
