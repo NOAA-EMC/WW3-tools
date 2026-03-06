@@ -1,0 +1,28 @@
+{
+    "directories": {
+        "GFSv16": "/work2/noaa/marine/ming.chen/GFS_Retro_Data/data/outcombine/2022_hurricane",
+        "retrov17_01": "/work2/noaa/marine/ming.chen/GFS_Retro_Data/data/outcombine/2022_hurricane"
+    },
+    "filenames_all": "combined",
+    "filenames": [
+        "combined_day01",
+        "combined_day02",
+        "combined_day03",
+        "combined_day04",
+        "combined_day05",
+        "combined_day06",
+        "combined_day07",
+        "combined_day08",
+        "combined_day09",
+        "combined_day10",
+        "combined_day11",
+        "combined_day12",
+        "combined_day13",
+        "combined_day14",
+        "combined_day15",
+        "combined_day16"
+    ],
+    "satellite_name": "CRYOSAT2",
+    "season": "Hurricane",
+    "output_dir": "/work2/noaa/marine/ming.chen/GFS_Retro_Data/data/outeval/2022_hurricane/CRYOSAT2"
+}
