@@ -6,7 +6,7 @@ function MakeDistanceToCoastData(DX,TargetShape,xtrgt,ytrgt)
 
 SetPath
 if nargin<2
-    TargetShape=uscl
+    TargetShape=TargetCoastlineFile
 end
 if nargin<4,
     xtrgt=[];
@@ -22,7 +22,7 @@ isplot=0
 %Coastline Boundary file
 PSLGfile
 GlobalTopoFile, %set as a global variable in SetPath
-uscl, %set as a global variable in SetPath
+TargetCoastlineFile, %set as a global variable in SetPath
 
 %Output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

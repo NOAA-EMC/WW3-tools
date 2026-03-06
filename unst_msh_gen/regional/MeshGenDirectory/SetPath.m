@@ -6,7 +6,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%% Define global variables used in regional mesh generation %%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-global GlobalTopoFile TagetCoastlineFile GlobalCoastlineFile 
+global GlobalTopoFile TargetCoastlineFile GlobalCoastlineFile 
 global GlobalCoastlineFileGSHHS GlobalCoastlineFileOSM PSLGfile 
 global LakeDir NewOrleansCoastDir
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -24,7 +24,7 @@ GlobalTopoFile='../Data/Bathymetry/RTopo_2_0_4_GEBCO_v2024_60sec_pixel.nc'
 
 % US coastline file or shapefile defining coastal points where high
 % resolution in the mesh is desired 
-TagetCoastlineFile='../Data/us_coastline/tl_2023_us_coastline.shp'
+TargetCoastlineFile='../Data/us_coastline/tl_2023_us_coastline.shp'
 
 %Global coverage coastline file from Global Self-consistent, 
 %Hierarchical, High-resolution Geography Database (GSHHG) 

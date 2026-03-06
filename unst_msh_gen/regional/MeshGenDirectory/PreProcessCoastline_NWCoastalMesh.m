@@ -14,6 +14,6 @@ MakeCoastalBoundariesOSM
 BuildBoundaryPSLGfunction(CoastLineFile,lonWest,lonEast,latSouth,latNorth,PSLGfile)
 %[xpi,ypi]=ExtraPointsOfIntrest;
 
-TargetShape=TagetCoastlineFile;% US coastline as target for distance
+TargetShape=TargetCoastlineFile;% US coastline as target for distance
 DX=.0125;
-MakeDistanceToCoastData(DX,TagetCoastlineFile,[],[])
+MakeDistanceToCoastData(DX,TargetCoastlineFile,[],[])

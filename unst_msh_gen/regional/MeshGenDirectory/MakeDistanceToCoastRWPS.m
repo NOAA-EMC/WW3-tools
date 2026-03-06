@@ -16,7 +16,7 @@ isplot=0
 %Global Bathymetry file (netcdf)
 %GlobalTopoFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/RTopo_2_0_4_GEBCO_v2023_60sec_pixel.nc'
 %Shape file with US coastline 
-%uscl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
+%TargetCoastlineFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/us_coastline/tl_2023_us_coastline.shp'
 
 %Output files
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -28,7 +28,7 @@ TopoFile=['Topo.',DFunOutFile];
 FileOutMatlab=[PSLGfile(1:end-4),'.MakeDistance.mat']
 
 
-US=shaperead(uscl);
+US=shaperead(TargetCoastlineFile);
 NUS=length(US)
 xus=[];
 yus=[];

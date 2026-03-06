@@ -55,9 +55,9 @@ for k=1:N
     end
 end
 if sum(isisland)==N
-    disp(['All features in ',gcfl,' are closed islands'])
+    disp(['All features in ',GlobalCoastlineFile,' are closed islands'])
 else
-    disp([int2str(sum(isisland)),'  features in ',gcfl,...
+    disp([int2str(sum(isisland)),'  features in ',GlobalCoastlineFile,...
         ' are closed islands. out of:',int2str(N),' total features'])
 end
 

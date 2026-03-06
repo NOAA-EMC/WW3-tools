@@ -30,9 +30,9 @@ PacLat=[-20,40];
 
 earth=referenceSphere('Earth')
 
-%gcfl='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/openstreetmap_land/land_polygons.shp'
+%GlobalCoastlineFile='/scratch3/NCEPDEV/climate/Keston.Smith/RWPS/Data/openstreetmap_land/land_polygons.shp'
 
-S = shaperead(gcfl);
+S = shaperead(GlobalCoastlineFile);
 N=length(S);
 isisland=zeros(N,1);
 for k=1:N
@@ -42,9 +42,9 @@ for k=1:N
     end
 end
 if sum(isisland)==N
-    disp(['All features in ',gcfl,' are closed islands'])
+    disp(['All features in ',GlobalCoastlineFile,' are closed islands'])
 else
-    disp([int2str(sum(isisland)),'  features in ',gcfl,...
+    disp([int2str(sum(isisland)),'  features in ',GlobalCoastlineFile,...
         ' are closed islands. out of:',int2str(N),' total features'])
 end
 
