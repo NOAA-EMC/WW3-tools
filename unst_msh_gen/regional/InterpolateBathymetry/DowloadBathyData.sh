@@ -22,9 +22,9 @@ wget --output-document crm_vol4_2023.nc https://www.ngdc.noaa.gov/thredds/fileSe
 # Western GOA
 wget --output-document crm_vol5_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol5_2023.nc
 #Central Pacific
-wget --output-document crm_vol7_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol7_2023.nc
+wget --output-document crm_vol7_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol7_2025.nc
 #Northwest Pacific
-wget --output-document crm_vol8_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol8_2023.nc
+wget --output-document crm_vol8_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol8_2025.nc
 #Puerto Rico
 wget --output-document crm_vol9_2023.nc https://www.ngdc.noaa.gov/thredds/fileServer/crm/cudem/crm_vol9_2023.nc
 #Hawaii

@@ -29,6 +29,7 @@ figure;
 
 g=loadmshWW3(flnm)
 x=g.x;y=g.y;z=g.z;e=g.e;
+x=LonCon(x)
 
 clf;
 ph=patch(x(e'),y(e'),z(e'));

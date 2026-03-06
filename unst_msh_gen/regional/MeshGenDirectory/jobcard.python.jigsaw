@@ -16,5 +16,5 @@ source /scratch3/NCEPDEV/climate/Keston.Smith/UrsaMeshgenEnv3/jigsawenv/bin/acti
 pip list -v
 
 python3 MeshGenScript.NWcoastal.py > MeshGenScript.NWcoastal.out
-# python3 RWPSMeshGenScript.GSSHSxOSM.NewOrleans.py >RWPSMeshGenScript.GSSHSxOSM.NewOrleans.out
-# python3 RWPSMeshGenScript.GSSHS.py >RWPSMeshGenScript.GSSHS.out
+# python3 RWPSMeshGenScript.GSHHSxOSM.NewOrleans.py >RWPSMeshGenScript.GSHHSxOSM.NewOrleans.out
+# python3 RWPSMeshGenScript.GSHHS.py >RWPSMeshGenScript.GSHHS.out

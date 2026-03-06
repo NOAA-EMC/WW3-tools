@@ -13,22 +13,22 @@ from scipy.interpolate import RegularGridInterpolator
 
 #GSSH coastline 
 #jigsaw .msh format Planer Straight Line Graph defining mesh outer boundary and coastline
-PSLGFile="GlobalCoastlineGSHHS.PSLG.msh"
+PSLGFile="NWcoastal.PSLG.msh"
 #jigsaw gridded .msh format Distance to taget poings
-DistanceToCoastFile="DFun.GlobalCoastlineGSHHS.PSLG.msh"
+DistanceToCoastFile="DFun.NWcoastal.PSLG.msh"
 #jigsaw gridded .msh format topography on same grid as distance
-TopographyFile="Topo.DFun.GlobalCoastlineGSHHS.PSLG.msh"
+TopographyFile="Topo.DFun.NWcoastal.PSLG.msh"
 
 # directory to write output files to
-OutDir='testRWPS.GSHHS/'
+OutDir='NWcoastal/'
 
 #-------------------Paramter Inputs------------------------------------
 #parameters for specifying resolution
-d0=10000.
-d1=320000. - d0
-beta=1000.
-Smin=0.5 
-Smax=10.
+d0=15000.
+d1=300000.
+beta=2000.
+Smin=0.25
+Smax=7.5
 
 #-------------------Main Program---------------------------------------
 
