@@ -15,7 +15,7 @@ module use /work2/noaa/marine/jmeixner/general/modulefiles
 module load ww3tools
 
 WORKDIR="/work2/noaa/marine/ming.chen/GFS_Retro_Data"
-WW3TOOLSDIR="${WORKDIR}/WW3-Tools/ww3tools"
+WW3TOOLSDIR="${WORKDIR}/WW3-tools/ww3tools"
 
 export PYTHONPATH="${WW3TOOLSDIR}:${PYTHONPATH:-}"
 
