@@ -1,0 +1,19 @@
+#!/bin/sh
+#SBATCH --nodes=1
+#SBATCH --ntasks=32               # Number of tasks/cores
+#SBATCH --ntasks-per-node=32
+#SBATCH -q batch
+#SBATCH -t 08:00:00
+#SBATCH -A marine-cpu
+#SBATCH -J MeshPreProcess
+#SBATCH -o MeshPreProcess.out
+
+
+# Load the MATLAB module
+module load matlab/R2024b  # Ursa
+#module load matlab/2024b  # Orion
+
+# Run your MATLAB script without a graphical interface
+matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline_NWCoastalMesh.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline_RWPS_GSHHSxOSM_NewOrleans.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PreProcessCoastline_GSHHS.m'); exit;"

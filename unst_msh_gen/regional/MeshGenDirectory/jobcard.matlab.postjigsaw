@@ -1,0 +1,19 @@
+#!/bin/sh
+#SBATCH --nodes=1
+#SBATCH --ntasks=32               # Number of tasks/cores
+#SBATCH --ntasks-per-node=32
+#SBATCH -q batch
+#SBATCH -t 08:00:00
+#SBATCH -A marine-cpu
+#SBATCH -J MeshPostProcess
+#SBATCH -o MeshPostProcess.out
+
+
+# Load the MATLAB module
+module load matlab/R2024b  # Ursa
+#module load matlab/2024b  # Orion
+
+# Run your MATLAB script without a graphical interface
+matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_NWcoastal.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_GSHHSxOSM_NewOrleans.m'); exit;"
+# matlab -nodisplay -nodesktop -r "run('./PostProcessGrid_GSHHS.m'); exit;"
