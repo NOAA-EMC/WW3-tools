@@ -100,7 +100,7 @@ def parse_args():
     output_all_in_one = not args.no_output_all_in_one
     output_per_day = not args.no_output_per_day
 
-    INPUTDIR_BASE = os.path.join(WORKDIR, "data", "outinterp")
+    INPUTDIR_BASE = os.path.join(WORKDIR, "processsatdata", "outinterp")
     OUTDIR = os.path.join(WORKDIR, "processsatdata", "outcombine")
 
 def determine_season(dt_obj):
