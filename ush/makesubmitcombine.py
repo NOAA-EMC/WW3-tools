@@ -1,3 +1,50 @@
+"""
+makesubmitcombine.py
+
+PURPOSE:
+    Create Slurm job scripts to run `combineSatInterpOut.py`.
+    This allows the combination tasks to run in parallel, improving
+efficiency and reducing memory pressure compared with running all
+model/satellite combinations in a single job.
+
+USAGE:
+ Modify the settings below as needed:
+  - MACHINE:          HPC machine where the jobs will run.
+                      Supported options: "ursa", "orion", "hercules"
+  - WORKDIR:          Working directory containing `WW3-tools` and processed data.
+  - MODELS:           List of model names to process.
+                      These should be consistent with the model names used in the
+                      interpolated output filenames.
+  - SATELLITES:       List of satellite names to process.
+  - STARTDATE:        Start date for the combination period, in `yyyymmddhh` format.
+  - ENDDATE:          End date for the combination period, in `yyyymmddhh` format.
+  - INTERVAL_HOURS:   Time interval, in hours, between forecast cycles to process.
+                      for example: 00z 06z 12z 18z -> INTERVAL_HOURS=6
+                                   00z 12z         -> INTERVAL_HOURS=12
+                                   00z             -> INTERVAL_HOURS=24
+  - MAX_FORECAST_DAY: Maximum forecast day to include in the combination.
+  - FORCE_SEASON:     Label used in the output filename, such as a season, month,
+                      or custom period name.
+  - SELECTED_YEAR:    Year string passed to `combineSatInterpOut.py` for filtering
+                      or labeling, depending on the downstream script logic.
+
+  - Slurm setting:    Define account, queue, wall-clock time, memory, CPUs, and
+                      other job submission options.
+
+OUTPUT:
+ One Slurm job script is created for each model and satellite combination
+
+ Output locaiton:
+    {WORKDIR}/processsatdata/jobcombine/{model}/
+
+ Output filename format:
+     job_{model}_{satellite}_{force_season}.sh
+
+AUTHOR and DATE:
+ 03/12/2026: Ming Chen, first version
+
+"""
+
 import datetime as dt
 from dateutil.relativedelta import relativedelta
 import os

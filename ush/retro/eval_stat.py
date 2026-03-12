@@ -1,3 +1,77 @@
+"""
+eval_stat.py
+
+PURPOSE:
+    Load one all-in-one combined NetCDF file for each configured model and
+compute verification statistics by forecast-day range for significant
+wave height (Hs) and wind speed (WND).
+
+    The script:
+      1. reads configuration settings from `evalsumconfig.json`
+      2. loads one combined NetCDF file for each model
+      3. converts the dataset to a pandas DataFrame
+      4. removes rows containing missing values
+      5. converts `fcst_hr` from timedelta to hours when needed
+      6. groups data into cumulative 24-hour forecast ranges:
+             0–24 h, 24–48 h, ..., 360–384 h
+      7. computes verification metrics using `mvalstats.metrics`
+      8. plots each metric versus forecast hour for Hs and WND
+
+    The script computes statistics using 'mvalstats' for:
+      - Hs using `obs_hs`
+      - WND using calibrated wind observations `obs_wnd_cal`
+
+USAGE:
+    Edit `evalsumconfig.json` to define:
+      - directories    : input directories for each model
+      - filenames_all  : all-in-one combined file prefix
+      - satellite_name : satellite name used in the filenames and plot titles
+      - season         : season label used in the filenames and plot titles
+      - output_dir     : directory for output figures
+
+    Modify the script as needed for:
+      - endday        : maximum forecast day to include
+      - n_filters     : number of filters to apply
+
+OUTPUT:
+    One PNG figure is created for each verification metric. Each figure
+    contains two panels:
+      - top panel    : Hs metric versus forecast hour
+      - bottom panel : WND metric versus forecast hour
+
+    Output filename format:
+
+        fig_{stat_name}_{satellite_name}_{season}.png
+
+NOTE:
+    Statistics:
+        The script computes the following metrics from `mvalstats.metrics`:
+            bias, RMSE, NBias, NRMSE, SCrmse, SI, HH, CC, N
+
+    Forecast bins:
+        Statistics are computed in cumulative 24-hour forecast bins:
+            Day 1  :   0 < fcst_hr <=  24
+            Day 2  :  24 < fcst_hr <=  48
+            ...
+            Day 16 : 360 < fcst_hr <= 384
+
+    Filters:
+        The script supports up to three filter levels:
+            - filter 0 : all samples
+            - filter 1 : obs_hs >= 4 m
+            - filter 2 : obs_hs >= 7 m
+
+    Others:
+        - Hs statistics are computed from:
+            model_hs vs obs_hs
+        - WND statistics are plotted from:
+            model_wnd vs obs_wnd_cal
+
+AUTOR and DATE:
+    03/12/2026: Ming Chen, first version
+
+"""
+
 import netCDF4 as nc
 import numpy as np
 import pandas as pd
@@ -6,6 +80,9 @@ import json
 import xarray as xr
 import matplotlib.pyplot as plt
 import mvalstats
+
+endday     = 16
+n_filters  = 1
 
 with open('evalsumconfig.json') as config_file:
     config = json.load(config_file)
@@ -21,8 +98,6 @@ os.makedirs(output_dir, exist_ok=True)
 
 file_paths = [os.path.join(directories[key], f"{filename}_{key}_{season}_{satellite}.nc") for key in directories]
 models     = list(directories.keys())
-endday     = 16
-n_filters  = 1
 
 allstats_hs      = np.zeros([len(models),n_filters,endday,9])*np.nan
 allstats_wnd     = np.zeros([len(models),n_filters,endday,9])*np.nan

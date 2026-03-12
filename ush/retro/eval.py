@@ -1,3 +1,86 @@
+"""
+eval.py
+
+PURPOSE:
+    Load combined NetCDF files defined in `evalsumconfig.json` and generate
+evaluation plots for each configured forecast-period file.
+
+    For each input file, the script:
+       1. loads the corresponding combined NetCDF files for all configured models
+       2. extracts significant wave height (Hs) and wind speed (WND)
+       3. merges model datasets using common time, latitude, longitude, and
+          observation values so only matched samples are compared
+       4. creates QQ plots and Taylor diagrams for Hs and WND
+       5. creates scatter plots for each model against the satellite observations
+       6. creates global maps of bias and RMSE for Hs and WND
+
+    Plotting is performed using classes from `pvalstats.py`, including
+`ModelObsPlot` and `GlobalSkillMap`.
+
+USAGE:
+    Edit `evalsumconfig.json` to define:
+        - directories     : input directories for each model
+        - filenames       : list of combined file prefixes to process
+        - satellite_name  : satellite name used in the filenames and plot labels
+        - season          : season label used in the filenames
+        - output_dir      : directory for output plots
+
+    Modify the global map settings in this script as needed:
+        - DLAT:          latitude bin size
+        - DLON:          longitude bin size
+        - MIN_COUNT:     minimum data required per bin, MIN_COUNT = 1 means no filtering
+        - LATMIN:        minimum latitude included in analysis
+        - LATMAX:        maximum latitude included
+        - HS_BIAS_VMAX:  maximum absolute colorbar range for Hs bias
+        - HS_RMSE_VMAX:  maximum colorbar range for Hs RMSE
+        - WND_BIAS_VMAX: maximum absolute colorbar range for wind bias
+        - WND_RMSE_VMAX: maximum colorbar range for wind RMSE
+        - QC_HS:         quality-control thresholds for Hs
+        - QC_WND:        quality-control thresholds for wind speed
+
+OUTPUT:
+    The script generates the following plot types for each configured input file:
+        1. Hs QQ plot comparing all models
+        2. Hs Taylor diagram comparing all models
+        3. WND QQ plot comparing all models
+        4. WND Taylor diagram comparing all models
+        3. Hs scatter plot for each model
+        4. WND scatter plot for each model
+        5. Hs global bias map for each model
+        6. Hs global RMSE map for each model
+        7. WND global bias map for each model
+        8. WND global RMSE map for each model
+
+    Output filename formats:
+        - Hs QQ / Taylor plots:
+            plot_HS_{filename}_{satellite_name}_{season}*
+        - WND QQ / Taylor plots:
+            plot_WND_{filename}_{satellite_name}_{season}*
+        - Hs scatter plots:
+            plot_HS_scatter_{filename}_{satellite_name}_{season}_{model_label}_*
+        - WND scatter plots:
+            plot_WND_scatter_{filename}_{satellite_name}_{season}_{model_label}_*
+        - Hs global bias map:
+            plot_Hs_{model_label}_{filename}_{satellite_name}_global_Bias.png
+        - Hs global RMSE map:
+            plot_Hs_{model_label}_{filename}_{satellite_name}_global_RMSE.png
+        - WND global bias map:
+            plot_WND_{model_label}_{filename}_{satellite_name}_global_Bias.png
+        - WND global RMSE map:
+            plot_WND_{model_label}_{filename}_{satellite_name}_global_RMSE.png
+
+NOTE:
+    - The script currently assumes two models when assigning suffixes and labels: retrov17_01 and gfsv16
+    - Hs uses `obs_hs` as the observation field.
+    - WND uses `obs_wnd_cal` as the observation field.
+    - Only files that exist for all configured models are processed.
+    - Rows with missing values are removed before plotting.
+
+AUTOR and DATE:
+    03/12/2026: Ming Chen, first version
+
+"""
+
 import netCDF4 as nc
 import numpy as np
 import pandas as pd

@@ -1,3 +1,49 @@
+"""
+combineSatInterpOut.py
+
+PURPOSE:
+
+    Create combined NetCDF files for a specified time period using
+interpolated model-to-satellite matchup data.
+
+    The script supports:
+        1. one all-in-one combined output file
+        2. separate combined output files by forecast day
+
+    These combined files are intended to simplify downstream
+post-processing, plotting, and statistical evaluation.
+
+USAGE:
+    Example:
+        python combineSatInterpOut.py \
+            -models retrov17_01 GFSv16 \
+            -WORKDIR /scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools \
+            -satellites JASON3 CRYOSAT2 SARAL SENTINEL3A \
+            -startdate 2024111512 \
+            -enddate   2024121718 \
+            -interval_hours 6 \
+            -max_forecast_day 16 \
+            -force_season winter \
+            -selected_years 2024
+
+        Disable outputs:
+            --no_output_all_in_one
+            --no_output_per_day
+OUTPUT:
+    Output location:
+        {WORKDIR}/processsatdata/outcombine/{satellite}/
+
+    Output filename format:
+        1. All-in-one combined file
+            combined_all_{model}_{season}_{satellite}.nc
+        2. Per-forecast-day files
+            combined_day{DD}_{model}_{season}_{satellite}.nc
+
+Author and DATE:
+ 03/12/2026: Ming Chen (ming.chen1@noaa.gov)
+
+"""
+
 import numpy as np
 import netCDF4 as nc
 import datetime as dt
@@ -5,29 +51,6 @@ import os
 import xarray as xr
 import glob
 import argparse
-
-"""
-Create combined NetCDF files for easier post processing.
-Example:
-  python combineSatInterpOut.py \
-    -models retrov17_01 GFSv16 \
-    -WORKDIR /scratch3/NCEPDEV/marine/Ming.Chen/ursa/ww3tools \
-    -satellites JASON3 CRYOSAT2 SARAL SENTINEL3A \
-    -startdate 2024111512 \
-    -enddate   2024121718 \
-    -interval_hours 6 \
-    -max_forecast_day 16 \
-    -force_season winter \
-    -selected_years 2024
-
-Auto season:
-  -force_season None
-
-Disable outputs:
-  --no_output_all_in_one
-  --no_output_per_day
-
-"""
 
 def _parse_yyyymmddhh(s):
     try:
