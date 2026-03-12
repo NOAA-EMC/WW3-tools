@@ -21,22 +21,14 @@ output_dir = config["output_dir"]
 os.makedirs(output_dir, exist_ok=True)
 
 # -------------------- global plot setting ------------------------------
-# -----------------------------------------------------------------------
-def _get_var(ds, candidates):
-    """Return the first matching variable array from candidates."""
-    for v in candidates:
-        if v in ds.variables:
-            return ds.variables[v][:]
-    raise KeyError(f"Missing variable. Tried: {candidates}")
-
 DLAT = 1.0             # latitude bin size
 DLON = 1.0             # longitude bin size
 MIN_COUNT = 10         # minimum data required per bin, MIN_COUNT = 1 means no filtering
-LATMIN = -60.0         # minimum latitude included in analysis
-LATMAX = 60.0          # maximum latitude included
+LATMIN = -80.0         # minimum latitude included in analysis
+LATMAX = 80.0          # maximum latitude included
 
-HS_BIAS_VMAX = 0.5     # color range for SWH, bias range: [-0.5, +0.5] m
-HS_RMSE_VMAX = 1.0     # color range, rmse range: [0, 1.0] m
+HS_BIAS_VMAX = 0.8     # color range for SWH, bias range: [-0.5, +0.5] m
+HS_RMSE_VMAX = 1.5     # color range, rmse range: [0, 1.0] m
 WND_BIAS_VMAX = 2.0    # example m/s (edit to yours)
 WND_RMSE_VMAX = 5.0    # example m/s (edit to yours)
 
@@ -62,6 +54,9 @@ for filename in filenames:
         for ds, suffix in zip(datasets, suffixes):
             df_hs = pd.DataFrame({
                     "time": ds.variables["time"][:],
+                    "latitude": ds.variables["latitude"][:],
+                    "longitude": ds.variables["longitude"][:],
+                    "obs_hs": ds.variables["obs_hs"][:],
                     "hs" + suffix: ds.variables["model_hs"][:]
             })
             df_hs = df_hs.reset_index().rename(columns={'index': 'row_id'})
@@ -69,6 +64,9 @@ for filename in filenames:
 
             df_wnd = pd.DataFrame({
                     "time": ds.variables["time"][:],
+                    "latitude": ds.variables["latitude"][:],
+                    "longitude": ds.variables["longitude"][:],
+                    "obs_wnd": ds.variables["obs_wnd_cal"][:],
                     "wnd" + suffix: ds.variables["model_wnd"][:]
             })
             df_wnd = df_wnd.reset_index().rename(columns={'index': 'row_id'})
@@ -77,28 +75,12 @@ for filename in filenames:
         # Merging HS dataframes
         merged_hs = dfs_hs[0]
         for df in dfs_hs[1:]:
-            merged_hs = pd.merge(merged_hs, df, on=['time', 'row_id'], how='inner')
+            merged_hs = pd.merge(merged_hs, df, on=['time', 'row_id', 'latitude', 'longitude', 'obs_hs'], how='inner')
 
         # Merging WND dataframes
         merged_wnd = dfs_wnd[0]
         for df in dfs_wnd[1:]:
-            merged_wnd = pd.merge(merged_wnd, df, on=['time', 'row_id'], how='inner')
-
-
-        # Adding observation data
-
-        df_obs_hs = pd.DataFrame({
-            'time': datasets[0].variables['time'][:],
-            'obs_hs': datasets[0].variables['obs_hs_cal'][:]
-        }).reset_index().rename(columns={'index': 'row_id'})
-
-        df_obs_wnd = pd.DataFrame({
-            'time': datasets[0].variables['time'][:],
-            'obs_wnd': datasets[0].variables['obs_wnd_cal'][:]
-        }).reset_index().rename(columns={'index': 'row_id'})
-
-        merged_hs = pd.merge(merged_hs, df_obs_hs, on=['time', 'row_id'], how='inner')
-        merged_wnd = pd.merge(merged_wnd, df_obs_wnd, on=['time', 'row_id'], how='inner')
+            merged_wnd = pd.merge(merged_wnd, df, on=['time', 'row_id', 'latitude', 'longitude', 'obs_wnd'], how='inner')
 
         merged_hs = merged_hs.drop(columns=['row_id'])
         merged_wnd = merged_wnd.drop(columns=['row_id'])
@@ -132,10 +114,9 @@ for filename in filenames:
         mop_wnd.qqplot()
         mop_wnd.taylordiagram()
 
-        model_labels = ['Retrov17_01', 'GFSv16']
-
         model_columns_hs = ['hs_retrov17_01', 'hs_gfsv16']
-        for col, label in zip(model_columns_hs, model_labels):
+        model_labels = ['Retrov17_01', 'GFSv16']
+        for i, (col, label) in enumerate(zip(model_columns_hs, model_labels)):
              mop_hs_sc = ModelObsPlot(
                 model=merged_hs[col].values.reshape(-1, 1),
                 obs=merged_hs['obs_hs'].values,
@@ -147,40 +128,15 @@ for filename in filenames:
              )
              mop_hs_sc.scatterplot(dwscl='yes')
 
-        model_columns_wnd = ['wnd_retrov17_01', 'wnd_gfsv16']
-        for col, label in zip(model_columns_wnd, model_labels):
-            mop_wnd_sc = ModelObsPlot(
-                model=merged_wnd[col].values.reshape(-1, 1),
-                obs=merged_wnd['obs_wnd'].values,
-                linreg=True,
-                axisnames=[f"{label} WND (m/s)", f"{satellite_name} WND (m/s)"],
-                mlabels=[''],
-                mtitle=f"Wind speed (m/s) {day} {satellite_name} {season}",
-                ftag=os.path.join(output_dir, f"plot_WND_scatter_{filename}_{satellite_name}_{season}_{label}_")
-            )
-            mop_wnd_sc.scatterplot(dwscl='yes')
+             gsm = GlobalSkillMap(
+                lat=dfs_hs[i]['latitude'],
+                lon=dfs_hs[i]['longitude'],
+                model=dfs_hs[i][col],
+                obs=dfs_hs[i]['obs_hs'],
+                mlabels=[label]
+             )
 
-# ------------------------------ global plot ----------------------------------------------------
-        for model_key, model_dir in directories.items():
-            fp = os.path.join(model_dir, f"{filename}_{model_key}_{season}_{satellite_name}.nc")
-            if not os.path.exists(fp):
-                print(f"Missing file for global plots: {fp}")
-                continue
-
-            with nc.Dataset(fp, "r") as ds:
-                lat = _get_var(ds, ["latitude", "lat"])
-                lon = _get_var(ds, ["longitude", "lon"])
-
-                model_hs = _get_var(ds, ["model_hs"])
-                obs_hs = _get_var(ds, ["obs_hs_cal", "obs_hs"])
-
-                model_wnd = _get_var(ds, ["model_wnd"])
-                obs_wnd = _get_var(ds, ["obs_wnd_cal", "obs_wnd"])
-
-            # --- Hs bias + rmse ---
-            gsm = GlobalSkillMap(lat=lat, lon=lon, model=model_hs, obs=obs_hs, mlabels=[model_key])
-
-            gsm.plot_global_like_global_plot(
+             gsm.plot_global_like_global_plot(
                 metric="bias",
                 model_index=0,
                 dlat=DLAT,
@@ -191,11 +147,10 @@ for filename in filenames:
                 latmax=LATMAX,
                 qc_kwargs=QC_HS,
                 vmax=HS_BIAS_VMAX,
-                title=f"Hs Bias – {filename} ({model_key} vs {satellite_name})",
-                outfile=os.path.join(output_dir, f"plot_Hs_{model_key}_{filename}_{satellite_name}_global_Bias.png"),
-            )
-
-            gsm.plot_global_like_global_plot(
+                title=f"Hs Bias – {day} ({label} vs {satellite_name})",
+                outfile=os.path.join(output_dir, f"plot_Hs_{label}_{filename}_{satellite_name}_global_Bias.png"),
+             )
+             gsm.plot_global_like_global_plot(
                 metric="rmse",
                 model_index=0,
                 dlat=DLAT,
@@ -206,11 +161,32 @@ for filename in filenames:
                 latmax=LATMAX,
                 qc_kwargs=QC_HS,
                 vmax=HS_RMSE_VMAX,
-                title=f"Hs RMSE – {filename} ({model_key} vs {satellite_name})",
-                outfile=os.path.join(output_dir, f"plot_Hs_{model_key}_{filename}_{satellite_name}_global_RMSE.png"),
-            )
+                title=f"Hs RMSE – {day} ({label} vs {satellite_name})",
+                outfile=os.path.join(output_dir, f"plot_Hs_{label}_{filename}_{satellite_name}_global_RMSE.png"),
+             )
 
-            gsm.plot_global_like_global_plot(
+        model_columns_wnd = ['wnd_retrov17_01', 'wnd_gfsv16']
+        for i, (col, label) in enumerate(zip(model_columns_wnd, model_labels)):
+             mop_wnd_sc = ModelObsPlot(
+                model=merged_wnd[col].values.reshape(-1, 1),
+                obs=merged_wnd['obs_wnd'].values,
+                linreg=True,
+                axisnames=[f"{label} WND (m/s)", f"{satellite_name} WND (m/s)"],
+                mlabels=[''],
+                mtitle=f"Wind speed (m/s) {day} {satellite_name} {season}",
+                ftag=os.path.join(output_dir, f"plot_WND_scatter_{filename}_{satellite_name}_{season}_{label}_")
+             )
+             mop_wnd_sc.scatterplot(dwscl='yes')
+
+             gsm = GlobalSkillMap(
+                lat=dfs_wnd[i]['latitude'],
+                lon=dfs_wnd[i]['longitude'],
+                model=dfs_wnd[i][col],
+                obs=dfs_wnd[i]['obs_wnd'],
+                mlabels=[label]
+             )
+
+             gsm.plot_global_like_global_plot(
                 metric="bias",
                 model_index=0,
                 dlat=DLAT,
@@ -221,11 +197,11 @@ for filename in filenames:
                 latmax=LATMAX,
                 qc_kwargs=QC_WND,
                 vmax=WND_BIAS_VMAX,
-                title=f"WND Bias – {filename} ({model_key} vs {satellite_name})",
-                outfile=os.path.join(output_dir, f"plot_WND_{model_key}_{filename}_{satellite_name}_global_Bias.png"),
-            )
+                title=f"WND Bias – {day} ({label} vs {satellite_name})",
+                outfile=os.path.join(output_dir, f"plot_WND_{label}_{filename}_{satellite_name}_global_Bias.png"),
+             )
 
-            gsm.plot_global_like_global_plot(
+             gsm.plot_global_like_global_plot(
                 metric="rmse",
                 model_index=0,
                 dlat=DLAT,
@@ -236,9 +212,9 @@ for filename in filenames:
                 latmax=LATMAX,
                 qc_kwargs=QC_WND,
                 vmax=WND_RMSE_VMAX,
-                title=f"WND RMSE – {filename} ({model_key} vs {satellite_name})",
-                outfile=os.path.join(output_dir, f"plot_WND_{model_key}_{filename}_{satellite_name}_global_RMSE.png"),
-            )
+                title=f"WND RMSE – {day} ({label} vs {satellite_name})",
+                outfile=os.path.join(output_dir, f"plot_WND_{label}_{filename}_{satellite_name}_global_RMSE.png"),
+             )
 
     else:
         # Not all file paths exist message
