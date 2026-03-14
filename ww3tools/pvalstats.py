@@ -79,6 +79,10 @@ USAGE:
    gsmooth
    plot
 
+ Class GlobalSkillMap
+ Functions:
+   plot_global_like_global_plot
+
  The explanation for each function is contained in the headers, including
   examples,
  help(pvalstats)
@@ -99,6 +103,7 @@ AUTHOR and DATE:
  08/03/2023: Ricardo M. Campos, new functions included rankhist,monthlystats,
    errxfctime,spreadxfctime,crpsxfctime
  08/04/2023: Ricardo M. Campos, new class GlobalMapPlot and function gsmooth
+ 03/13/2026: Ming Chen, new class GlobalSkillMap and funtions
 
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
@@ -1410,8 +1415,6 @@ class GlobalSkillMap:
     GlobalSkillMap
     -------------
     Compute and plot gridded global Bias and RMSE from collocated point matchups.
-
-    Designed to reproduce 'global_plot.py' style:
       - lat/lon binning (centers)
       - bias = mean(model - obs)
       - rmse = sqrt(mean((model - obs)^2))
@@ -1466,7 +1469,6 @@ class GlobalSkillMap:
     ):
         """
         Return filtered copies of (lat, lon, model, obs).
-        This lets you match global_plot.py QC exactly.
 
         Parameters
         ----------
@@ -1642,11 +1644,11 @@ class GlobalSkillMap:
         return LON_edges, LAT_edges, latc, lonc, bias, rmse, cnt
 
     # -----------------------------
-    # Plotting (global_plot.py style)
+    # Plotting
     # -----------------------------
     def plot_global_like_global_plot(
         self,
-        metric="bias",          # "bias" or "rmse"
+        metric="bias",          # "bias" or "rmse" or "count"
         model_index=0,
         dlat=1.0,
         dlon=1.0,
@@ -1656,7 +1658,7 @@ class GlobalSkillMap:
         latmax=60.0,
         qc_kwargs=None,
         vmax=None,              # required for exact matching scale
-        cmap=None,              # default matches global_plot choices
+        cmap=None,
         title=None,
         cbar_label=None,
         outfile=None,           # if provided, saves figure
@@ -1685,7 +1687,6 @@ class GlobalSkillMap:
                 "obs": _np.asarray(obs_1d, dtype=float),
             })
 
-            # Drop rows with missing critical values (exactly like global_plot.py)
             df = df.dropna(subset=["latitude", "longitude", "model", "obs"])
 
             # Errors
@@ -1734,21 +1735,18 @@ class GlobalSkillMap:
             # Mask bins with too few obs
             bias_plot = _np.where(count_grid >= min_count, bias_grid, _np.nan)
             rmse_plot = _np.where(count_grid >= min_count, rmse_grid, _np.nan)
+            count_plot = _np.where(count_grid >= min_count, count_grid, _np.nan)
 
-            return LON_edges, LAT_edges, bias_plot, rmse_plot, count_grid
+            return LON_edges, LAT_edges, bias_plot, rmse_plot, count_plot
 
-        if metric not in ("bias", "rmse"):
-            raise ValueError("metric must be 'bias' or 'rmse'")
+        if metric not in ("bias", "rmse","count"):
+            raise ValueError("metric must be 'bias', or 'rmse', or 'count'")
 
         if model_index < 0 or model_index >= self.M:
             raise ValueError("model_index out of range")
 
-        if vmax is None:
-            raise ValueError("vmax must be provided to match global_plot.py scaling")
-
         # Build gridded fields
         if use_pandas:
-            # QC like global_plot.py + optional additional required arrays (e.g., wind, fcst_hr)
             qc_kwargs2 = dict(qc_kwargs or {})
             qc_kwargs2.setdefault("latmin", latmin)
             qc_kwargs2.setdefault("latmax", latmax)
@@ -1756,7 +1754,6 @@ class GlobalSkillMap:
 
             extra_mask = None
             if required_mask_arrays is not None:
-                # Require all provided arrays to be finite (mimics df.dropna on those fields)
                 extra_mask = np.ones(self.obs.size, dtype=bool)
                 for _k, _arr in dict(required_mask_arrays).items():
                     _a = np.asarray(_arr, dtype=float).ravel()
@@ -1771,14 +1768,19 @@ class GlobalSkillMap:
             )
             model_1d = model_f[model_index, :]
 
-            # Also enforce lon normalization here (global_plot does it before binning)
             if lon_0_360:
                 lon_f = (lon_f + 360.0) % 360.0
 
-            LONe, LATe, bias_plot, rmse_plot, cnt = _grid_pandas(
+            LONe, LATe, bias_plot, rmse_plot, count_plot = _grid_pandas(
                 lat_f, lon_f, model_1d, obs_f, dlat, dlon, min_count
             )
-            field = bias_plot if metric == "bias" else rmse_plot
+
+            if metric == "bias":
+                field = bias_plot
+            elif metric == "rmse":
+                field = rmse_plot
+            else:
+                field = count_plot
 
         else:
             LONe, LATe, latc, lonc, bias, rmse, cnt = self.global_plot_like_arrays(
@@ -1790,7 +1792,13 @@ class GlobalSkillMap:
                 latmax=latmax,
                 qc_kwargs=qc_kwargs,
             )
-            field = bias[model_index] if metric == "bias" else rmse[model_index]
+
+            if metric == "bias":
+                field = bias[model_index]
+            elif metric == "rmse":
+                field = rmse[model_index]
+            else:
+                field = np.where(cnt[model_index] >= min_count, cnt[model_index], np.nan)
 
         if metric == "bias":
             vmin, vmax2 = -float(vmax), float(vmax)
@@ -1798,12 +1806,19 @@ class GlobalSkillMap:
                 cmap = "RdBu_r"
             if cbar_label is None:
                 cbar_label = "Bias (model − obs)"
-        else:
+        elif metric == "rmse":
             vmin, vmax2 = 0.0, float(vmax)
             if cmap is None:
                 cmap = "jet"
             if cbar_label is None:
                 cbar_label = "RMSE"
+        else:
+            vmin = 0.0
+            vmax2 = float(vmax) if vmax is not None else float(np.nanmax(field))
+            if cmap is None:
+                cmap = "viridis"
+            if cbar_label is None:
+                cbar_label = "Number of samples"
 
         fig = plt.figure(figsize=figsize, dpi=dpi)
         ax = plt.gca()
@@ -1828,7 +1843,6 @@ class GlobalSkillMap:
             ax.set_xlim(0, 360)
         ax.set_ylim(latmin, latmax)
 
-        # mimic global_plot style: no coastlines, no grid by default
         ax.grid(False)
 
         if outfile is not None:
