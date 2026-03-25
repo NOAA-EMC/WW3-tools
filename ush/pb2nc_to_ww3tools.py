@@ -37,7 +37,7 @@ WSP_MNEM = "WSPA"
 
 # ========================
 PB2NC_DIR = os.path.join(WORKDIR, "processsatdata", "pb2nc_out")
-OUT_DIR   = os.path.join(WORKDIR, "processsatdata", "pb2nc_altimeter")
+OUT_DIR   = os.path.join(WORKDIR, "processsatdata", "out", SAT_NAME)
 
 os.makedirs(OUT_DIR, exist_ok=True)
 # Find input files
@@ -142,8 +142,8 @@ for infile in infiles:
         df = df.sort_values(by="time_unix", ascending=True)
         df = df.reset_index(drop=True)
 
-        # QC - Physical Bounds Clipping: Wind Speed (m/s) 0.5 - 100; SWH (m) 0 - 50
-        df.loc[(df['wsp'] < 0.5) | (df['wsp'] > 100), 'wsp'] = np.nan   # values below 0.5 m/s sensor noise floor
+        # QC - Physical Bounds Clipping: Wind Speed (m/s) 0 - 100; SWH (m) 0 - 50
+        df.loc[(df['wsp'] < 0) | (df['wsp'] > 100), 'wsp'] = np.nan   # values below 0.5 m/s sensor noise floor
         df.loc[(df['hs'] < 0) | (df['hs'] > 50), 'hs']     = np.nan
 
         # Debug print
