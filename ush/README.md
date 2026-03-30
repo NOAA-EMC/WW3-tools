@@ -126,3 +126,9 @@ modify `makesubmitcombine.py`
     cd WORKDIR/processsatdata/jobcombine/{model}
     ./run_all_jobs.sh
 ```
+## Directory Structure
+
+<img width="1106" height="735" alt="image" src="https://github.com/user-attachments/assets/5da3b64d-bc11-45df-8b26-122cb275c3e9" />
+
+
+
