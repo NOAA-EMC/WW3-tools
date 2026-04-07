@@ -1687,6 +1687,7 @@ class GlobalSkillMap:
                 "obs": _np.asarray(obs_1d, dtype=float),
             })
 
+            # Drop rows with missing critical values
             df = df.dropna(subset=["latitude", "longitude", "model", "obs"])
 
             # Errors
@@ -1747,6 +1748,8 @@ class GlobalSkillMap:
 
         # Build gridded fields
         if use_pandas:
+
+            # QC with user defined lat min and max + optional additional required arrays (e.g., wind, fcst_hr)
             qc_kwargs2 = dict(qc_kwargs or {})
             qc_kwargs2.setdefault("latmin", latmin)
             qc_kwargs2.setdefault("latmax", latmax)
@@ -1754,6 +1757,7 @@ class GlobalSkillMap:
 
             extra_mask = None
             if required_mask_arrays is not None:
+                # Require all provided arrays to be finite
                 extra_mask = np.ones(self.obs.size, dtype=bool)
                 for _k, _arr in dict(required_mask_arrays).items():
                     _a = np.asarray(_arr, dtype=float).ravel()
@@ -1768,6 +1772,7 @@ class GlobalSkillMap:
             )
             model_1d = model_f[model_index, :]
 
+            # Also enforce lon normalization here
             if lon_0_360:
                 lon_f = (lon_f + 360.0) % 360.0
 
