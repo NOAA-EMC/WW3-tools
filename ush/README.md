@@ -39,11 +39,11 @@ All processed data are stored under `WORKDIR`, which contains the `WW3-Tools` re
 ##### 3.1.1. Generates Slurm job scripts to _**WORKDIR/processsatdata/jobsubs**_
 ```
     cd WORKDIR/WW3-tools/ush
-    module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-    module load ww3tools
 ```
 
-modify `makeprocsatsubmit.py` and configuration files in _**WORKDIR/WW3-tools/parm**_ if necessary
+modify MACHINE, WORKDIR, STARTDATE, ENDDATE, SATELLITES, and SLURM setting parameters in `makeprocsatsubmit.py`
+
+modify data paths, WW3 output info, and QC parameters in configuration files in _**WORKDIR/WW3-tools/parm**_
 
 ```
     python makeprocsatsubmit.py
@@ -57,7 +57,7 @@ modify `makeprocsatsubmit.py` and configuration files in _**WORKDIR/WW3-tools/pa
 ```
     cd WORKDIR/WW3-tools/ush
 ```
-modify `makecombinemonthly.sh`
+modify MACHINE, WORKDIR, satoutdir (output DIR), and SATS (satellites) in `makecombinemonthly.sh`
 ```
     sbatch makecombinemonthly.sh
 ```
@@ -68,27 +68,23 @@ modify `makecombinemonthly.sh`
 ```
     cd WORKDIR/WW3-tools/ush
 ```
-modify `preBUFR_to_NetCDF.sh`
+modify MACHINE, WORKDIR, and IN_DIR (preBUFR files DIR) in `preBUFR_to_NetCDF.sh`
 ```
     sbatch preBUFR_to_NetCDF.sh
 ```    
 ##### 3.2.2. Rewrites daily MET pb2nc NetCDF files into ww3tools-compatible NetCDF format and save in _**WORKDIR/processsatdata/out/**_
 ```
     cd WORKDIR/WW3-tools/ush
-    module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-    module load ww3tools
 ```
-modify `pb2nc_to_ww3tools.py`
+modify WORKDIR, SAT_NAME, HS_MNEM, and WSP_MNEM in `pb2nc_to_ww3tools.py`
 ```
     python pb2nc_to_ww3tools.py
 ```
 ##### 3.2.3. Merges daily track-style NetCDF files into monthly NetCDF and save to _**WORKDIR/processsatdata/pb2nc_altimeter_monthly**_
 ```
     cd WORKDIR/WW3-tools/ush
-    module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-    module load ww3tools
 ```
-modify `pb2nc_merge_altimeter.py`
+modify WORKDIR, SAT_NAME, and TARGET_YYYYMM in `pb2nc_merge_altimeter.py`
 ```
     python pb2nc_merge_altimeter.py
 ```
@@ -97,10 +93,8 @@ modify `pb2nc_merge_altimeter.py`
 #### 4.1. Generates Slurm job scripts and save to _**WORKDIR/processsatdata/jobinterp**_
 ```
     cd WORKDIR/WW3-tools/ush
-    module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-    module load ww3tools
 ```
-modify `makesubmitinterp.py`
+modify MACHINE, WORKDIR, MODEL_BASE (model DIR), SAT_BASE, satellites, model (model name), tz_list (cycles), grid, and Slurm parameters in `makesubmitinterp.py`
 ```
     python makesubmitinterp.py
 ```
@@ -114,10 +108,8 @@ modify `makesubmitinterp.py`
 #### 5.1. Generates Slurm job scripts and save to _**WORKDIR/processsatdata/jobcombine**_ (PR102)
 ```
     cd WORKDIR/WW3-tools/ush
-    module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
-    module load ww3tools
 ```
-modify `makesubmitcombine.py`
+modify MACHINE, WORKDIR, MODELS, SATELLITES, STARTDATE, ENDDATE, INTERVAL_HOURS, MAX_FORECAST_DAY, FORCE_SEASON, SELECTED_YEAR, and Slurm parameters in `makesubmitcombine.py`
 ```
     python makesubmitcombine.py
 ```
