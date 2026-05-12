@@ -14,12 +14,15 @@ Variables merged (1D over time):
 # =========================
 # USER-DEFINED SETTINGS
 # =========================
-WORKDIR = "/scratch3/NCEPDEV/marine/Ming.Chen/ursa/wind_eval"  # working directory contains WW3-tools
+WORKDIR = "/work2/noaa/marine/ming.chen/issue107"  # working directory contains WW3-tools
 SAT_NAME = "JASON3"
+EXTRA_DAYS = 16                                    # Merge extra days for convenience in forecast-day evaluation
+
+IN_DIR = "/work2/noaa/marine/ming.chen/GFS_Retro_Data/processsatdata/out/JASON3" # add option for input directory, default: WORKDIR/processsatdata/out/SATELLITE
 
 # could define merge in specific year and month, set e.g. "202508"
 # set to "None" to merge all months found in IN_DIR
-TARGET_YYYYMM = None
+TARGET_YYYYMM = "202508"
 
 # ========================
 
@@ -31,8 +34,11 @@ from netCDF4 import Dataset
 # =========================
 # DIRECTORIES
 # =========================
-IN_DIR  = os.path.join(WORKDIR, "processsatdata", "pb2nc_altimeter")
-OUT_DIR = os.path.join(WORKDIR, "processsatdata", "pb2nc_altimeter_monthly")
+if "IN_DIR" not in globals():
+    IN_DIR = os.path.join(WORKDIR, "processsatdata", "out", SAT_NAME)
+
+if "OUT_DIR" not in globals():
+    OUT_DIR = os.path.join(WORKDIR, "processsatdata", "altimeter_monthly")
 
 # =========================
 # FUNCTIONS
@@ -62,8 +68,8 @@ def _read_daily(path):
     with Dataset(path, "r") as nc:
         data = {
             "time":    nc.variables["time"][:].astype(np.float64),
-            "lat":     nc.variables["lat"][:].astype(np.float32),
-            "lon":     nc.variables["lon"][:].astype(np.float32),
+            "lat":     nc.variables["latitude"][:].astype(np.float32),
+            "lon":     nc.variables["longitude"][:].astype(np.float32),
             "hs":      nc.variables["hs"][:].astype(np.float32),
             "hs_cal":  nc.variables["hs_cal"][:].astype(np.float32),
             "wsp":     nc.variables["wsp"][:].astype(np.float32),
@@ -72,8 +78,8 @@ def _read_daily(path):
         # Grab units if present (safe defaults otherwise)
         units = {
             "time": getattr(nc.variables["time"], "units", "seconds since 1970-01-01 00:00:00 UTC"),
-            "lat":  getattr(nc.variables["lat"], "units", "degrees_north"),
-            "lon":  getattr(nc.variables["lon"], "units", "degrees_east"),
+            "lat":  getattr(nc.variables["latitude"], "units", "degrees_north"),
+            "lon":  getattr(nc.variables["longitude"], "units", "degrees_east"),
             "hs":   getattr(nc.variables["hs"], "units", "m"),
             "wsp":  getattr(nc.variables["wsp"], "units", "m s-1"),
             "hs_cal": getattr(nc.variables["hs_cal"], "units", "m"),
@@ -136,6 +142,35 @@ def _write_monthly(outfile, merged, units, gattrs):
         nc.note   = gattrs.get("note", "")
         nc.history = f"Merged daily files into monthly file: {os.path.basename(outfile)}"
 
+def _next_yyyymm(yyyymm):
+    """
+    Handling month of Dec. when add 16 days for next month in Jan.
+    """
+    year = int(yyyymm[:4])
+    month = int(yyyymm[4:6])
+    if month == 12:
+        return f"{year + 1}01"
+    return f"{year}{month + 1:02d}"
+
+def _select_files_for_month(daily, target_yyyymm, extra_days=16):
+    """
+    Select files for one output month:
+    - all files in target_yyyymm
+    - first extra_days files from the next month (extra_days=16 by default)
+    """
+    next_yyyymm = _next_yyyymm(target_yyyymm)
+    selected = []
+
+    for path, yyyymm, yyyymmdd in daily:
+        if yyyymm == target_yyyymm:
+            selected.append(path)
+        elif yyyymm == next_yyyymm:
+            day = int(yyyymmdd[6:8])
+            if day <= extra_days:
+                selected.append(path)
+
+    return selected
+
 # =========================
 # MAIN
 # =========================
@@ -147,18 +182,24 @@ def main():
         print("No daily files found.")
         return
 
-    # Group by month
-    months = {}
-    for path, yyyymm, yyyymmdd in daily:
-        if TARGET_YYYYMM and yyyymm != TARGET_YYYYMM:
-            continue
-        months.setdefault(yyyymm, []).append(path)
+    available_months = sorted({yyyymm for _, yyyymm, _ in daily})
 
-    if not months:
+    if TARGET_YYYYMM:
+        months_to_merge = [TARGET_YYYYMM] if TARGET_YYYYMM in available_months else []
+    else:
+        months_to_merge = available_months
+
+    if not months_to_merge:
         print("No matching months found.")
         return
 
-    for yyyymm, paths in sorted(months.items()):
+    for yyyymm in months_to_merge:
+
+        paths = _select_files_for_month(daily, yyyymm, EXTRA_DAYS)
+        if not paths:
+            print(f"No files found for output month {yyyymm}")
+            continue
+
         # Read & concatenate
         chunks = {k: [] for k in ("time","lat","lon","hs","hs_cal","wsp","wsp_cal")}
         units = None
@@ -184,7 +225,11 @@ def main():
         _write_monthly(outfile, merged, units, gattrs)
 
         print(f"Wrote {os.path.basename(outfile)}  n={len(merged['time'])}  ndays={len(paths)}")
+        print("Selected file paths:")
+        print("====================")
 
+        for p in paths:
+            print(p)
 
 if __name__ == "__main__":
     main()
