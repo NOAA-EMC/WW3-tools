@@ -25,9 +25,6 @@ USAGE:
   - MAX_FORECAST_DAY: Maximum forecast day to include in the combination.
   - FORCE_SEASON:     Label used in the output filename, such as a season, month,
                       or custom period name.
-  - SELECTED_YEAR:    Year string passed to `combineSatInterpOut.py` for filtering
-                      or labeling, depending on the downstream script logic.
-
   - Slurm setting:    Define account, queue, wall-clock time, memory, CPUs, and
                       other job submission options.
 
@@ -55,17 +52,19 @@ import shutil
 
 ## ===================== Setting (modified as needed) =========================
 MACHINE = "orion" # machine name ursa/orion/hercules
-WORKDIR = "/work2/noaa/marine/ming.chen/GFS_Retro_Data"
+WORKDIR = "/work2/noaa/marine/ming.chen/issue109"
 MODELS  = ["GFSv16", "retrov17_01"]
+#SATELLITES = ["JASON3", "CRYOSAT2", "SARAL", "SENTINEL3A", "SENTINEL3B", "SENTINEL6A"]
 SATELLITES = ["JASON3"]
-STARTDATE  = "2022091500"
-ENDDATE    = "2022101500"
+STARTDATE  = "2024120100"
+ENDDATE    = "2025022800"
 
 INTERVAL_HOURS   = 12
 MAX_FORECAST_DAY = 16
 
-FORCE_SEASON     = "April2025"
-SELECTED_YEAR    = "2025"
+FORCE_SEASON     = "DJF2025"
+
+INPUTDIR_BASE = "/work2/noaa/marine/ming.chen/GFS_Retro_Data/data/outinterp"
 
 # Slurm settings
 SBATCH_ACCOUNT   = "marine-cpu"
@@ -74,7 +73,7 @@ SBATCH_TIME      = "08:00:00"
 SBATCH_NODES         = 1
 SBATCH_NTASKS        = 1
 SBATCH_CPUS_PER_TASK = 4
-SBATCH_MEM           = "128G"
+SBATCH_MEM           = "180G"
 SET_THREAD_ENVS = True
 
 ## --------------------- Machine-specific configuration -----------------------
@@ -138,6 +137,9 @@ def write_jobcard(model: str, satellite: str, outdir: str) -> str:
         f.write(f'SCRIPT_DIR="{SCRIPT_DIR}"\n')
         f.write(f'PY_SCRIPT="{PY_SCRIPT}"\n\n')
 
+        if INPUTDIR_BASE:
+            f.write(f'INPUTDIR_BASE="{INPUTDIR_BASE}"\n\n')
+
         f.write(f'MODELS="{model}"\n')
         f.write(f'SATELLITES="{satellite}"\n\n')
 
@@ -148,7 +150,6 @@ def write_jobcard(model: str, satellite: str, outdir: str) -> str:
         f.write(f"MAX_FORECAST_DAY={MAX_FORECAST_DAY}\n\n")
 
         f.write(f'FORCE_SEASON="{FORCE_SEASON}"\n')
-        f.write(f'SELECTED_YEAR="{SELECTED_YEAR}"\n\n')
 
         f.write("# =====================================================\n")
         f.write("# Run\n")
@@ -162,7 +163,6 @@ def write_jobcard(model: str, satellite: str, outdir: str) -> str:
         f.write('echo "WORKDIR: ${WORKDIR}"\n\n')
 
         # Keep downstream CLI compatible with your existing sample jobcard:
-        # the sample uses -selected_years
         f.write('python -u "${SCRIPT_DIR}/${PY_SCRIPT}" \\\n')
         f.write('    -models ${MODELS} \\\n')
         f.write('    -WORKDIR "${WORKDIR}" \\\n')
@@ -172,7 +172,9 @@ def write_jobcard(model: str, satellite: str, outdir: str) -> str:
         f.write('    -interval_hours ${INTERVAL_HOURS} \\\n')
         f.write('    -max_forecast_day ${MAX_FORECAST_DAY} \\\n')
         f.write('    -force_season ${FORCE_SEASON} \\\n')
-        f.write('    -selected_years ${SELECTED_YEAR}\n')
+
+        if INPUTDIR_BASE:
+            f.write('    -INPUTDIR_BASE "${INPUTDIR_BASE}" \\\n')
 
     os.chmod(outfile, 0o750)
     return outfile

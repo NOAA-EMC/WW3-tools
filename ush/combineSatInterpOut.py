@@ -25,6 +25,7 @@ USAGE:
             -max_forecast_day 16 \
             -force_season winter \
             -selected_years 2024
+            -INPUTDIR_BASE /work2/noaa/marine/ming.chen/GFS_Retro_Data/data/outinterp
 
         Disable outputs:
             --no_output_all_in_one
@@ -82,8 +83,8 @@ def parse_args():
                         help="Max forecast day (default: 16)")
     parser.add_argument("-force_season", default=None,
                         help="Force season name (winter/summer/hurricane/other) or None (default: auto)")
-    parser.add_argument("-selected_years", nargs="*", default=[],
-                        help="Year filter list; empty means all years")
+    parser.add_argument("-INPUTDIR_BASE", default=None,
+                        help="Optional input directory base. Default: WORKDIR/processsatdata/outinterp")
 
     # Outputs: keep original behavior (both True) unless disabled
     parser.add_argument("--no_output_all_in_one", action="store_true",
@@ -96,7 +97,7 @@ def parse_args():
     # Assign globals used by the original code
     global models, WORKDIR, satellites
     global startdate, enddate, interval_hours, max_forecast_day
-    global force_season, selected_years
+    global force_season
     global output_all_in_one, output_per_day
     global INPUTDIR_BASE, OUTDIR
 
@@ -118,12 +119,14 @@ def parse_args():
     else:
         force_season = args.force_season
 
-    selected_years = args.selected_years
-
     output_all_in_one = not args.no_output_all_in_one
     output_per_day = not args.no_output_per_day
 
-    INPUTDIR_BASE = os.path.join(WORKDIR, "processsatdata", "outinterp")
+    if args.INPUTDIR_BASE:
+        INPUTDIR_BASE = args.INPUTDIR_BASE
+    else:
+        INPUTDIR_BASE = os.path.join(WORKDIR, "processsatdata", "outinterp")
+
     OUTDIR = os.path.join(WORKDIR, "processsatdata", "outcombine")
 
 def determine_season(dt_obj):
@@ -172,16 +175,17 @@ def main():
         all_cycles.append(now)
         now += dt.timedelta(hours=interval_hours)
 
-    if selected_years:
-        cycles_to_process = [c for c in all_cycles if str(c.year) in selected_years]
-    else:
-        cycles_to_process = all_cycles
+    cycles_to_process = all_cycles
 
     if not cycles_to_process:
-        print("No cycles after year filter.")
+        print("No cycles found between startdate and enddate.")
         return
 
-    print(f"Processing {len(cycles_to_process)} cycles (interval {interval_hours}h)")
+    print(
+        f"Processing {len(cycles_to_process)} cycles "
+        f"from {startdate:%Y%m%d%H} to {enddate:%Y%m%d%H} "
+        f"(interval {interval_hours}h)"
+    )
 
     for model in models:
         print(f"\n=== Model: {model} ===")
@@ -202,28 +206,14 @@ def main():
 
             endday = get_max_forecast_days(model, season_name)
 
-            years = sorted(set(d[:4] for d in date_strs))
-
             for sat in satellites:
-                if len(years) == 1:
-                    y = years[0]
-                    y_dates = date_strs
-                    data = collect_data(model, sat, y_dates, grids, inputdir, season_name)
-                    if not data.get('time'):
-                        continue
-                    arr = {k: np.array(v) for k, v in data.items()}
-                    adjust_wind(model, arr['fhrs'], arr['model_wnd'])
-                    write_outputs(arr, model, sat, season_name, endday, year=y)
-                else:
-                    for y in years:
-                        y_dates = [d for d in date_strs if d.startswith(y)]
-                        data = collect_data(model, sat, y_dates, grids, inputdir, season_name)
-                        if not data.get('time'):
-                            continue
-                        arr = {k: np.array(v) for k, v in data.items()}
-                        adjust_wind(model, arr['fhrs'], arr['model_wnd'])
-                        write_outputs(arr, model, sat, season_name, endday, year=y)
+                data = collect_data(model, sat, date_strs, grids, inputdir, season_name)
+                if not data.get('time'):
+                    continue
 
+                arr = {k: np.array(v) for k, v in data.items()}
+                adjust_wind(model, arr['fhrs'], arr['model_wnd'])
+                write_outputs(arr, model, sat, season_name, endday, year=None)
 
 def collect_data(model, sat, date_list, grids, inputdir, season_name):
     collected = {
