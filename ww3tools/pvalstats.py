@@ -1679,6 +1679,7 @@ class GlobalSkillMap:
         def _grid_pandas(lat, lon, model_1d, obs_1d, dlat, dlon, min_count):
             import pandas as _pd
             import numpy as _np
+            import cartopy.crs as ccrs
 
             df = _pd.DataFrame({
                 "latitude": _np.asarray(lat, dtype=float),
@@ -1811,22 +1812,25 @@ class GlobalSkillMap:
                 cmap = "RdBu_r"
             if cbar_label is None:
                 cbar_label = "Bias (model − obs)"
+            extendvarset="both"
         elif metric == "rmse":
             vmin, vmax2 = 0.0, float(vmax)
             if cmap is None:
-                cmap = "jet"
+                cmap = "viridis"
             if cbar_label is None:
                 cbar_label = "RMSE"
+            extendvarset="max"
         else:
             vmin = 0.0
             vmax2 = float(vmax) if vmax is not None else float(np.nanmax(field))
             if cmap is None:
-                cmap = "viridis"
+                cmap = "jet"
             if cbar_label is None:
                 cbar_label = "Number of samples"
+            extendvarset="neither"
 
         fig = plt.figure(figsize=figsize, dpi=dpi)
-        ax = plt.gca()
+        ax = plt.axes(projection=ccrs.Robinson()) # create map axes using Robinson projection
 
         pcm = ax.pcolormesh(
             LONe, LATe, field,
@@ -1834,21 +1838,17 @@ class GlobalSkillMap:
             cmap=cmap,
             vmin=vmin,
             vmax=vmax2,
+            transform=ccrs.PlateCarree()  # data are in standard lon/lat coordinates; Cartopy will transform them to the map projection
         )
+        ax.set_global()  # Use full global extent for Robinson
+        ax.gridlines(draw_labels=False, alpha=0)
+        ax.coastlines()
 
-        cb = plt.colorbar(pcm, ax=ax, orientation="vertical")
+        cb = plt.colorbar(pcm, ax=ax, orientation="vertical", extend=extendvarset)
         cb.set_label(cbar_label)
 
         if title:
-            ax.set_title(title)
-
-        ax.set_xlabel("Longitude")
-        ax.set_ylabel("Latitude")
-        if lon_0_360:
-            ax.set_xlim(0, 360)
-        ax.set_ylim(latmin, latmax)
-
-        ax.grid(False)
+            ax.set_title(title, pad=20, y=1.02)
 
         if outfile is not None:
             outdir = os.path.dirname(outfile)
