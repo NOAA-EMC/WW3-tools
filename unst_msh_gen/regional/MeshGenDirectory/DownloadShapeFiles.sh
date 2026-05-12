@@ -13,8 +13,10 @@ wget --output-document tl_2023_us_coastline.zip https://www2.census.gov/geo/tige
 
 echo "Downloading Global Self-consistent, Hierarchical, High-resolution Shorelines (GSHHS)"
 #GSHHG global coastline data
-#wget --output-document gshhg-shp-2.3.7.zip http://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.7.zip
-wget --output-document gshhg-shp-2.3.7.zip https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip
+#gshhg has been removed from https://www.ngdc.noaa.gov 
+#wget --output-document gshhg-shp-2.3.7.zip https://www.ngdc.noaa.gov/mgg/shorelines/data/gshhg/latest/gshhg-shp-2.3.7.zip
+#Apr 27 2026: Hello Keston -NCEI no longer distributes the GSHHG shoreline, though it can be found at https://www.soest.hawaii.edu/pwessel/gshhg/index.html
+wget --output-document gshhg-shp-2.3.7.zip https://www.soest.hawaii.edu/pwessel/gshhg/gshhg-shp-2.3.7.zip
 
 echo "Downloading OpenStreetMap shoreline (OSM)"
 #OSM global coastline data
