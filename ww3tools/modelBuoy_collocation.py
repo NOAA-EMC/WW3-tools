@@ -95,6 +95,7 @@ PERSON OF CONTACT:
 
 import warnings; warnings.filterwarnings("ignore")
 import numpy as np
+import os
 from matplotlib.mlab import *
 from pylab import *
 import xarray as xr
@@ -417,7 +418,9 @@ for b in range(0,np.size(stname)):
 		ahs=[];atm=[];atp=[];adm=[];atime=[]
 		for y in yrange:
 
-			f=nc.Dataset(ndbcp+"/"+stname[b]+"h"+repr(y)+".nc")
+			fname = os.path.join(ndbcp, f'{stname[b]}h{y}.nc')
+			f = nc.Dataset(fname)
+
 			if 'wave_height' in f.variables.keys():
 				ahs = np.append(ahs,f.variables['wave_height'][:,0,0])
 			elif 'hs' in f.variables.keys():
