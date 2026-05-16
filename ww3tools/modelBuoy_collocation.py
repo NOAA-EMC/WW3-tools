@@ -406,6 +406,8 @@ btm=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 btp=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 bdm=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
 bdp=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan
+bwsp=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan # wind speed
+bwdir=np.zeros((np.size(stname),np.size(mtime)),'f')*np.nan # wind direction
 lat=np.zeros(np.size(stname),'f')*np.nan; lon=np.zeros(np.size(stname),'f')*np.nan
 # help reading NDBC buoys, divided by year
 yrange=np.array(np.arange(time.gmtime(mtime.min())[0],time.gmtime(mtime.min())[0]+1,1)).astype('int')
@@ -415,7 +417,7 @@ for b in range(0,np.size(stname)):
 	ahs=[]
 	try:
 
-		ahs=[];atm=[];atp=[];adm=[];atime=[]
+		ahs=[];atm=[];atp=[];adm=[];atime=[];awdir=[];awsp=[]
 		for y in yrange:
 
 			fname = os.path.join(ndbcp, f'{stname[b]}h{y}.nc')
@@ -442,6 +444,22 @@ for b in range(0,np.size(stname)):
 				adm = np.append(adm,f.variables['mean_wave_dir'][:,0,0])
 			else:
 				adm = np.array(np.copy(ahs*nan))
+
+			# Wind speed
+			if 'wind_spd' in f.variables.keys():
+				awsp = np.append(awsp, f.variables['wind_spd'][:,0,0])
+			elif 'wspd' in f.variables.keys():
+				awsp = np.append(awsp, f.variables['wspd'][:,0,0])
+			else:
+				awsp = np.append(awsp, np.zeros(f.variables['time'][:].shape, 'f') * np.nan)
+
+			# Wind direction
+			if 'wind_dir' in f.variables.keys():
+				awdir = np.append(awdir, f.variables['wind_dir'][:,0,0])
+			elif 'wdir' in f.variables.keys():
+				awdir = np.append(awdir, f.variables['wdir'][:,0,0])
+			else:
+				awdir = np.append(awdir, np.zeros(f.variables['time'][:].shape, 'f') * np.nan)
 
 			if 'latitude' in f.variables.keys():
 				lat[b] = f.variables['latitude'][:]
@@ -565,6 +583,16 @@ for b in range(0,np.size(stname)):
 		if np.size(indq)>0:
 			adp[indq]=np.nan; del indq
 
+		# Wind speed quality control
+		indq=np.where((awsp>100.)|(awsp<0.0))
+		if np.size(indq)>0:
+			awsp[indq]=np.nan; del indq
+
+		# Wind direction quality control
+		indq=np.where((awdir>360.)|(awdir<-180.))
+		if np.size(indq)>0:
+			awdir[indq]=np.nan; del indq
+
 		c=0
 		for t in range(0,np.size(mtime)):
 			indt=np.where(np.abs(atime-mtime[t])<1800.)
@@ -580,6 +608,10 @@ for b in range(0,np.size(stname)):
 					bdm[b,t] = np.nanmean(adm[indt[0]][adm[indt[0]].mask==False])
 				if np.any(adp[indt[0]].mask==False):
 					bdp[b,t] = np.nanmean(adp[indt[0]][adp[indt[0]].mask==False])
+				if np.any(awsp[indt[0]].mask==False):
+					bwsp[b,t] = np.nanmean(awsp[indt[0]][awsp[indt[0]].mask==False])
+				if np.any(awdir[indt[0]].mask==False):
+					bwdir[b,t] = np.nanmean(awdir[indt[0]][awdir[indt[0]].mask==False])
 
 				del indt
 
@@ -609,6 +641,14 @@ if np.size(ind)>0:
 ind=np.where((bdp>360.)|(bdp<-180.))
 if np.size(ind)>0:
 	bdp[ind]=np.nan; del ind
+
+ind=np.where((bwsp>100.)|(bwsp<0.0))
+if np.size(ind)>0:
+	bwsp[ind]=np.nan; del ind
+
+ind=np.where((bwdir>360.)|(bwdir<-180.))
+if np.size(ind)>0:
+	bwdir[ind]=np.nan; del ind
 
 ind=np.where((mhs>30.)|(mhs<0.0))
 if np.size(ind)>0:
@@ -646,6 +686,8 @@ if np.size(ind)>0:
 	btp=np.array(btp[ind[0],:])
 	bdm=np.array(bdm[ind[0],:])
 	bdp=np.array(bdp[ind[0],:])
+	bwsp=np.array(bwsp[ind[0],:])
+	bwdir=np.array(bwdir[ind[0],:])
 else:
 	sys.exit(' Error: No matchups Model/Buoy available.')
 
@@ -690,6 +732,8 @@ if gridinfo!=0:
 		btp=np.array(btp[ind[0],:])
 		bdm=np.array(bdm[ind[0],:])
 		bdp=np.array(bdp[ind[0],:])
+		bwsp=np.array(bwsp[ind[0],:])
+		bwdir=np.array(bwdir[ind[0],:])
 		pdistcoast=np.array(pdistcoast[ind[0]])
 		pdepth=np.array(pdepth[ind[0]])
 		poni=np.array(poni[ind[0]])
@@ -740,6 +784,8 @@ if forecastds>0:
 			nbtp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nbdm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nbdp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
+			nbwsp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
+			nbwdir=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nmtime=np.zeros((unt.shape[0],mxsz),'double')*np.nan
 			if cyclonemap!=0:
 				nfcmap=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
@@ -754,6 +800,8 @@ if forecastds>0:
 		nbtm[:,i,:][:,0:np.size(ind)]=np.array(btm[:,ind])
 		nbtp[:,i,:][:,0:np.size(ind)]=np.array(btp[:,ind])
 		nbdm[:,i,:][:,0:np.size(ind)]=np.array(bdm[:,ind])
+		nbwsp[:,i,:][:,0:np.size(ind)]=np.array(bwsp[:,ind])
+		nbwdir[:,i,:][:,0:np.size(ind)]=np.array(bwdir[:,ind])
 		nbdp[:,i,:][:,0:np.size(ind)]=np.array(bdp[:,ind])
 		if cyclonemap!=0:
 			nfcmap[:,i,:][:,0:np.size(ind)]=np.array(fcmap[:,ind])
@@ -800,6 +848,8 @@ if np.size(ind)>0:
 		vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vbdm = ncfile.createVariable('obs_dm',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vbdp = ncfile.createVariable('obs_dp',np.dtype('float32').char,('buoypoints','fcycle','time'))
+		vbwsp = ncfile.createVariable('obs_wsp', np.dtype('float32').char, ('buoypoints','fcycle','time'))
+		vbwdir = ncfile.createVariable('obs_wdir', np.dtype('float32').char, ('buoypoints','fcycle','time'))
 	else:
 		ncfile.createDimension('time', bhs.shape[1] )
 		vt = ncfile.createVariable('time',np.dtype('float64').char,('time'))
@@ -813,6 +863,8 @@ if np.size(ind)>0:
 		vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','time'))
 		vbdm = ncfile.createVariable('obs_dm',np.dtype('float32').char,('buoypoints','time'))
 		vbdp = ncfile.createVariable('obs_dp',np.dtype('float32').char,('buoypoints','time'))
+		vbwsp = ncfile.createVariable('obs_wsp', np.dtype('float32').char, ('buoypoints','time'))
+		vbwdir = ncfile.createVariable('obs_wdir', np.dtype('float32').char, ('buoypoints','time'))
 
 	if gridinfo!=0:
 		vpdistcoast = ncfile.createVariable('distcoast',np.dtype('float32').char,('buoypoints'))
@@ -835,8 +887,32 @@ if np.size(ind)>0:
 	vmtp.units='s'; vbtp.units='s'
 	vmdm.units='degrees'; vbdm.units='degrees'
 	vmdp.units='degrees'; vbdp.units='degrees'
+	vbwsp.units = 'm s-1'
+	vbwdir.units = 'degrees'
 	if gridinfo!=0:
 		vpdepth.units='m'; vpdistcoast.units='km'
+
+	# Assign long names
+	vstname.long_name = 'Buoy Station ID'
+
+	vlat.long_name = 'Latitude'
+	vlon.long_name = 'Longitude'
+
+	vt.long_name = 'Valid Time'
+
+	vmhs.long_name = 'Model Significant Wave Height'
+	vmtm.long_name = 'Model Mean Wave Period'
+	vmtp.long_name = 'Model Peak Wave Period'
+	vmdm.long_name = 'Model Mean Wave Direction'
+	vmdp.long_name = 'Model Peak Wave Direction'
+
+	vbhs.long_name = 'Observed Significant Wave Height'
+	vbtm.long_name = 'Observed Mean Wave Period'
+	vbtp.long_name = 'Observed Peak Wave Period'
+	vbdm.long_name = 'Observed Mean Wave Direction'
+	vbdp.long_name = 'Observed Peak Wave Direction'
+	vbwsp.long_name = 'Observed Wind Speed'
+	vbwdir.long_name = 'Observed Wind Direction'
 
 	# Allocate Data
 	vstname[:]=stname[:]; vlat[:] = lat[:]; vlon[:] = lon[:]
@@ -852,6 +928,8 @@ if np.size(ind)>0:
 		vbtp[:,:,:]=nbtp[:,:,:]
 		vbdm[:,:,:]=nbdm[:,:,:]
 		vbdp[:,:,:]=nbdp[:,:,:]
+		vbwsp[:,:,:]=nbwsp[:,:,:]
+		vbwdir[:,:,:]=nbwdir[:,:,:]
 	else:
 		vt[:]=mtime[:]
 		vmhs[:,:]=mhs[:,:]
@@ -864,6 +942,8 @@ if np.size(ind)>0:
 		vbtp[:,:]=btp[:,:]
 		vbdm[:,:]=bdm[:,:]
 		vbdp[:,:]=bdp[:,:]
+		vbwsp[:,:]=bwsp[:,:]
+		vbwdir[:,:]=bwdir[:,:]
 
 	if gridinfo!=0:
 		vpdistcoast[:]=pdistcoast[:]
