@@ -47,6 +47,7 @@ USAGE:
    station_tar
    spec_ndbc
    spec_ww3
+   spec_tar
  Explanation for each function is contained in the headers
 
 OUTPUT:
@@ -65,9 +66,10 @@ AUTHOR and DATE:
  03/07/2025: Ricardo M. Campos, new functions included: tseriestxt_ndbc, tseriesnc_cdip, tseriesnc_microswift,
  tseries_spotter, tseriesnc_dwsd, tseriesnc_saildrone, tseriesnc_wsra, tseriestxt_ww3. New satellite missions
  added to AODN altimeter data reading
-
+ 05/15/2026: Ming Chen, new functions, spec_tar to read spec_tar.gz operational point output
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
+ Ming Chen: ming.chen1@noaa.gov
 
 """
 
@@ -90,7 +92,9 @@ from matplotlib import ticker
 # import pickle
 import sys
 import warnings; warnings.filterwarnings("ignore")
-
+import gzip
+import io
+import tarfile
 
 def readconfig(fname):
     """
@@ -2025,4 +2029,129 @@ def spec_ww3(*args):
     return result
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
 
+# WAVEWATCH III spectra output for wind speed and direction
+def spec_tar(*args):
+    '''
+    WAVEWATCH III, spec_tar.gz operational point output.
+    Input:  file name (example: gfswave.t00z.spec_tar.gz)
+    Output: dictionary containing:
+      time(seconds since 1970),lat,lon,station names; Arrays: wind_spd, wind_dir
+    '''
+
+    if len(args) == 1:
+        fname = str(args[0])
+    else:
+        sys.exit(' One input is required: spec_tar.gz file name')
+
+    print("  reading ww3 spec_tar.gz file for wind ...")
+
+    # Open gzip -> tar
+    try:
+        with gzip.open(fname, "rb") as gz:
+            tar_bytes = gz.read()
+
+        tar = tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:")
+
+    except:
+        sys.exit('   Cannot open ' + fname)
+
+    members = [m for m in tar.getmembers() if m.isfile()]
+
+    station_name_all = []
+    wsp_all = []
+    wdir_all = []
+    time_all = None
+
+    # Loop station files
+    for member in members:
+
+        try:
+            tfile = tar.extractfile(member)
+            lines = tfile.readlines()
+        except:
+            print("   Cannot read " + member.name + ". Skipped.")
+            continue
+
+        at = []
+        awsp = []
+        awdir = []
+        stname = None
+
+        # Parse file
+        for j in range(len(lines) - 1):
+
+            line = lines[j].decode("utf-8", errors="ignore").strip()
+            parts = line.split()
+
+            # Time line follows the pattern: YYYYMMDD HHMMSS
+            if (
+                len(parts) == 2
+                and len(parts[0]) == 8
+                and len(parts[1]) == 6
+                and parts[0].isdigit()
+                and parts[1].isdigit()
+            ):
+
+                info_line = lines[j+1].decode(
+                    "utf-8",
+                    errors="ignore"
+                ).strip()
+
+                info = info_line.replace("'", "").split()
+
+                # Expected line contains:
+                # station lat lon depth wspd wdir current cdir
+                if len(info) >= 6:
+
+                    try:
+                        tsec = np.double(
+                            timegm(
+                                strptime(
+                                    parts[0] + parts[1],
+                                    '%Y%m%d%H%M%S'
+                                )
+                            )
+                        )
+
+                        stname = str(info[0])
+
+                        at.append(tsec)
+                        awsp.append(float(info[4]))
+                        awdir.append(float(info[5]))
+
+                    except:
+                        continue
+
+        if len(at) == 0:
+            print("   No wind records found in " + member.name)
+            continue
+
+        station_name_all.append(stname)
+        wsp_all.append(awsp)
+        wdir_all.append(awdir)
+
+        # Use first station as reference time
+        if time_all is None:
+            time_all = np.array(at).astype('double')
+
+    tar.close()
+
+    # Convert to arrays
+    wind_spd = np.array(wsp_all).astype('float')
+    wind_dir = np.array(wdir_all).astype('float')
+
+    # Basic QC
+    wind_spd[(wind_spd < 0.0) | (wind_spd > 100.0)] = np.nan
+    wind_dir[(wind_dir < 0.0) | (wind_dir > 360.0)] = np.nan
+
+    result = {
+        'station_name': np.array(station_name_all).astype('str'),
+        'time': np.array(time_all).astype('double'),
+        'wind_spd': wind_spd,
+        'wind_dir': wind_dir
+    }
+
+    print("  ww3 spec_tar.gz wind file OK. " + fname)
+
+    return result
 
