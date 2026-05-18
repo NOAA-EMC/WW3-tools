@@ -87,7 +87,8 @@ AUTHOR and DATE:
   dimensions), and check if variable names exist in the netcdf file (buoy
   and ww3) to maximize the amount of matchups even when one variable is
   not available.
-
+ 05/18/2026: Ming Chen, add wind speed and direction loading and writing when
+  using spec_tar.gz (GFS)
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
 
@@ -212,8 +213,20 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 	for i in range(0,np.size(wlist)):
 		if str(wlist[i]).split('/')[-1].split('.')[-1]=='bull_tar':
 			result = wread.bull_tar(wlist[i])
+
+			# Read model wind from matching spec_tar.gz file
+			# assume spec_tar.gz files in the same folder of bull_tar (valid for GFS)
+			specfile = str(wlist[i]).replace('.bull_tar', '.spec_tar.gz')
+			# check if spec_tar.gz files exist
+			try:
+				specresult = wread.spec_tar(specfile)
+			except:
+				print("   Warning: Cannot read "+specfile+". Model wind set to NaN.")
+				specresult = None
+
 		if str(wlist[i]).split('/')[-1].split('.')[-1]=='station_tar':
 			result = wread.bull_tar(wlist[i])
+			specresult = None # will implement wind when using station_tar if necessary
 
 		at=result['time']
 		fcycle = np.array(np.zeros((at.shape[0]),'d')+at[0]).astype('double')
@@ -223,6 +236,37 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 			mfcycle=np.copy(fcycle)
 			mhs=np.copy(result['hs'])
 			mtp=np.copy(result['tp'])
+
+			# allocate wind parameters if wind parameters exist
+			if specresult is not None:
+				# reorder specresult to match bull_tar stations
+				bull_stname = np.array([str(s).strip() for s in result['station_name']])
+				spec_stname = np.array([str(s).strip() for s in specresult['station_name']])
+				spec_order = []
+				for s in bull_stname:
+					ind = np.where(spec_stname == s)[0]
+					if np.size(ind) > 0:
+						spec_order.append(ind[0])
+					else:
+						spec_order.append(-1)
+
+				spec_order = np.array(spec_order)
+
+				# before allocation, check if station and time are matched
+				if (
+					np.array_equal(
+						np.array([str(s).strip() for s in stname]),
+						np.array([str(s).strip() for s in specresult['station_name'][spec_order]])
+					)
+					and np.array_equal(at,specresult['time'])
+				):
+					mwsp=np.copy(specresult['wind_spd'][spec_order, :])
+					mwdir=np.copy(specresult['wind_dir'][spec_order, :])
+				else:
+					print("   Warning: spec_tar station/time does not match bull_tar. Model wind set to NaN for "+str(wlist[i]))
+					mwsp=np.copy(mhs)*np.nan
+					mwdir=np.copy(mhs)*np.nan
+
 			if 'dp' in result.keys():
 				mdp=np.copy(result['dp'])
 			else:
@@ -235,6 +279,36 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 					mfcycle=np.append(mfcycle,fcycle)
 					mhs=np.append(mhs,result['hs'],axis=1)
 					mtp=np.append(mtp,result['tp'],axis=1)
+
+					if specresult is not None:
+						bull_stname = np.array([str(s).strip() for s in result['station_name']])
+						spec_stname = np.array([str(s).strip() for s in specresult['station_name']])
+						spec_order = []
+						for s in bull_stname:
+							ind = np.where(spec_stname == s)[0]
+							if np.size(ind) > 0:
+								spec_order.append(ind[0])
+							else:
+								spec_order.append(-1)
+						spec_order = np.array(spec_order)
+
+						if (
+							np.array_equal(
+								np.array([str(s).strip() for s in stname]),
+								np.array([str(s).strip() for s in specresult['station_name'][spec_order]])
+							)
+							and np.array_equal(at,specresult['time'])
+						):
+							mwsp=np.append(mwsp,specresult['wind_spd'][spec_order, :],axis=1)
+							mwdir=np.append(mwdir,specresult['wind_dir'][spec_order, :],axis=1)
+						else:
+							print("   Warning: spec_tar station/time does not match bull_tar. Model wind set to NaN for "+str(wlist[i]))
+							mwsp=np.append(mwsp,np.copy(result['hs'])*np.nan,axis=1)
+							mwdir=np.append(mwdir,np.copy(result['hs'])*np.nan,axis=1)
+					else:
+						mwsp=np.append(mwsp,np.copy(result['hs'])*np.nan,axis=1)
+						mwdir=np.append(mwdir,np.copy(result['hs'])*np.nan,axis=1)
+
 					if 'dp' in result.keys():
 						mdp=np.append(mdp,result['dp'],axis=1)
 					else:
@@ -243,7 +317,7 @@ if (str(wlist[0]).split('/')[-1].split('.')[-1]=='bull_tar') or (str(wlist[0]).s
 			else:
 				print("   Stations in "+wlist[i]+" do not match the other tar files. Skipped "+wlist[i])
 
-		del result,at,fcycle
+		del result,at,fcycle,specresult,spec_order,bull_stname,spec_stname
 		mdm=np.copy(mhs)*np.nan; mtm=np.copy(mhs)*np.nan # not saved in this file format
 		print("    ww3 file "+wlist[i]+" OK")
 
@@ -670,6 +744,14 @@ ind=np.where((mdp>360.)|(mdp<-180.))
 if np.size(ind)>0:
 	mdp[ind]=np.nan; del ind
 
+ind=np.where((mwsp>100.)|(mwsp<0.0))
+if np.size(ind)>0:
+	mwsp[ind]=np.nan; del ind
+
+ind=np.where((mwdir>360.)|(mwdir<-180.))
+if np.size(ind)>0:
+	mwdir[ind]=np.nan; del ind
+
 # Clean data excluding some stations. Select matchups only when model and buoy are available.
 ind=np.where( (np.isnan(lat)==False) & (np.isnan(lon)==False) & (np.isnan(np.nanmean(mhs,axis=1))==False) & (np.isnan(np.nanmean(bhs,axis=1))==False) )
 if np.size(ind)>0:
@@ -681,6 +763,8 @@ if np.size(ind)>0:
 	mtp=np.array(mtp[ind[0],:])
 	mdm=np.array(mdm[ind[0],:])
 	mdp=np.array(mdp[ind[0],:])
+	mwsp=np.array(mwsp[ind[0],:])
+	mwdir=np.array(mwdir[ind[0],:])
 	bhs=np.array(bhs[ind[0],:])
 	btm=np.array(btm[ind[0],:])
 	btp=np.array(btp[ind[0],:])
@@ -727,6 +811,8 @@ if gridinfo!=0:
 		mtp=np.array(mtp[ind[0],:])
 		mdm=np.array(mdm[ind[0],:])
 		mdp=np.array(mdp[ind[0],:])
+		mwsp=np.array(mwsp[ind[0],:])
+		mwdir=np.array(mwdir[ind[0],:])
 		bhs=np.array(bhs[ind[0],:])
 		btm=np.array(btm[ind[0],:])
 		btp=np.array(btp[ind[0],:])
@@ -779,6 +865,8 @@ if forecastds>0:
 			nmtp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nmdm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nmdp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
+			nmwsp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
+			nmwdir=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nbhs=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nbtm=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
 			nbtp=np.zeros((mhs.shape[0],unt.shape[0],mxsz),'f')*np.nan
@@ -796,6 +884,8 @@ if forecastds>0:
 		nmtp[:,i,:][:,0:np.size(ind)]=np.array(mtp[:,ind])
 		nmdm[:,i,:][:,0:np.size(ind)]=np.array(mdm[:,ind])
 		nmdp[:,i,:][:,0:np.size(ind)]=np.array(mdp[:,ind])
+		nmwsp[:,i,:][:,0:np.size(ind)]=np.array(mwsp[:,ind])
+		nmwdir[:,i,:][:,0:np.size(ind)]=np.array(mwdir[:,ind])
 		nbhs[:,i,:][:,0:np.size(ind)]=np.array(bhs[:,ind])
 		nbtm[:,i,:][:,0:np.size(ind)]=np.array(btm[:,ind])
 		nbtp[:,i,:][:,0:np.size(ind)]=np.array(btp[:,ind])
@@ -843,6 +933,8 @@ if np.size(ind)>0:
 		vmtp = ncfile.createVariable('model_tp',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vmdm = ncfile.createVariable('model_dm',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vmdp = ncfile.createVariable('model_dp',np.dtype('float32').char,('buoypoints','fcycle','time'))
+		vmwsp = ncfile.createVariable('model_wsp', np.dtype('float32').char, ('buoypoints','fcycle','time'))
+		vmwdir = ncfile.createVariable('model_wdir', np.dtype('float32').char, ('buoypoints','fcycle','time'))
 		vbhs = ncfile.createVariable('obs_hs',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vbtm = ncfile.createVariable('obs_tm',np.dtype('float32').char,('buoypoints','fcycle','time'))
 		vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','fcycle','time'))
@@ -858,6 +950,8 @@ if np.size(ind)>0:
 		vmtp = ncfile.createVariable('model_tp',np.dtype('float32').char,('buoypoints','time'))
 		vmdm = ncfile.createVariable('model_dm',np.dtype('float32').char,('buoypoints','time'))
 		vmdp = ncfile.createVariable('model_dp',np.dtype('float32').char,('buoypoints','time'))
+		vmwsp = ncfile.createVariable('model_wsp', np.dtype('float32').char, ('buoypoints','time'))
+		vmwdir = ncfile.createVariable('model_wdir', np.dtype('float32').char, ('buoypoints','time'))
 		vbhs = ncfile.createVariable('obs_hs',np.dtype('float32').char,('buoypoints','time'))
 		vbtm = ncfile.createVariable('obs_tm',np.dtype('float32').char,('buoypoints','time'))
 		vbtp = ncfile.createVariable('obs_tp',np.dtype('float32').char,('buoypoints','time'))
@@ -887,8 +981,8 @@ if np.size(ind)>0:
 	vmtp.units='s'; vbtp.units='s'
 	vmdm.units='degrees'; vbdm.units='degrees'
 	vmdp.units='degrees'; vbdp.units='degrees'
-	vbwsp.units = 'm s-1'
-	vbwdir.units = 'degrees'
+	vmwsp.units = 'm s-1'; vbwsp.units = 'm s-1'
+	vmwdir.units = 'degrees'; vbwdir.units = 'degrees'
 	if gridinfo!=0:
 		vpdepth.units='m'; vpdistcoast.units='km'
 
@@ -905,6 +999,8 @@ if np.size(ind)>0:
 	vmtp.long_name = 'Model Peak Wave Period'
 	vmdm.long_name = 'Model Mean Wave Direction'
 	vmdp.long_name = 'Model Peak Wave Direction'
+	vmwsp.long_name = 'Model Wind Speed'
+	vmwdir.long_name = 'Model Wind Direction'
 
 	vbhs.long_name = 'Observed Significant Wave Height'
 	vbtm.long_name = 'Observed Mean Wave Period'
@@ -923,6 +1019,8 @@ if np.size(ind)>0:
 		vmtp[:,:,:]=nmtp[:,:,:]
 		vmdm[:,:,:]=nmdm[:,:,:]
 		vmdp[:,:,:]=nmdp[:,:,:]
+		vmwsp[:,:,:]=nmwsp[:,:,:]
+		vmwdir[:,:,:]=nmwdir[:,:,:]
 		vbhs[:,:,:]=nbhs[:,:,:]
 		vbtm[:,:,:]=nbtm[:,:,:]
 		vbtp[:,:,:]=nbtp[:,:,:]
@@ -937,6 +1035,8 @@ if np.size(ind)>0:
 		vmtp[:,:]=mtp[:,:]
 		vmdm[:,:]=mdm[:,:]
 		vmdp[:,:]=mdp[:,:]
+		vmwsp[:,:]=mwsp[:,:]
+		vmwdir[:,:]=mwdir[:,:]
 		vbhs[:,:]=bhs[:,:]
 		vbtm[:,:]=btm[:,:]
 		vbtp[:,:]=btp[:,:]
