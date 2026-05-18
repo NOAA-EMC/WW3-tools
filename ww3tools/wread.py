@@ -73,7 +73,6 @@ PERSON OF CONTACT:
 
 import matplotlib
 import time
-import timeit
 from time import strptime
 from calendar import timegm
 import pandas as pd
@@ -82,14 +81,15 @@ import xarray as xr
 import netCDF4 as nc
 import numpy as np
 from pylab import *
-import yaml
-import re
-import os
+import matplotlib.pyplot as plt
 import sys
+import pandas as pd
 from matplotlib import ticker
 # import pickle
 import sys
 import warnings; warnings.filterwarnings("ignore")
+import tarfile
+import math
 
 
 def readconfig(fname):
@@ -2026,3 +2026,184 @@ def spec_ww3(*args):
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
 
 
+
+
+def spec1_ww3(*args):
+    '''
+    WAVEWATCH III, wave spectrum, netcdf (.nc) or text (.spec) format
+    Input: file names (list of file names), and station names (list of station names)
+    Output: list of dictionaries containing:
+      time(seconds since 1970), time(datetime64), lat, lon; Arrays: freq, dfreq, pwst, d1sp, dire, dspec, wnds, wndd
+    '''
+
+    if len(args) < 2:
+        sys.exit('Two inputs are required: list of file names and list of station names')
+
+    fnames = args[0]
+    stnames = args[1]
+    sk = 1
+    if len(args) > 2:
+        sk = int(args[2])
+    if len(args) > 3:
+        sys.exit('Too many inputs')
+
+    results = []
+
+    for fname in fnames:
+        for stname in stnames:
+            try:
+                with open(fname) as fp:
+                    nt = fp.read().count(stname)
+
+                if nt >= 1:
+                    with open(fname) as fp:
+                        cabc = fp.readline().strip().split()
+                        nf = int(cabc[3])
+                        nd = int(cabc[4])
+                        npo = int(cabc[5])
+
+                        freq = np.zeros(nf, 'f')
+                        dire = np.zeros(nd, 'f')
+                        dspec = np.zeros((nt, nf, nd), 'f')
+                        adire = np.zeros(dire.shape)
+                        adspec = np.zeros(dspec.shape)
+                        mtime = np.zeros((nt), 'd')
+
+                        k = 0
+                        # Reading frequencies
+                        for i in range(0, int(np.floor(nf / 8))):
+                            line = fp.readline().strip().split()
+                            for j in range(8):
+                                freq[k] = float(line[j])
+                                k += 1
+
+                        if (nf % 8) > 0:
+                            line = fp.readline().strip().split()
+                            for i in range(nf % 8):
+                                freq[k] = float(line[i])
+                                k += 1
+
+                        # Calculate dfreq using geometric progression
+                        dfreq = np.zeros(freq.shape[0], 'f')
+                        alpha = (freq[-1] / freq[-2])
+                        for i in range(freq.shape[0]):
+                            if i == 0:
+                                dfreq[i] = freq[i] * (np.sqrt(alpha) - 1)
+                            elif i == (freq.shape[0] - 1):
+                                dfreq[i] = freq[i] * (1 - 1 / np.sqrt(alpha))
+                            else:
+                                dfreq[i] = freq[i] * (np.sqrt(alpha) - 1 / np.sqrt(alpha))
+
+                        k = 0
+                        # Reading directions
+                        for i in range(0, int(np.floor(nd / 7))):
+                            line = fp.readline().strip().split()
+                            for j in range(7):
+                                dire[k] = float(line[j]) * 180 / np.pi
+                                k += 1
+
+                        if (nd % 7) > 0:
+                            line = fp.readline().strip().split()
+                            for i in range(nd % 7):
+                                dire[k] = float(line[i]) * 180 / np.pi
+                                k += 1
+
+                        auxs = np.zeros((nf * nd), 'f')
+                        wnds = np.zeros((nt), 'f')
+                        wndd = np.zeros((nt), 'f')
+
+                        for t in range(nt):
+                            cabc = fp.readline().strip().split()
+                            mtime[t] = np.double(timegm(strptime(cabc[0] + cabc[1][0:2], '%Y%m%d%H')))
+                            cabc = fp.readline().strip().split()
+
+                            if len(cabc) > 8:
+                                lat, lon, depth = float(cabc[2]), float(cabc[3]), float(cabc[4])
+                                wnds[t], wndd[t] = float(cabc[5]), float(cabc[6])
+                            elif len(cabc) == 8:
+                                lat_lon_parts = cabc[2].strip("'").split('-')
+                                if len(lat_lon_parts) == 2:
+                                    lat, lon, depth = float(lat_lon_parts[0]), -float(lat_lon_parts[1]), float(cabc[3])
+                                else:
+                                    lat = float(cabc[2][:6])
+                                    lon = float(cabc[2][6:])
+                                    depth = float(cabc[3])
+                                wnds[t], wndd[t] = float(cabc[4]), float(cabc[5])
+                            elif len(cabc) == 7:
+                     
+                                lat_lon_parts = cabc[1].split()
+                                lat, lon = float(lat_lon_parts[0]), float(lat_lon_parts[1])
+                                depth = float(cabc[2])
+                                wnds[t], wndd[t] = float(cabc[3]), float(cabc[4])
+                            else:
+                                continue
+
+                            k = 0
+                            for i in range(0, int(np.floor((nf * nd) / 7.))):
+                                line = fp.readline().strip().split()
+                                for j in range(7):
+                                    auxs[k] = float(line[j])
+                                    k += 1
+
+                            if (nf * nd % 7) > 0:
+                                line = fp.readline().strip().split()
+                                for i in range(nf * nd % 7):
+                                    auxs[k] = float(line[i])
+                                    k += 1
+
+                            for ic in range(nf):
+                                for il in range(nd):
+                                    dspec[t, ic, il] = auxs[il * nf + ic]
+
+                    mdate = pd.to_datetime(mtime, unit='s').strftime('%Y-%m-%dT%H:%M:%S.%f')
+                    freq1 = np.copy(freq)
+                    freq2 = np.copy(freq)
+
+                    pwst = np.zeros((dspec.shape[0], nf), 'f')
+                    for t in range(dspec.shape[0]):
+                        for il in range(nf):
+                            pwst[t, il] = sum(dspec[t, il, :] * (2 * np.pi) / nd)
+                        pwst[t, :] *= dfreq
+
+                    adspec = np.copy(dspec)
+                    inddire = np.argmin(dire)
+                    for t in range(dspec.shape[0]):
+                        adspec[t, :, 0:nd - (inddire + 1)] = dspec[t, :, (inddire + 1):]
+                        adspec[t, :, nd - (inddire + 1):nd] = dspec[t, :, :(inddire + 1)]
+                        for i in range(nd):
+                            dspec[t, :, i] = adspec[t, :, nd - i - 1]
+                        adspec[t, :, :int(nd / 2)] = dspec[t, :, int(nd / 2):]
+                        adspec[t, :, int(nd / 2):] = dspec[t, :, :int(nd / 2)]
+                        dspec[t, :, :] = adspec[t, :, :]
+
+                    dire = np.sort(dire)
+
+                    d1sp = np.zeros((dspec.shape[0], nf), 'f')
+                    for t in range(dspec.shape[0]):
+                        for il in range(nf):
+                            a = np.sum(dspec[t, il, :] * np.sin((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
+                            b = np.sum(dspec[t, il, :] * np.cos((np.pi * dire) / 180.) / np.sum(dspec[t, il, :]))
+                            aux = np.degrees(np.arctan2(a, b))
+                            if aux < 0:
+                                aux += 360.
+                            d1sp[t, il] = aux
+
+                    m0 = np.sum(pwst, axis=1)
+                    hs = 4 * np.sqrt(m0)
+                    max_index = np.argmax(pwst, axis=1)
+                    f_max = freq[max_index]
+                    tp = 1 / f_max
+
+                    result = {
+                        'time': mtime, 'date': mdate, 'latitude': lat, 'longitude': lon, 'depth': depth,
+                        'wind_spd': wnds, 'wind_dir': wndd, 'freq': freq, 'freq1': freq1, 'freq2': freq2,
+                        'deltafreq': dfreq, 'pspec': pwst, 'theta': dire, 'dmspec': d1sp, 'dirspec': dspec,
+                        'Hs': hs, 'Tp': tp, 'station_name': stname
+                    }
+
+                    results.append(result)
+            except Exception as e:
+                print(f"Skipping file {fname} for station {stname}: {str(e)}")
+                continue
+
+    return results
