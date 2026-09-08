@@ -1,2 +1,6 @@
 # Files to Ignore
 .DS_store
+
+
+# Ignore data directory 
+/data/
