@@ -4,3 +4,10 @@
 
 # Ignore data directory 
 /data/
+
+# Python packaging and build artifacts
+*.egg-info/
+.eggs/
+build/
+dist/
+wheels/
