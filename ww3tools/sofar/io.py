@@ -1,138 +1,239 @@
-from datetime import datetime
-
+import subprocess
+import os
+import glob
+import datetime
+from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import netCDF4 as nc
+import xarray as xr
+import ncepbufr
 
-def convert_sofar_bufr_to_netcdf(input_bufr_path: str, output_nc_path: str) -> None:
+def convert_sofar_bufr_to_nc(
+    bufr_dir, 
+    output_dir=None,
+    start_date=None,
+    end_date=None,
+    pattern="sofar_b001_xx121_*"
+):
     """
-    # Converts Sofar data from a BUFR file to a NetCDF file.
-    # Reference for BUFR data tables: https://www.nco.ncep.noaa.gov/sib/jeff/bufrtab_tableb.html
-    
-    # Args:
-    #     input_bufr_path (str): The full path to the input BUFR file.
-    #     output_nc_path (str): The full path where the NetCDF file will be saved.
-    # """
-    # # Set up the variables to query
-    # q = bufr.QuerySet()
+    Converts BUFR marine observation files to CF-1.9 compliant NetCDF files.
 
-    # # Time Variables
-    # q.add('year', '*/YEAR')
-    # q.add('month', '*/MNTH')
-    # q.add('day', '*/DAYS')
-    # q.add('hour', '*/HOUR')
-    # q.add('minute', '*/MINU')
+    Parameters
+    ----------
+    bufr_dir : str or Path
+        Directory containing BUFR files.
+    output_dir : str or Path, optional
+        Directory where output .nc files will be saved. Defaults to bufr_dir.
+    start_date : str, datetime, or pd.Timestamp, optional
+        Start of filtering date range (inclusive), e.g., '2026-01-01'.
+    end_date : str, datetime, or pd.Timestamp, optional
+        End of filtering date range (inclusive), e.g., '2026-01-05'.
+    pattern : str, optional
+        Filename glob pattern to match BUFR files. Defaults to 'sofar_b001_xx121_*'.
 
-    # # Identifier Variables
-    # q.add('station_name', '*/LSTN')
-    # q.add('buoy_type', '*/BUYT')
+    Returns
+    -------
+    list of Path
+        List of generated NetCDF file paths.
+    """
+    bufr_path = Path(bufr_dir)
+    out_path = Path(output_dir) if output_dir else bufr_path
+    out_path.mkdir(parents=True, exist_ok=True)
 
-    # # Location Variables
-    # q.add('latitude', '*/CLATH')
-    # q.add('longitude', '*/CLONH')
-   
-    # # Data Variables
-    # q.add('hs', '*/BASICWAV/SGWH')      # Significant Wave Height
-    # q.add('dsdw', '*/BASICWAV/DSDW')    # Directional Spread of dominant wave
-    # q.add('ddwc', '*/BASICWAV/DDWC')    # Direction from which dominant waves are coming
-    # q.add('avwp', '*/BASICWAV/AVWP')    # Average Wave Period
-    # q.add('spwp', '*/BASICWAV/SPWP')    # Spectral Peak Wave Period
-    # q.add('wspd', '*/WSPD')             # Wind Speed
-    # q.add('wdir', '*/WDIR')             # Wind Direction
-    
-    # # Open the bufr file
-    # with bufr.File(input_bufr_path) as f:
-    #     r = f.execute(q)
+    t_start = pd.to_datetime(start_date) if start_date else None
+    t_end = pd.to_datetime(end_date) if end_date else None
 
-    # # Open the netcdf file for writing using a context manager for safe closure
-    # with nc.Dataset(output_nc_path, 'w', clobber=True) as rootgrp:
-    #     # netCDF metadata
-    #     rootgrp.description = "Example sofar buoy data bufr"
-    #     rootgrp.source = "Converted from NCO BUFR data tanks"
+    file_list = sorted([
+        f for f in bufr_path.glob(pattern) 
+        if not f.name.endswith('.nc') and f.is_file()
+    ])
 
-    #     # Time
-    #     year = r.get('year')
-    #     month = r.get('month')
-    #     day = r.get('day')
-    #     hour = r.get('hour')
-    #     minute = r.get('minute')
-        
-    #     time_dim = rootgrp.createDimension('time', year.size)
-    #     time_nc = rootgrp.createVariable('time', 'f8', ('time',))
-    #     time_nc.units = "seconds since 1970-01-01 00:00:00"
-    #     time_nc.calendar = "gregorian"
+    if not file_list:
+        print(f"No matching BUFR files found in {bufr_dir} with pattern '{pattern}'.")
+        return []
 
-    #     # Create datetime, convert to epoch time and save to nc
-    #     datetime_array = np.empty(shape=year.shape)
-    #     for n in range(year.size): 
-    #         dt = datetime(year[n], month[n], day[n], hour[n], minute[n])
-    #         datetime_array[n] = nc.date2num(dt, units=time_nc.units, calendar=time_nc.calendar)
+    print(f"Found {len(file_list)} BUFR files to process.")
 
-    #     # Save the epoch time to the netCDF
-    #     time_nc[:] = datetime_array
+    string_vars = ['LSTN']
+    numeric_vars = [
+        'CLATH', 'CLONH', 'YEAR', 'MNTH', 'DAYS', 'HOUR', 'MINU',
+        'SGWH', 'WDIR', 'WSPD', 'DSDW', 'DDWC', 'AVWP', 'SPWP'
+    ]
+    variables = string_vars + numeric_vars
+    wave_keys = ['SGWH', 'WDIR', 'WSPD', 'DSDW', 'DDWC', 'AVWP', 'SPWP']
 
-    #     # Latitude
-    #     lats = rootgrp.createVariable('lat', 'f4', ('time',))
-    #     lats.long_name = 'latitude'
-    #     lats.units = 'degrees_north'
-    #     lats[:] = r.get('latitude')
+    # CF-1.9 Variable Metadata Definitions
+    var_metadata = {
+        'latitude': {
+            'standard_name': 'latitude',
+            'long_name': 'latitude',
+            'units': 'degrees_north',
+            'axis': 'Y'
+        },
+        'longitude': {
+            'standard_name': 'longitude',
+            'long_name': 'longitude',
+            'units': 'degrees_east',
+            'axis': 'X'
+        },
+        'time': {
+            'standard_name': 'time',
+            'long_name': 'time of observation',
+            'axis': 'T'
+        },
+        'LSTN': {
+            'long_name': 'platform_name',
+            'cf_role': 'trajectory_id'
+        },
+        'SGWH': {
+            'standard_name': 'sea_surface_wave_significant_height',
+            'long_name': 'Significant wave height',
+            'units': 'm'
+        },
+        'WDIR': {
+            'standard_name': 'wind_from_direction',
+            'long_name': 'Wind direction',
+            'units': 'degree'
+        },
+        'WSPD': {
+            'standard_name': 'wind_speed',
+            'long_name': 'Wind speed',
+            'units': 'm s-1'
+        },
+        'DSDW': {
+            'standard_name': 'sea_surface_wave_directional_spread',
+            'long_name': 'Directional spread of surface waves',
+            'units': 'degree'
+        },
+        'DDWC': {
+            'standard_name': 'sea_surface_wave_from_direction_at_variance_spectral_peak',
+            'long_name': 'Dominant wave direction at spectral peak',
+            'units': 'degree'
+        },
+        'AVWP': {
+            'standard_name': 'sea_surface_wave_mean_period',
+            'long_name': 'Average wave period',
+            'units': 's'
+        },
+        'SPWP': {
+            'standard_name': 'sea_surface_wave_period_at_variance_spectral_peak',
+            'long_name': 'Peak wave period',
+            'units': 's'
+        }
+    }
 
-    #     # Longitude
-    #     lons = rootgrp.createVariable('lon', 'f4', ('time',))
-    #     lons.long_name = 'longitude'
-    #     lons.units = 'degrees_east'
-    #     lons[:] = r.get('longitude')
+    converted_files = []
 
-    #     # Long Station name - Buoy Identifier
-    #     lstn = rootgrp.createVariable('lstn', str, ('time',))
-    #     lstn.long_name = 'long station name'
-    #     lstn.units = 'str'
-    #     lstn[:] = r.get('station_name')
+    for filepath in file_list:
+        records = []
+        try:
+            bufr = ncepbufr.open(str(filepath))
+            while bufr.advance() == 0:
+                while bufr.load_subset() == 0:
+                    rec = {}
+                    for var in variables:
+                        try:
+                            if var in string_vars:
+                                raw = bufr.read_subset(var)
+                                text = raw.view('S8').tobytes().decode('ascii', errors='ignore').replace('\x00', '').strip()
+                                rec[var] = text if text else None
+                            else:
+                                val = bufr.read_subset(var)
+                                v = val.flat[0] if val.size > 0 else np.nan
+                                
+                                # Check for masked elements safely before float conversion
+                                if np.ma.is_masked(v) or v >= 1e9:
+                                    rec[var] = np.nan
+                                else:
+                                    rec[var] = float(v)
+                        except Exception:
+                            rec[var] = None if var in string_vars else np.nan
+                    
+                    if any(pd.notna(rec[k]) for k in wave_keys if k in rec):
+                        records.append(rec)
+            bufr.close()
+        except Exception as e:
+            print(f"Error reading BUFR file {filepath.name}: {e}")
+            continue
 
-    #     # Buoy Type
-    #     buoy_type = rootgrp.createVariable('buoy_type', 'i4', ('time',))
-    #     buoy_type.units = 'int'
-    #     buoy_type.comment = 'Type 9 is a SOFAR Buoy, ref: https://www.nco.ncep.noaa.gov/sib/jeff/CodeFlag_0_STDv31_LOC7.html'
-    #     buoy_type[:] = r.get('buoy_type')
+        if not records:
+            print(f"  [{filepath.name}] No valid records extracted. Skipping.")
+            continue
 
-    #     # Significant Wave Height
-    #     hs = rootgrp.createVariable('hs', 'f4', ('time',))
-    #     hs.long_name = 'significant wave height'
-    #     hs.units = 'meters'
-    #     hs[:] = r.get('hs')
+        df = pd.DataFrame(records)
 
-    #     # Directional Spread of Dominant Wave
-    #     dsdw = rootgrp.createVariable('dsdw', 'i4', ('time',))
-    #     dsdw.long_name = 'directional spread of dominant wave'
-    #     dsdw.units = 'degree'
-    #     dsdw[:] = r.get('dsdw')
+        # Assemble Datetime column
+        time_cols = ['YEAR', 'MNTH', 'DAYS', 'HOUR']
+        if all(col in df.columns for col in time_cols):
+            df['time'] = pd.to_datetime({
+                'year': df['YEAR'].fillna(1970).astype(int),
+                'month': df['MNTH'].fillna(1).astype(int),
+                'day': df['DAYS'].fillna(1).astype(int),
+                'hour': df['HOUR'].fillna(0).astype(int),
+                'minute': df.get('MINU', 0).fillna(0).astype(int)
+            })
+            df = df.drop(columns=['YEAR', 'MNTH', 'DAYS', 'HOUR', 'MINU'], errors='ignore')
 
-    #     # Direction from which dominant waves are coming
-    #     ddwc = rootgrp.createVariable('ddwc', 'i4', ('time',))
-    #     ddwc.long_name = 'direction from which dominant waves are coming'
-    #     ddwc.units = 'degree true'
-    #     ddwc[:] = r.get('ddwc')
+        # Filter by date range if provided
+        if 'time' in df.columns:
+            if t_start is not None:
+                df = df[df['time'] >= t_start]
+            if t_end is not None:
+                df = df[df['time'] <= t_end]
 
-    #     # Average Wave Period
-    #     avwp = rootgrp.createVariable('avwp', 'f4', ('time',))
-    #     avwp.long_name = 'average wave period'
-    #     avwp.units = 'seconds'
-    #     avwp[:] = r.get('avwp')
+        if df.empty:
+            print(f"  [{filepath.name}] No records fell within date range [{start_date} to {end_date}]. Skipping.")
+            continue
 
-    #     # Spectral peak wave period
-    #     spwp = rootgrp.createVariable('spwp', 'f4', ('time',))
-    #     spwp.long_name = 'spectral peak wave period'
-    #     spwp.units = 'seconds'
-    #     spwp[:] = r.get('spwp')
+        # Reset index to create 1D observation dimension 'obs'
+        df = df.reset_index(drop=True)
+        df.index.name = 'obs'
+        ds = df.to_xarray()
 
-    #     # Wind Speed
-    #     wspd = rootgrp.createVariable('wspd', 'f4', ('time',))
-    #     wspd.long_name = 'wind speed'
-    #     wspd.units = 'meters per second'
-    #     wspd[:] = r.get('wspd')
+        # Rename coordinate names to CF standards
+        rename_dict = {}
+        if 'CLATH' in ds:
+            rename_dict['CLATH'] = 'latitude'
+        if 'CLONH' in ds:
+            rename_dict['CLONH'] = 'longitude'
+        if rename_dict:
+            ds = ds.rename(rename_dict)
 
-    #     # Wind Direction
-    #     wdir = rootgrp.createVariable('wdir', 'f4', ('time',))
-    #     wdir.long_name = 'wind direction'
-    #     wdir.units = 'degree true'
-    #     wdir[:] = r.get('wdir')
+        # Set latitude, longitude, and time as coordinates
+        coords_to_set = [c for c in ['time', 'latitude', 'longitude'] if c in ds]
+        ds = ds.set_coords(coords_to_set)
+
+        # Apply CF-1.9 Global Attributes
+        now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ds.attrs['Conventions'] = 'CF-1.9'
+        ds.attrs['featureType'] = 'trajectory'
+        ds.attrs['title'] = 'Surface Marine Observation Data Converted from NCEP BUFR'
+        ds.attrs['source'] = f'NCEP BUFR observation file: {filepath.name}'
+        ds.attrs['history'] = f'{now_str}: Converted to CF-1.9 NetCDF via ww3-tools pipeline.'
+
+        # Assign CF Variable Attributes & Link Coordinates
+        coord_attr_str = 'time latitude longitude'
+        for vname, attrs in var_metadata.items():
+            if vname in ds:
+                ds[vname].attrs.update(attrs)
+                if vname not in ['time', 'latitude', 'longitude', 'LSTN']:
+                    ds[vname].attrs['coordinates'] = coord_attr_str
+
+        # Define explicit CF time encoding
+        encoding = {}
+        if 'time' in ds:
+            encoding['time'] = {
+                'units': 'seconds since 1970-01-01 00:00:00',
+                'calendar': 'gregorian'
+            }
+
+        # Write to NetCDF file
+        nc_filename = out_path / f"{filepath.name}.nc"
+        ds.to_netcdf(nc_filename, encoding=encoding)
+        converted_files.append(nc_filename)
+        print(f"  [{filepath.name}] Saved CF-1.9 compliant NetCDF ({len(df)} records) -> {nc_filename.name}")
+
+    print(f"\nDone! Successfully converted {len(converted_files)} files.")
+    return converted_files
