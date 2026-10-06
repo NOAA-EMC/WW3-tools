@@ -64,6 +64,20 @@ def convert_sofar_bufr_to_nc(
     variables = string_vars + numeric_vars
     wave_keys = ['SGWH', 'WDIR', 'WSPD', 'DSDW', 'DDWC', 'AVWP', 'SPWP']
 
+    # BUFR Mnemonic to CF Standard Variable Name Mapping
+    rename_map = {
+        'CLATH': 'latitude',
+        'CLONH': 'longitude',
+        'LSTN': 'platform_id',
+        'SGWH': 'sea_surface_wave_significant_height',
+        'WDIR': 'wind_from_direction',
+        'WSPD': 'wind_speed',
+        'DSDW': 'sea_surface_wave_directional_spread',
+        'DDWC': 'sea_surface_wave_from_direction_at_variance_spectral_peak',
+        'AVWP': 'sea_surface_wave_mean_period',
+        'SPWP': 'sea_surface_wave_period_at_variance_spectral_peak',
+    }
+
     # CF-1.9 Variable Metadata Definitions
     var_metadata = {
         'latitude': {
@@ -83,41 +97,41 @@ def convert_sofar_bufr_to_nc(
             'long_name': 'time of observation',
             'axis': 'T'
         },
-        'LSTN': {
-            'long_name': 'platform_name',
+        'platform_id': {
+            'long_name': 'platform identifier',
             'cf_role': 'trajectory_id'
         },
-        'SGWH': {
+        'sea_surface_wave_significant_height': {
             'standard_name': 'sea_surface_wave_significant_height',
             'long_name': 'Significant wave height',
             'units': 'm'
         },
-        'WDIR': {
+        'wind_from_direction': {
             'standard_name': 'wind_from_direction',
             'long_name': 'Wind direction',
             'units': 'degree'
         },
-        'WSPD': {
+        'wind_speed': {
             'standard_name': 'wind_speed',
             'long_name': 'Wind speed',
             'units': 'm s-1'
         },
-        'DSDW': {
+        'sea_surface_wave_directional_spread': {
             'standard_name': 'sea_surface_wave_directional_spread',
             'long_name': 'Directional spread of surface waves',
             'units': 'degree'
         },
-        'DDWC': {
+        'sea_surface_wave_from_direction_at_variance_spectral_peak': {
             'standard_name': 'sea_surface_wave_from_direction_at_variance_spectral_peak',
             'long_name': 'Dominant wave direction at spectral peak',
             'units': 'degree'
         },
-        'AVWP': {
+        'sea_surface_wave_mean_period': {
             'standard_name': 'sea_surface_wave_mean_period',
             'long_name': 'Average wave period',
             'units': 's'
         },
-        'SPWP': {
+        'sea_surface_wave_period_at_variance_spectral_peak': {
             'standard_name': 'sea_surface_wave_period_at_variance_spectral_peak',
             'long_name': 'Peak wave period',
             'units': 's'
@@ -143,7 +157,6 @@ def convert_sofar_bufr_to_nc(
                                 val = bufr.read_subset(var)
                                 v = val.flat[0] if val.size > 0 else np.nan
                                 
-                                # Check for masked elements safely before float conversion
                                 if np.ma.is_masked(v) or v >= 1e9:
                                     rec[var] = np.nan
                                 else:
@@ -192,18 +205,13 @@ def convert_sofar_bufr_to_nc(
         df.index.name = 'obs'
         ds = df.to_xarray()
 
-        # Rename coordinate names to CF standards
-        rename_dict = {}
-        if 'CLATH' in ds:
-            rename_dict['CLATH'] = 'latitude'
-        if 'CLONH' in ds:
-            rename_dict['CLONH'] = 'longitude'
+        # Rename BUFR mnemonics to CF standard variable names
+        rename_dict = {k: v for k, v in rename_map.items() if k in ds}
         if rename_dict:
             ds = ds.rename(rename_dict)
 
-        # Set latitude, longitude, and time as coordinates
-        coords_to_set = [c for c in ['time', 'latitude', 'longitude'] if c in ds]
-        ds = ds.set_coords(coords_to_set)
+        # Set time as the coordinate
+        ds = ds.set_coords('time')
 
         # Apply CF-1.9 Global Attributes
         now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -213,13 +221,15 @@ def convert_sofar_bufr_to_nc(
         ds.attrs['source'] = f'NCEP BUFR observation file: {filepath.name}'
         ds.attrs['history'] = f'{now_str}: Converted to CF-1.9 NetCDF via ww3-tools pipeline.'
 
-        # Assign CF Variable Attributes & Link Coordinates
-        coord_attr_str = 'time latitude longitude'
-        for vname, attrs in var_metadata.items():
-            if vname in ds:
-                ds[vname].attrs.update(attrs)
-                if vname not in ['time', 'latitude', 'longitude', 'LSTN']:
-                    ds[vname].attrs['coordinates'] = coord_attr_str
+        # # Assign CF Variable Attributes & Link Coordinates
+        # coord_attr_str = 'time latitude longitude'
+        # non_data_vars = {'time', 'latitude', 'longitude', 'platform_id'}
+
+        # for vname, attrs in var_metadata.items():
+        #     if vname in ds:
+        #         ds[vname].attrs.update(attrs)
+        #         if vname not in non_data_vars:
+        #             ds[vname].attrs['coordinates'] = coord_attr_str
 
         # Define explicit CF time encoding
         encoding = {}
