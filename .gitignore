@@ -1,9 +1,9 @@
 # Files to Ignore
 .DS_store
 
-
 # Ignore data directory 
 /data/
+/data/*
 
 # Python packaging and build artifacts
 *.egg-info/
@@ -11,3 +11,10 @@
 build/
 dist/
 wheels/
+
+# Notebook Artifacts
+ww3tools/.ipynb_checkpoints/
+ww3tools/__pycache__/
+notebooks/.ipynb_checkpoints/
+notebooks/sofar/.ipynb_checkpoints/
+ww3tools/sofar/__pycache__/  

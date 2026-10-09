@@ -9,6 +9,7 @@ import pandas as pd
 import netCDF4 as nc
 import xarray as xr
 import ncepbufr
+import dask
 
 def convert_sofar_bufr_to_nc(
     bufr_dir, 
@@ -247,3 +248,81 @@ def convert_sofar_bufr_to_nc(
 
     print(f"\nDone! Successfully converted {len(converted_files)} files.")
     return converted_files
+
+@dask.delayed
+def interpolate_single_forecast_cycle(cycle_dir, init_time, ds_sofar_ref):
+    """Worker: Processes exactly one forecast cycle and returns the interpolated Dataset."""
+    gfs_hour = f"{init_time.hour:02d}"
+    f_files = sorted(glob.glob(f"{cycle_dir}/gfs.t{gfs_hour}z.global.0p25.f*.grib2"))
+    
+    if not f_files:
+        return None
+
+    ds_gfs = xr.open_mfdataset(
+        f_files,
+        engine="cfgrib",
+        combine="nested",
+        concat_dim="step",
+        coords="minimal",
+        compat="override",
+        chunks={},  
+        parallel=False, 
+        backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
+    )
+
+    if "time" in ds_gfs.dims:
+        ds_gfs = ds_gfs.squeeze("time")
+        
+    ds_gfs = ds_gfs.assign_coords(
+        valid_time=("step", (np.datetime64(init_time) + ds_gfs["step"]).data)
+    )
+    ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
+
+    gfs_vars = ["swh", "ws", "wdir", "mp1", "wvdir"]
+    ds_gfs = ds_gfs[gfs_vars]
+    
+    start_time = ds_gfs.valid_time.min().values
+    end_time = ds_gfs.valid_time.max().values
+    ds_sofar_sub = ds_sofar_ref.sel(time=slice(start_time, end_time))
+
+    if len(ds_sofar_sub.time) == 0:
+        return None  
+
+    ds_gfs = ds_gfs.chunk({"valid_time": -1})
+    sofar_dim = list(ds_sofar_sub.sizes.keys())[0]
+    ds_sofar_sub = ds_sofar_sub.chunk({sofar_dim: -1})
+
+    ds_model_interp = ds_gfs.interp(
+        valid_time=ds_sofar_sub.time,
+        latitude=ds_sofar_sub.latitude,
+        longitude=ds_sofar_sub.longitude,
+        method="linear"
+    )
+
+    fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
+    
+    ds_combined = xr.Dataset(
+        data_vars={
+            "latitude": ("time", ds_sofar_sub["latitude"].data),
+            "longitude": ("time", (ds_sofar_sub["longitude"] % 360).data), 
+            "fcst_hr": ("time", fcst_hr_vals),
+            "model_hs": ("time", ds_model_interp["swh"].data),
+            "obs_hs": ("time", ds_sofar_sub["sea_surface_wave_significant_height"].data),
+            "model_wnd": ("time", ds_model_interp["ws"].data),
+            "obs_wnd": ("time", ds_sofar_sub["wind_speed"].data),
+            "model_wdir": ("time", ds_model_interp["wdir"].data),
+            "obs_wdir": ("time", ds_sofar_sub["wind_from_direction"].data),
+            "model_mwp": ("time", ds_model_interp["mp1"].data),
+            "obs_mwp": ("time", ds_sofar_sub["sea_surface_wave_mean_period"].data),
+            "model_mwdir": ("time", ds_model_interp["wvdir"].data),
+            "obs_mwdir": ("time", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data),
+        },
+        coords={"time": ds_sofar_sub.time.data},
+        attrs={
+            "satellite_name": "SOFAR_BUOY",
+            "model_name": "GFS_WAVE",
+            "initialization_time": str(init_time)
+        }
+    )
+    
+    return ds_combined.compute()
