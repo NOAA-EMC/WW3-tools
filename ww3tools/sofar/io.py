@@ -222,16 +222,6 @@ def convert_sofar_bufr_to_nc(
         ds.attrs['source'] = f'NCEP BUFR observation file: {filepath.name}'
         ds.attrs['history'] = f'{now_str}: Converted to CF-1.9 NetCDF via ww3-tools pipeline.'
 
-        # # Assign CF Variable Attributes & Link Coordinates
-        # coord_attr_str = 'time latitude longitude'
-        # non_data_vars = {'time', 'latitude', 'longitude', 'platform_id'}
-
-        # for vname, attrs in var_metadata.items():
-        #     if vname in ds:
-        #         ds[vname].attrs.update(attrs)
-        #         if vname not in non_data_vars:
-        #             ds[vname].attrs['coordinates'] = coord_attr_str
-
         # Define explicit CF time encoding
         encoding = {}
         if 'time' in ds:
