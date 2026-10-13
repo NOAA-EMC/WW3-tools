@@ -16,6 +16,8 @@ START_DATE="2026-01-01"
 END_DATE="2026-01-02"
 WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev/data"
 ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
+MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
+MODEL_PATTERN="gfs."
 # ======================================================
 
 # Load RDHPCS-conda and activate environment
@@ -31,9 +33,13 @@ echo "Validation Start Date: $START_DATE"
 echo "Validation End Date: $END_DATE"
 echo "Work Directory: $WORK_DIR"
 echo "Environment path: $ENV_PATH"
+echo "Model Comparison path: $MODEL_COMPARE_DIR"
+echo "Model directory pattern: $MODEL_PATTERN"
 
 # Execute the python matchup script
-python sofar_matchup_pipeline.py \
+python -u sofar_matchup_pipeline.py \
     --start-date "${START_DATE}" \
     --end-date "${END_DATE}" \
-    --work-dir "${WORK_DIR}"
+    --work-dir "${WORK_DIR}" \
+    --model-dir "${MODEL_COMPARE_DIR}" \
+    --model-pattern "${MODEL_PATTERN}"
