@@ -353,93 +353,17 @@ def convert_sofar_bufr_to_nc(
     print(f"\nDone! Successfully checked or converted {len(converted_files)} files.")
     return converted_files
 
-@dask.delayed
-def interpolate_single_forecast_cycle(cycle_dir, init_time, ds_sofar_ref):
-    """Worker: Processes exactly one forecast cycle and returns the interpolated Dataset."""
-    gfs_hour = f"{init_time.hour:02d}"
-    f_files = sorted(glob.glob(f"{cycle_dir}/gfs.t{gfs_hour}z.global.0p25.f*.grib2"))
-    
-    if not f_files:
-        return None
-
-    ds_gfs = xr.open_mfdataset(
-        f_files,
-        engine="cfgrib",
-        combine="nested",
-        concat_dim="step",
-        coords="minimal",
-        compat="override",
-        chunks={},  
-        parallel=False, 
-        backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
-    )
-
-    if "time" in ds_gfs.dims:
-        ds_gfs = ds_gfs.squeeze("time")
-        
-    ds_gfs = ds_gfs.assign_coords(
-        valid_time=("step", (np.datetime64(init_time) + ds_gfs["step"]).data)
-    )
-    ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
-
-    gfs_vars = ["swh", "ws", "wdir", "mp1", "wvdir"]
-    ds_gfs = ds_gfs[gfs_vars]
-    
-    start_time = ds_gfs.valid_time.min().values
-    end_time = ds_gfs.valid_time.max().values
-    ds_sofar_sub = ds_sofar_ref.sel(time=slice(start_time, end_time))
-
-    if len(ds_sofar_sub.time) == 0:
-        return None  
-
-    ds_gfs = ds_gfs.chunk({"valid_time": -1})
-    sofar_dim = list(ds_sofar_sub.sizes.keys())[0]
-    ds_sofar_sub = ds_sofar_sub.chunk({sofar_dim: -1})
-
-    ds_model_interp = ds_gfs.interp(
-        valid_time=ds_sofar_sub.time,
-        latitude=ds_sofar_sub.latitude,
-        longitude=ds_sofar_sub.longitude,
-        method="linear"
-    )
-
-    fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
-    
-    ds_combined = xr.Dataset(
-        data_vars={
-            "latitude": ("time", ds_sofar_sub["latitude"].data),
-            "longitude": ("time", (ds_sofar_sub["longitude"] % 360).data), 
-            "fcst_hr": ("time", fcst_hr_vals),
-            "model_hs": ("time", ds_model_interp["swh"].data),
-            "obs_hs": ("time", ds_sofar_sub["sea_surface_wave_significant_height"].data),
-            "model_wnd": ("time", ds_model_interp["ws"].data),
-            "obs_wnd": ("time", ds_sofar_sub["wind_speed"].data),
-            "model_wdir": ("time", ds_model_interp["wdir"].data),
-            "obs_wdir": ("time", ds_sofar_sub["wind_from_direction"].data),
-            "model_mwp": ("time", ds_model_interp["mp1"].data),
-            "obs_mwp": ("time", ds_sofar_sub["sea_surface_wave_mean_period"].data),
-            "model_mwdir": ("time", ds_model_interp["wvdir"].data),
-            "obs_mwdir": ("time", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data),
-        },
-        coords={"time": ds_sofar_sub.time.data},
-        attrs={
-            "satellite_name": "SOFAR_BUOY",
-            "model_name": "GFS_WAVE",
-            "initialization_time": str(init_time)
-        }
-    )
-    
-    return ds_combined.compute()
-
-@dask.delayed
 def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
-    """Worker: Processes exactly one forecast cycle and returns the interpolated Dataset."""
+    """
+    Worker: Processes exactly one forecast cycle in memory.
+    Designed to be mapped across a Dask client.
+    """
     print(f"[{init_time}] Starting processing...")
     
-    # --- FIX: Load the reference data natively inside the worker ---
-    # Using open_zarr allows the worker to lazily read only the time chunk it needs
-    ds_sofar_ref = xr.open_zarr(sofar_path)
-    # ---------------------------------------------------------------
+    nc_pattern = os.path.join(sofar_path, "*.nc")
+    ds_sofar_ref = xr.open_mfdataset(nc_pattern,
+                                     combine="nested",
+                                     concat_dim="obs")
     
     gfs_hour = f"{init_time.hour:02d}"
     f_files = sorted(glob.glob(f"{cycle_dir}/gfs.t{gfs_hour}z.global.0p25.f*.grib2"))
@@ -448,10 +372,14 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
         print(f"[{init_time}] SKIP: No GRIB files found.")
         return None
 
-    # ... (Keep all your existing GFS loading and cleanup code exactly the same) ...
     ds_gfs = xr.open_mfdataset(
-        f_files, engine="cfgrib", combine="nested", concat_dim="step",
-        coords="minimal", compat="override", chunks={}, parallel=False, 
+        f_files, 
+        engine="cfgrib", 
+        combine="nested", 
+        concat_dim="step",
+        coords="minimal", 
+        compat="override", 
+        parallel=False, 
         backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
     )
 
@@ -470,10 +398,10 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
     start_time = ds_gfs.valid_time.min().values
     end_time = ds_gfs.valid_time.max().values
     
-    # --- Subset and compute ONLY the small slice needed for this worker ---
     mask = (ds_sofar_ref.time >= start_time) & (ds_sofar_ref.time <= end_time)
-    ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).compute()
-    # ----------------------------------------------------------------------
+    
+    # Load the subset natively into the worker's RAM
+    ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).load()
 
     if ds_sofar_sub.sizes["obs"] == 0:
         print(f"[{init_time}] SKIP: No SOFAR observations found for this time window.")
@@ -481,8 +409,8 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
 
     print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
     
-    ds_gfs = ds_gfs.chunk({"valid_time": -1})
-    ds_sofar_sub = ds_sofar_sub.chunk({"obs": -1})
+    # Load the model subset into RAM before interpolating
+    ds_gfs = ds_gfs.load()
 
     ds_model_interp = ds_gfs.interp(
         valid_time=ds_sofar_sub.time,
@@ -519,90 +447,39 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
         }
     )
     
-    result = ds_combined.compute()
     print(f"[{init_time}] SUCCESS: Completed interpolation.")
-    return result
+    return ds_combined
 
-
-def process_matchup_pipeline(start_date, end_date, sofar_dir, gfs_dir, model_name):
-    """Master Pipeline: Loads SOFAR data, queues Dask workers for GFS cycles, and concatenates the result."""
-    from dask.distributed import get_client, progress
+def build_cycle_inputs(start_date_str, end_date_str, model_base_dir):
+    """
+    Generates aligned lists of initialization times and model directories 
+    for 6-hourly GFS forecast cycles between the start and end dates.
+    """
+    # Generate an index of datetimes every 6 hours (00:00, 06:00, 12:00, 18:00)
+    # Adding '23:59:59' to the end date ensures the last day's 18z cycle is included
+    datetime_index = pd.date_range(
+        start=start_date_str, 
+        end=f"{end_date_str} 23:59:59", 
+        freq='6h'
+    )
     
-    print(f"--- Starting Pipeline ---")
-    print(f"Target Date Range: {start_date} to {end_date}")
+    # Convert pandas DatetimeIndex to a list of standard python datetimes
+    init_times = datetime_index.to_pydatetime().tolist()
     
-    print("Loading SOFAR Buoy data...")
-    sofar_files = sorted(glob.glob(f"{sofar_dir}/sofar_*.nc"))
-    print(f"Found {len(sofar_files)} SOFAR files.")
+    cycle_dirs = []
     
-    ds_list = []
-    for f in sofar_files:
-        ds = xr.open_dataset(f, engine="netcdf4", chunks={})
+    # Build the corresponding directory paths for each initialization time
+    for dt in init_times:
+        date_formatted = dt.strftime("%Y%m%d")
+        cycle_hour = f"{dt.hour:02d}"
         
-        # Identify the native physical dimension and unify it as 'obs'
-        native_dim = [d for d in ds.sizes if d != "time"][0]
-        if native_dim != "obs":
-            ds = ds.rename_dims({native_dim: "obs"})
-            
-        # Ensure time, lat, and lon are explicitly set as coordinates
-        ds = ds.set_coords(["time", "latitude", "longitude"])
-        ds_list.append(ds)
+        # Adjust this path logic if your hourly cycles are in subdirectories 
+        # e.g., model_base_dir/gfs.20260101/00/
+        target_dir = os.path.join(model_base_dir, f"gfs.{date_formatted}", cycle_hour)
         
-    print("Concatenating SOFAR observations (preserving all duplicates)...")
-    ds_sofar = xr.concat(ds_list, dim="obs")
-    ds_sofar = ds_sofar.sortby("time")
-    ds_sofar["longitude"] = (ds_sofar["longitude"] + 360) % 360
-    
-    # --- FIX: Write reference to fast HPC storage ---
-    temp_sofar_path = "./temp_sofar_reference.zarr"
-    print(f"Writing SOFAR reference to disk at {temp_sofar_path}...")
-    
-    # Compute and save as a consolidated Zarr store for lightning-fast parallel reads
-    ds_sofar.compute().to_zarr(temp_sofar_path, mode="w", consolidated=True)
-    # ------------------------------------------------
-    
-    print("Scanning GFS forecast cycle directories...")
-    cycle_dirs = sorted(glob.glob(f"{gfs_dir}/gfs.*/[0-2][0-9]/products/wave/gridded/global.0p25"))
-    print(f"Found {len(cycle_dirs)} total cycles on disk.")
-    
-    tasks = []
-    for cycle_dir in cycle_dirs:
-        parts = Path(cycle_dir).parts
-        gfs_date = [p for p in parts if p.startswith("gfs.")][0].split(".")[1]
-        gfs_hour = parts[parts.index(f"gfs.{gfs_date}") + 1]
+        # If your files are not split into hourly subdirectories, use this instead:
+        # target_dir = os.path.join(model_base_dir, f"gfs.{date_formatted}")
         
-        init_time = pd.to_datetime(f"{gfs_date} {gfs_hour}:00:00")
+        cycle_dirs.append(target_dir)
         
-        if pd.to_datetime(start_date) <= init_time <= pd.to_datetime(end_date):
-            # Pass the tiny string path instead of the data!
-            tasks.append(process_single_cycle(cycle_dir, init_time, temp_sofar_path, model_name))
-
-    print(f"Filtered to {len(tasks)} forecast cycles within the date range.")
-    
-    if len(tasks) == 0:
-        print("No tasks queued. Exiting.")
-        return None
-
-    print(f"Computing in parallel across Dask workers...")
-    
-    try:
-        client = get_client()
-        futures = client.compute(tasks)
-        progress(futures)
-        results = client.gather(futures)
-    except ValueError:
-        from dask.diagnostics import ProgressBar
-        with ProgressBar():
-            results = dask.compute(*tasks)
-
-    valid_results = [ds for ds in results if ds is not None]
-    
-    if not valid_results:
-        print("No valid matchups generated (all returned None).")
-        return None
-
-    print(f"Successfully processed {len(valid_results)} cycles. Concatenating along 'obs' dimension...")
-    ds_final = xr.concat(valid_results, dim="obs")
-    
-    print(f"Final dataset generated with {len(ds_final.obs)} total matched observations.")
-    return ds_final
+    return init_times, cycle_dirs
