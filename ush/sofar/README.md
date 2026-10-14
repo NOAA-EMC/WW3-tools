@@ -1,49 +1,44 @@
-# SOFAR Spotter Buoy-Model Matchup Pipeline
-Interpolates wave model forecasts (e.g., NOAA GFS) with drifting SOFAR Spotter buoy observations.
+# SOFAR Spotter Buoy Model Evaluation
 
-### Scripts & Inputs 
-The workflow is controlled by two bash scripts. Both scripts can be run from anywhere—just update the absolute paths in the user inputs.
+## Spotter Buoy-Model Matchup Pipeline 
+The SOFAR Spotter buoy observation-model matchup pipeline provides a workflow to collocate operational or experimental wave model forecasts 
+(such as NOAA GFS wave runs) with drifting SOFAR Spotter buoy observations. 
 
-1. **`get_sofar_data.sh`**: Fetches SOFAR data from HPSS system on Ursa.
-2. **`make_sofar_matchup.sh`**: Runs the parallelized 3D interpolation and generates the final matchup files. Output is converted netCDF files for all SOFAR bufr files and both a netCDF and Zarr matchup file. 
-
-**Required Input Adjustments:**
-Edit the variable block at the top of *both* scripts before running:
-* `START_DATE` / `END_DATE`: Date range for forecast initialization times. Format is ('YYYY-MM-DD') for both.
-* `WORK_DIR`: Output directory for final NetCDF/Zarr files. Subdirectories will be made for netCDF and zarr data. 
-* `OBS_DIR`: Directory for SOFAR BUFR data.
-* `MODEL_COMPARE_DIR`: Base directory for model data.
-* `MODEL_PATTERN`: Prefix for the daily model run directories (e.g., `"gfs."` for folders like `gfs.20260101`).
-* `MODEL_NAME`: Custom label (e.g., `"GFS_WAVE"`) saved as metadata in the final output files to identify the model.
-* `MODEL_FILE_TEMPLATE`: File path template to locate forecast files. Uses datetime formatting (e.g., `{dt:%Y%m%d}` and `{dt:%H}`) to dynamically find files for each cycle.
 
 ---
-### How to Run
-1. Clone the repo to Ursa.
-2. Adjust the user inputs in `get_sofar_data.sh` and `make_sofar_matchup.sh`.
-3. Submit the data retrieval job as a bash script which will spawn parallel slurm jobs to access data from the HPSS system:
-   `bash get_sofar_data.sh`
-4. Once data retrieval finishes, submit the matchup job:
-   `sbatch make_sofar_matchup.sh`
 
----
 ### Pipeline Architecture
-1. **Data Check:** Verifies/downloads required SOFAR data from HPSS.
-2. **Conversion:** Converts BUFR files to NetCDF.
-3. **Zarr Staging:** Consolidates sofar observations for fast parallel reading.
-4. **Interpolation:** Maps forecast cycle data to buoy time and positions.
-5. **Consolidation:** Aggregates final data into unified netCDF and Zarr store.
+
+* **Model Data Pre-Check:** Verifies that required forecast run directories and files exist for every day within the specified date range before cluster execution.
+* **BUFR to NetCDF Extraction:** Translates NCEP marine BUFR observation files into CF-compliant NetCDF trajectory files, applying an automated forward date buffer to encompass model forecast horizons. Existing NetCDF conversions are detected and skipped automatically.
+* **Reference Store Staging:** Consolidates observation datasets into a reference store (Zarr or multi-file NetCDF) for parallel reading across cluster nodes.
+* **Distributed 4D Collocation:** Maps forecast initialization dates and six-hourly cycle times (00z, 06z, 12z, 18z) across Dask worker processes. Model fields are linearly interpolated onto the dynamic positions and timestamps of the Spotter buoys.
+* **Matchup Consolidation:** Aggregates interpolated forecast records into a unified NetCDF file indexed along the observation dimension, tagged with forecast lead hours and run metadata.
 
 ---
-### Environment Setup
 
-**Option 1: Ursa Prebuilt Modules (Default)**
-The bash scripts automatically load the required prebuilt modules (`stack-oneapi`, `ursa-env`, `bufr`) and set the `PYTHONPATH`. No manual setup is required but an updated path to the location of ww3tools that you are using is needed.
+### Matchup Variable Descriptions
 
-**Option 2: Custom Conda Environment**
-A conda environment is built on Ursa at '/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar' and can be activated using `conda activate path/to/env` after `module load rdhpcs-conda`.
-To build the environment manually:
-`salloc -A marine-cpu --partition=u1-service -N 1 --mem=8G -t 01:00:00`
-`module load rdhpcs-conda`
-`conda env create --file environment.yml --prefix /scratch[34]/<LAB>/<PROJECT_ID>/<USER_ID>/envs/sofar`
-`conda activate /scratch[34]/<LAB>/<PROJECT_ID>/<USER_ID>/envs/sofar`
+| Variable | Description | Units |
+| :--- | :--- | :--- |
+| `time` | Timestamp of observation | datetime64[ns] |
+| `latitude` | Buoy latitude coordinate | degrees_north |
+| `longitude` | Buoy longitude coordinate ($0$ to $360$) | degrees_east |
+| `init_time` | Forecast cycle initialization timestamp | datetime64[ns] |
+| `fcst_hr` | Forecast lead time since initialization | hours |
+| `obs_hs` | Significant wave height from SOFAR Spotter | meters |
+| `model_hs` | Significant wave height interpolated from model | meters |
+| `obs_wnd` | Surface wind speed from SOFAR Spotter | m s-1 |
+| `model_wnd` | 10-meter wind speed interpolated from model[cite: 1, 2] | m s-1 |
+| `obs_wdir` | Surface wind direction from SOFAR Spotter | degree |
+| `model_wdir` | Wind direction interpolated from model | degree |
+| `obs_mwp` | Mean wave period from SOFAR Spotter | seconds |
+| `model_mwp` | Mean wave period interpolated from model | seconds |
+| `obs_mwdir` | Dominant peak wave direction from SOFAR Spotter | degree |
+| `model_mwdir` | Mean wave direction interpolated from model | degree |
+
+### Available Functions (`ww3tools.sofar_tools`)
+
+#### `check_model_data`
+```python
+check_model_data(model_dir, start_date_str, end_date_str, pattern_prefix="gfs.")
