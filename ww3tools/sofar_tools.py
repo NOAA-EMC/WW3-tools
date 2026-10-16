@@ -417,27 +417,30 @@ def consolidate_sofar_to_zarr(
         print(f"Reference Zarr store already exists at '{zarr_path}'. Skipping consolidation.")
         
     return zarr_path
-    
-def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
+
+def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name):
     """
-    Worker: Processes exactly one forecast cycle in memory.
-    Designed to be mapped across a Dask client.
-    Expects `forecast_files` to be a list of GRIB2 file paths.
+    Worker: Processes exactly one forecast cycle using lazy Dask execution.
+    Only computes the final 1D matchup dataset to minimize RAM usage.
+    
+    Args:
+        forecast_files (list): List of GRIB2 forecast file paths for this cycle.
+        init_time (datetime): The initialization time of the cycle.
+        sofar_zarr_path (str): Path to the consolidated SOFAR Zarr store.
+        model_name (str): The name of the wave model (e.g., "GFS_WAVE").
     """
     print(f"[{init_time}] Starting processing...")
     
+    # 1. Immediate exit if file list is empty
     if not forecast_files:
         print(f"[{init_time}] SKIP: No GRIB files provided.")
         return None
 
-    # Load reference observations
-    nc_pattern = os.path.join(sofar_path, "*.nc")
-    ds_sofar_ref = xr.open_mfdataset(
-        nc_pattern,
-        combine="nested",
-        concat_dim="obs"
-    )
+    # 2. Open observations natively from the consolidated Zarr store
+    # This completely eliminates Lustre NetCDF metadata contention
+    ds_sofar_ref = xr.open_zarr(sofar_zarr_path, consolidated=True)
     
+    # 3. Open GFS files lazily with step chunking (1 chunk per file)
     ds_gfs = xr.open_mfdataset(
         forecast_files, 
         engine="cfgrib", 
@@ -445,6 +448,7 @@ def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
         concat_dim="step",
         coords="minimal", 
         compat="override", 
+        chunks={"step": 1},
         parallel=False, 
         backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
     )
@@ -461,12 +465,11 @@ def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
     ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
     ds_gfs = ds_gfs[["swh", "ws", "wdir", "mp1", "wvdir"]]
     
-    start_time = ds_gfs.valid_time.min().values
-    end_time = ds_gfs.valid_time.max().values
+    model_start = ds_gfs.valid_time.min().values
+    model_end = ds_gfs.valid_time.max().values
     
-    mask = (ds_sofar_ref.time >= start_time) & (ds_sofar_ref.time <= end_time)
-    
-    # Load the subset natively into the worker's RAM
+    # Filter observations matching this forecast cycle's total valid time
+    mask = (ds_sofar_ref.time >= model_start) & (ds_sofar_ref.time <= model_end)
     ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).load()
 
     if ds_sofar_sub.sizes["obs"] == 0:
@@ -474,10 +477,16 @@ def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
         return None
 
     print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
-    
-    # Load the model subset into RAM before interpolating
-    ds_gfs = ds_gfs.load()
 
+    # 4. Lazily trim the model to only the time range where observations actually exist
+    obs_start = ds_sofar_sub.time.min().values
+    obs_end = ds_sofar_sub.time.max().values
+    ds_gfs = ds_gfs.sel(valid_time=slice(obs_start, obs_end))
+
+    # Rechunk valid_time to -1 across the active slice so xarray can interpolate across time
+    ds_gfs = ds_gfs.chunk({"valid_time": -1})
+
+    # 5. Perform linear interpolation lazily (NO .load() call to prevent OOM)
     ds_model_interp = ds_gfs.interp(
         valid_time=ds_sofar_sub.time,
         latitude=ds_sofar_sub.latitude,
@@ -487,7 +496,8 @@ def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
 
     fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
     init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time))
-    
+
+    # 6. Build combined dataset with lazy Dask data arrays
     ds_combined = xr.Dataset(
         data_vars={
             "buoy_id": ("obs", ds_sofar_sub["platform_id"].data),
@@ -513,9 +523,12 @@ def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
         }
     )
     
+    # 7. Evaluate only the tiny 1D output table into memory
+    result = ds_combined.compute()
+    
     print(f"[{init_time}] SUCCESS: Completed interpolation.")
-    return ds_combined
-
+    return result
+    
 def build_cycle_inputs(
     start_date_str,
     end_date_str,
