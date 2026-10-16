@@ -19,6 +19,7 @@ ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
 MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
 MODEL_PATTERN="gfs."
 MODEL_NAME="GFS_WAVE"
+MODEL_FILE_TEMPLATE="gfs.{dt:%Y%m%d}/{dt:%H}/products/wave/gridded/global.0p25/gfs.t{dt:%H}z.global.0p25.f*.grib2"
 # ======================================================
 
 # Load RDHPCS-conda and activate environment
@@ -44,4 +45,5 @@ python -u sofar_matchup_pipeline.py \
     --work-dir "${WORK_DIR}" \
     --model-dir "${MODEL_COMPARE_DIR}" \
     --model-pattern "${MODEL_PATTERN}" \
-    --model-name "${MODEL_NAME}"
+    --model-name "${MODEL_NAME}" \
+    --model-file-template "${MODEL_FILE_TEMPLATE}"

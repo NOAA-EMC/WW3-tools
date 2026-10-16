@@ -353,27 +353,93 @@ def convert_sofar_bufr_to_nc(
     print(f"\nDone! Successfully checked or converted {len(converted_files)} files.")
     return converted_files
 
-def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
+def consolidate_sofar_to_zarr(
+    nc_dir, 
+    work_dir, 
+    start_date_str, 
+    end_date_str, 
+    obs_chunk_size=50000
+):
+    """
+    Consolidates individual SOFAR observation NetCDF files into a single Zarr store.
+    Enforces synchronous execution to avoid multi-threaded libnetcdf segfaults.
+    """
+    start_dt = pd.to_datetime(start_date_str)
+    end_dt = pd.to_datetime(end_date_str)
+    
+    start_fmt = start_dt.strftime("%Y%m%d")
+    end_fmt = end_dt.strftime("%Y%m%d")
+    
+    zarr_filename = f"sofar_reference_{start_fmt}_to_{end_fmt}.zarr"
+    zarr_path = os.path.join(work_dir, zarr_filename)
+
+    if not os.path.exists(zarr_path):
+        print(f"Consolidating observation files into: '{zarr_filename}'...")
+        
+        nc_files = sorted(glob.glob(os.path.join(nc_dir, "*.nc")))
+        if not nc_files:
+            print(f"Error: No NetCDF observation files found in '{nc_dir}'.")
+            sys.exit(1)
+            
+        # Run entire read and write pipeline synchronously to prevent C-library collisions
+        with dask.config.set(scheduler="synchronous"):
+            ds_combined_obs = xr.open_mfdataset(
+                nc_files, 
+                combine="nested", 
+                concat_dim="obs"
+            )
+            
+            time_mask = (
+                (ds_combined_obs.time >= np.datetime64(start_dt)) & 
+                (ds_combined_obs.time <= np.datetime64(f"{end_date_str} 23:59:59"))
+            )
+            ds_combined_obs = ds_combined_obs.isel(obs=time_mask.compute())
+            
+            if ds_combined_obs.sizes["obs"] == 0:
+                print(f"Error: No observations found between {start_date_str} and {end_date_str}.")
+                sys.exit(1)
+
+            ds_combined_obs = ds_combined_obs.chunk({"obs": obs_chunk_size})
+            
+            for var in ds_combined_obs.variables.values():
+                var.encoding.pop("chunks", None)
+                var.encoding.pop("chunksizes", None)
+            
+            ds_combined_obs.to_zarr(
+                zarr_path, 
+                mode="w", 
+                consolidated=True, 
+                zarr_format=2
+            )
+            
+        print(f"Reference Zarr created successfully at '{zarr_path}' with {ds_combined_obs.sizes['obs']:,} records.")
+    else:
+        print(f"Reference Zarr store already exists at '{zarr_path}'. Skipping consolidation.")
+        
+    return zarr_path
+    
+def process_single_cycle(forecast_files, init_time, sofar_path, model_name):
     """
     Worker: Processes exactly one forecast cycle in memory.
     Designed to be mapped across a Dask client.
+    Expects `forecast_files` to be a list of GRIB2 file paths.
     """
     print(f"[{init_time}] Starting processing...")
     
-    nc_pattern = os.path.join(sofar_path, "*.nc")
-    ds_sofar_ref = xr.open_mfdataset(nc_pattern,
-                                     combine="nested",
-                                     concat_dim="obs")
-    
-    gfs_hour = f"{init_time.hour:02d}"
-    f_files = sorted(glob.glob(f"{cycle_dir}/gfs.t{gfs_hour}z.global.0p25.f*.grib2"))
-    
-    if not f_files:
-        print(f"[{init_time}] SKIP: No GRIB files found.")
+    if not forecast_files:
+        print(f"[{init_time}] SKIP: No GRIB files provided.")
         return None
 
+    # Load reference observations
+    nc_pattern = os.path.join(sofar_path, "*.nc")
+    ds_sofar_ref = xr.open_mfdataset(
+        nc_pattern,
+        combine="nested",
+        concat_dim="obs"
+    )
+    
     ds_gfs = xr.open_mfdataset(
-        f_files, 
+        forecast_files, 
         engine="cfgrib", 
         combine="nested", 
         concat_dim="step",
@@ -424,12 +490,12 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
     
     ds_combined = xr.Dataset(
         data_vars={
+            "buoy_id": ("obs", ds_sofar_sub["platform_id"].data),
             "init_time": ("obs", init_time_array),
             "time": ("obs", ds_sofar_sub.time.data),
             "latitude": ("obs", ds_sofar_sub["latitude"].data),
             "longitude": ("obs", (ds_sofar_sub["longitude"] % 360).data), 
             "fcst_hr": ("obs", fcst_hr_vals),
-            
             "model_hs": ("obs", ds_model_interp["swh"].data),
             "obs_hs": ("obs", ds_sofar_sub["sea_surface_wave_significant_height"].data),
             "model_wnd": ("obs", ds_model_interp["ws"].data),
@@ -442,7 +508,7 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
             "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data),
         },
         attrs={
-            "platform_id": "SOFAR Spotter Buoy",
+            "platform_type": "SOFAR Spotter Buoy",
             "model_name": f"{model_name}"
         }
     )
@@ -450,36 +516,33 @@ def process_single_cycle(cycle_dir, init_time, sofar_path, model_name):
     print(f"[{init_time}] SUCCESS: Completed interpolation.")
     return ds_combined
 
-def build_cycle_inputs(start_date_str, end_date_str, model_base_dir):
+def build_cycle_inputs(
+    start_date_str,
+    end_date_str,
+    model_base_dir,
+    rel_path_template):
     """
-    Generates aligned lists of initialization times and model directories 
-    for 6-hourly GFS forecast cycles between the start and end dates.
+    Generates aligned lists of cycle initialization datetimes and matching files.
+    Formats cycle paths using standard datetime format specifiers.
     """
-    # Generate an index of datetimes every 6 hours (00:00, 06:00, 12:00, 18:00)
-    # Adding '23:59:59' to the end date ensures the last day's 18z cycle is included
-    datetime_index = pd.date_range(
-        start=start_date_str, 
-        end=f"{end_date_str} 23:59:59", 
-        freq='6h'
-    )
-    
-    # Convert pandas DatetimeIndex to a list of standard python datetimes
-    init_times = datetime_index.to_pydatetime().tolist()
-    
-    cycle_dirs = []
-    
-    # Build the corresponding directory paths for each initialization time
+    # Create timestamps spanning each forecast cycle across the date range
+    init_times = pd.date_range(
+        start=start_date_str,
+        end=f"{end_date_str} 23:59:59",
+        freq="6h"
+    ).to_pydatetime().tolist()
+
+    cycle_files = []
+    base_path = Path(model_base_dir)
+
+    # Format the pattern and collect matching files for each cycle
     for dt in init_times:
-        date_formatted = dt.strftime("%Y%m%d")
-        cycle_hour = f"{dt.hour:02d}"
+        pattern = str(base_path / rel_path_template.format(dt=dt))
+        matched_files = sorted(glob.glob(pattern))
         
-        # Adjust this path logic if your hourly cycles are in subdirectories 
-        # e.g., model_base_dir/gfs.20260101/00/
-        target_dir = os.path.join(model_base_dir, f"gfs.{date_formatted}", cycle_hour)
-        
-        # If your files are not split into hourly subdirectories, use this instead:
-        # target_dir = os.path.join(model_base_dir, f"gfs.{date_formatted}")
-        
-        cycle_dirs.append(target_dir)
-        
-    return init_times, cycle_dirs
+        if not matched_files:
+            print(f"Warning: No files found for cycle {dt:%Y-%m-%d %H}z at: {pattern}")
+            
+        cycle_files.append(matched_files)
+    
+    return init_times, cycle_files
