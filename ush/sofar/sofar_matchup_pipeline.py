@@ -124,10 +124,21 @@ def main():
     
     matchup_dir = os.path.join(args.work_dir, "matchup_data")
     os.makedirs(matchup_dir, exist_ok=True)
-    output_filename = os.path.join(matchup_dir, f"{args.model_name}_sofar_matchup_{args.start_date}.nc")
+    output_filename_base = os.path.join(matchup_dir, f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}")
     
-    print(f"Saving final matchup file to {output_filename}...")
-    final_dataset.to_netcdf(output_filename)
+    # Save to netCDF
+    nc_fname = f"{output_filename_base}.nc"
+    print(f"Saving final matchup file to {nc_fname}...")
+    final_dataset.to_netcdf(nc_fname)
+
+    # Save the matchup data to a Zarr store
+    zarr_filename = f"{output_filename_base}.zarr"
+    print(f"Saving final matchup to Zarr: {zarr_filename}...")
+    # mode="w" overwrites if it already exists, consolidated=True speeds up future reads
+    final_dataset.to_zarr(zarr_filename, mode="w", consolidated=True)
+
+    # Start an icechunk store or append new data
+
     
     print("Pipeline successfully completed.")
     client.close()

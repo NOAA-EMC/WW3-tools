@@ -13,7 +13,7 @@
 
 # ================= USER'S INPUT =======================
 START_DATE="2026-01-01"
-END_DATE="2026-01-02"
+END_DATE="2026-01-05"
 WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev/data"
 ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
 MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
