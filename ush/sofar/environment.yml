@@ -13,6 +13,3 @@ dependencies:
   - cfgrib
   - eccodes
   - nceplibs-bufr
-  - pip
-pip: 
-  - -e .
