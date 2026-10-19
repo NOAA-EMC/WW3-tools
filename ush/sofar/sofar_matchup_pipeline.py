@@ -2,6 +2,7 @@ import argparse
 import os
 import xarray as xr
 import dask
+import numpy as np
 import ww3tools.sofar_tools as sf
 
 def main():
@@ -43,10 +44,10 @@ def main():
 
     # Create a zarr store of the combined SOFAR data that can be accessed by each parallel worker
     nc_dir = os.path.join(args.work_dir, "nc_data")
-    sofar_zarr_path = sf.consolidate_sofar_to_zarr(nc_dir=nc_dir, 
-                                                    work_dir=args.work_dir, 
-                                                    start_date_str=args.start_date, 
-                                                    end_date_str=args.end_date)
+    sofar_zarr_path, num_obs = sf.consolidate_sofar_to_zarr(nc_dir=nc_dir, 
+                                                            work_dir=args.work_dir, 
+                                                            start_date_str=args.start_date, 
+                                                            end_date_str=args.end_date)
 
     # Initialize the parallel Dask cluster
     client = sf.setup_dask_cluster()
@@ -60,11 +61,31 @@ def main():
                                                     end_date_str=args.end_date,
                                                     model_base_dir=args.model_dir,
                                                     rel_path_template=args.model_file_template)
+    
+    # Estimate the time to compute and final file size
+    num_cycles = len(cycle_files)
+    num_workers = len(client.scheduler_info().get('workers', {1: 1}))
+    if num_workers == 0: 
+        num_workers = 1 # Prevent division by zero if cluster is still booting
+    bytes_per_obs = 128 # 16 variables in your dataset * ~8 bytes per float64 = 128 bytes per row
+    
+    # Average seconds it takes a single worker to process one cycle
+    avg_cycle_compute_sec = 15
 
-    # Test process a single cylce
-    # ds_combined = sf.process_single_cycle(cycle_files[0], init_times[0],
-    #                                     sofar_zarr_path, args.model_name)
-    # print(ds_combined)
+    # Calculate Output File Size
+    est_size_mb = (num_obs * bytes_per_obs) / (1024 * 1024)
+
+    # Calculate Time
+    # Workers process tasks in parallel "waves" 
+    waves = np.ceil(num_cycles / num_workers)
+    est_time_sec = waves * avg_cycle_compute_sec
+    
+    print("-" * 50)
+    print(f"PRE-COMPUTATION ESTIMATE ({num_cycles} cycles):")
+    print(f" -> Active Workers: {num_workers}")
+    print(f" -> Estimated Matchup File Size: ~{est_size_mb:.2f} MB")
+    print(f" -> Estimated Compute Time: ~{est_time_sec} seconds")
+    print("-" * 50)
 
     print("Submitting tasks to Dask workers...")
     # Map the function across the lists of varying arguments
@@ -74,8 +95,6 @@ def main():
                          sofar_zarr_path=sofar_path_future,
                          model_name=model_name_future, 
                          parallel=True)
-
-    # print("Computing interpolations...")
 
     print(f"Computing interpolations for {len(futures)} cycles...")
     
@@ -98,18 +117,6 @@ def main():
         print("Error: All forecast cycles were skipped. No data to save.")
         client.close()
         return None
-
-    # # Gather pulls the actual datasets back from the workers to the main script
-    # print("\nAll workers finished. Gathering data...")
-    # results = client.gather(futures)
-
-    # # Filter out empty results from skipped cycles
-    # valid_datasets = [res for res in results if res is not None]
-
-    # if not valid_datasets:
-    #     print("Error: All forecast cycles were skipped. No data to save.")
-    #     client.close()
-    #     return None
 
     print(f"Concatenating {len(valid_datasets)} forecast cycles...")
     final_dataset = xr.concat(valid_datasets, dim="obs")

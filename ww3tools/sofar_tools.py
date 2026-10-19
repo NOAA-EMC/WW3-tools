@@ -2,6 +2,7 @@ import subprocess
 import os
 import glob
 import datetime
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
 import sys
@@ -13,6 +14,7 @@ import xarray as xr
 import ncepbufr
 import dask
 from dask.distributed import Client, LocalCluster
+import zarr
 
 # Setup dask cluster for parallelization
 def setup_dask_cluster():
@@ -213,16 +215,31 @@ def convert_sofar_bufr_to_nc(
     # Add a sixteen-day buffer to the end date to capture trailing data
     t_end = pd.to_datetime(end_date) + pd.Timedelta(days=16) if end_date else None
 
-    file_list = sorted([
+    raw_file_list = sorted([
         f for f in bufr_path.glob(pattern) 
         if not f.name.endswith('.nc') and f.is_file()
     ])
 
+    # Pre-filter files based on the YYYYMMDD string in the filename
+    file_list = []
+    for f in raw_file_list:
+        match = re.search(r'(\d{8})', f.name)
+        if match:
+            try:
+                file_date = pd.to_datetime(match.group(1), format='%Y%m%d')
+                if t_start is not None and file_date < t_start:
+                    continue
+                if t_end is not None and file_date > t_end:
+                    continue
+            except ValueError:
+                pass # If date extraction fails, keep the file and rely on internal dataframe filtering
+        file_list.append(f)
+
     if not file_list:
-        print(f"No matching BUFR files found in {bufr_path} with pattern '{pattern}'.")
+        print(f"No matching BUFR files found in {bufr_path} for the requested date range.")
         return []
 
-    print(f"Found {len(file_list)} BUFR files to process.")
+    print(f"Found {len(file_list)} BUFR files in date range to process.")
 
     string_vars = ['LSTN']
     numeric_vars = [
@@ -247,13 +264,15 @@ def convert_sofar_bufr_to_nc(
     }
 
     converted_files = []
+    skipped_existing = 0
+    newly_converted = 0
 
     for filepath in file_list:
         nc_filename = out_path / f"{filepath.name}.nc"
         
         # Check if the NetCDF file already exists to bypass conversion
         if nc_filename.exists():
-            print(f"  [{filepath.name}] NetCDF already exists -> {nc_filename.name}. Skipping conversion.")
+            skipped_existing += 1
             converted_files.append(nc_filename)
             continue
 
@@ -348,7 +367,11 @@ def convert_sofar_bufr_to_nc(
         # Write to NetCDF file
         ds.to_netcdf(nc_filename, encoding=encoding)
         converted_files.append(nc_filename)
+        newly_converted += 1
         print(f"  [{filepath.name}] Saved CF-compliant NetCDF ({len(df)} records) -> {nc_filename.name}")
+
+    if newly_converted == 0 and skipped_existing > 0:
+        print(f"All {skipped_existing} target NetCDF files already existed. No new conversions needed.")
 
     print(f"\nDone! Successfully checked or converted {len(converted_files)} files.")
     return converted_files
@@ -413,10 +436,13 @@ def consolidate_sofar_to_zarr(
             )
             
         print(f"Reference Zarr created successfully at '{zarr_path}' with {ds_combined_obs.sizes['obs']:,} records.")
+        num_obs = ds_combined_obs.sizes['obs']
     else:
-        print(f"Reference Zarr store already exists at '{zarr_path}'. Skipping consolidation.")
+        store = zarr.open(zarr_path, mode='r')
+        num_obs = store['obs'].shape[0]
+        print(f"Reference Zarr store already exists at '{zarr_path}' with {num_obs:,} records. Skipping consolidation.")
         
-    return zarr_path
+    return zarr_path, num_obs
 
 def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name, parallel=False):
     """
