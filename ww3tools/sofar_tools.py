@@ -418,7 +418,7 @@ def consolidate_sofar_to_zarr(
         
     return zarr_path
 
-def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name):
+def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name, parallel=False):
     """
     Worker: Processes exactly one forecast cycle using lazy Dask execution.
     Only computes the final 1D matchup dataset to minimize RAM usage.
@@ -429,105 +429,110 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name)
         sofar_zarr_path (str): Path to the consolidated SOFAR Zarr store.
         model_name (str): The name of the wave model (e.g., "GFS_WAVE").
     """
-    print(f"[{init_time}] Starting processing...")
-    
-    # 1. Immediate exit if file list is empty
-    if not forecast_files:
-        print(f"[{init_time}] SKIP: No GRIB files provided.")
-        return None
-
-    # 2. Open observations natively from the consolidated Zarr store
-    # This completely eliminates Lustre NetCDF metadata contention
-    ds_sofar_ref = xr.open_zarr(sofar_zarr_path, consolidated=True)
-    
-    # 3. Open GFS files lazily with step chunking (1 chunk per file)
-    ds_gfs = xr.open_mfdataset(
-        forecast_files, 
-        engine="cfgrib", 
-        combine="nested", 
-        concat_dim="step",
-        coords="minimal", 
-        compat="override", 
-        chunks={"step": 1},
-        parallel=False, 
-        backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
-    )
-
-    if "time" in ds_gfs.dims:
-        ds_gfs = ds_gfs.squeeze("time", drop=True)
+    with dask.config.set(scheduler="threads"):
+        if parallel is False:
+            print(f"[{init_time}] Starting processing...")
         
-    coords_to_keep = ["latitude", "longitude", "step"]
-    coords_to_drop = [c for c in ds_gfs.coords if c not in coords_to_keep]
-    if coords_to_drop:
-        ds_gfs = ds_gfs.drop_vars(coords_to_drop)
+        # Immediate exit if file list is empty
+        if not forecast_files:
+            print(f"[{init_time}] SKIP: No GRIB files provided.")
+            return None
+
+        # Open observations natively from the consolidated Zarr store
+        # This completely eliminates Lustre NetCDF metadata contention
+        ds_sofar_ref = xr.open_zarr(sofar_zarr_path, consolidated=True)
         
-    ds_gfs = ds_gfs.assign_coords(valid_time=("step", (np.datetime64(init_time) + ds_gfs["step"]).data))
-    ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
-    ds_gfs = ds_gfs[["swh", "ws", "wdir", "mp1", "wvdir"]]
-    
-    model_start = ds_gfs.valid_time.min().values
-    model_end = ds_gfs.valid_time.max().values
-    
-    # Filter observations matching this forecast cycle's total valid time
-    mask = (ds_sofar_ref.time >= model_start) & (ds_sofar_ref.time <= model_end)
-    ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).load()
+        # Open GFS files lazily with step chunking (1 chunk per file)
+        ds_gfs = xr.open_mfdataset(
+            forecast_files, 
+            engine="cfgrib", 
+            combine="nested", 
+            concat_dim="step",
+            coords="minimal", 
+            compat="override", 
+            chunks={"step": 1},
+            parallel=False, 
+            backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
+        )
 
-    if ds_sofar_sub.sizes["obs"] == 0:
-        print(f"[{init_time}] SKIP: No SOFAR observations found for this time window.")
-        return None
+        if "time" in ds_gfs.dims:
+            ds_gfs = ds_gfs.squeeze("time", drop=True)
+            
+        coords_to_keep = ["latitude", "longitude", "step"]
+        coords_to_drop = [c for c in ds_gfs.coords if c not in coords_to_keep]
+        if coords_to_drop:
+            ds_gfs = ds_gfs.drop_vars(coords_to_drop)
+            
+        ds_gfs = ds_gfs.assign_coords(valid_time=("step", (np.datetime64(init_time) + ds_gfs["step"]).data))
+        ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
+        ds_gfs = ds_gfs[["swh", "ws", "wdir", "mp1", "wvdir"]]
+        
+        model_start = ds_gfs.valid_time.min().values
+        model_end = ds_gfs.valid_time.max().values
+        
+        # Filter observations matching this forecast cycle's total valid time
+        mask = (ds_sofar_ref.time >= model_start) & (ds_sofar_ref.time <= model_end)
+        ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).load()
 
-    print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
+        if ds_sofar_sub.sizes["obs"] == 0:
+            print(f"[{init_time}] SKIP: No SOFAR observations found for this time window.")
+            return None
 
-    # 4. Lazily trim the model to only the time range where observations actually exist
-    obs_start = ds_sofar_sub.time.min().values
-    obs_end = ds_sofar_sub.time.max().values
-    ds_gfs = ds_gfs.sel(valid_time=slice(obs_start, obs_end))
+        if parallel is False:
+            print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
 
-    # Rechunk valid_time to -1 across the active slice so xarray can interpolate across time
-    ds_gfs = ds_gfs.chunk({"valid_time": -1})
+        # Lazily trim the model to only the time range where observations actually exist
+        obs_start = ds_sofar_sub.time.min().values
+        obs_end = ds_sofar_sub.time.max().values
+        ds_gfs = ds_gfs.sel(valid_time=slice(obs_start, obs_end))
 
-    # 5. Perform linear interpolation lazily (NO .load() call to prevent OOM)
-    ds_model_interp = ds_gfs.interp(
-        valid_time=ds_sofar_sub.time,
-        latitude=ds_sofar_sub.latitude,
-        longitude=ds_sofar_sub.longitude,
-        method="linear"
-    )
+        # Rechunk valid_time to -1 across the active slice so xarray can interpolate across time
+        ds_gfs = ds_gfs.chunk({"valid_time": -1})
 
-    fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
-    init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time))
+        # Perform linear interpolation lazily (NO .load() call to prevent OOM)
+        ds_model_interp = ds_gfs.interp(
+            valid_time=ds_sofar_sub.time,
+            latitude=ds_sofar_sub.latitude,
+            longitude=ds_sofar_sub.longitude,
+            method="linear"
+        )
 
-    # 6. Build combined dataset with lazy Dask data arrays
-    ds_combined = xr.Dataset(
-        data_vars={
-            "buoy_id": ("obs", ds_sofar_sub["platform_id"].data),
-            "init_time": ("obs", init_time_array),
-            "time": ("obs", ds_sofar_sub.time.data),
-            "latitude": ("obs", ds_sofar_sub["latitude"].data),
-            "longitude": ("obs", (ds_sofar_sub["longitude"] % 360).data), 
-            "fcst_hr": ("obs", fcst_hr_vals),
-            "model_hs": ("obs", ds_model_interp["swh"].data),
-            "obs_hs": ("obs", ds_sofar_sub["sea_surface_wave_significant_height"].data),
-            "model_wnd": ("obs", ds_model_interp["ws"].data),
-            "obs_wnd": ("obs", ds_sofar_sub["wind_speed"].data),
-            "model_wdir": ("obs", ds_model_interp["wdir"].data),
-            "obs_wdir": ("obs", ds_sofar_sub["wind_from_direction"].data),
-            "model_mwp": ("obs", ds_model_interp["mp1"].data),
-            "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data),
-            "model_mwdir": ("obs", ds_model_interp["wvdir"].data),
-            "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data),
-        },
-        attrs={
-            "platform_type": "SOFAR Spotter Buoy",
-            "model_name": f"{model_name}"
-        }
-    )
-    
-    # 7. Evaluate only the tiny 1D output table into memory
-    result = ds_combined.compute()
-    
-    print(f"[{init_time}] SUCCESS: Completed interpolation.")
-    return result
+        fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
+        init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time))
+
+        # Build combined dataset with lazy Dask data arrays
+        ds_combined = xr.Dataset(
+            data_vars={
+                "buoy_id": ("obs", ds_sofar_sub["platform_id"].data),
+                "init_time": ("obs", init_time_array),
+                "time": ("obs", ds_sofar_sub.time.data),
+                "latitude": ("obs", ds_sofar_sub["latitude"].data),
+                "longitude": ("obs", (ds_sofar_sub["longitude"] % 360).data), 
+                "fcst_hr": ("obs", fcst_hr_vals),
+                "model_hs": ("obs", ds_model_interp["swh"].data),
+                "obs_hs": ("obs", ds_sofar_sub["sea_surface_wave_significant_height"].data),
+                "model_wnd": ("obs", ds_model_interp["ws"].data),
+                "obs_wnd": ("obs", ds_sofar_sub["wind_speed"].data),
+                "model_wdir": ("obs", ds_model_interp["wdir"].data),
+                "obs_wdir": ("obs", ds_sofar_sub["wind_from_direction"].data),
+                "model_mwp": ("obs", ds_model_interp["mp1"].data),
+                "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data),
+                "model_mwdir": ("obs", ds_model_interp["wvdir"].data),
+                "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data),
+            },
+            attrs={
+                "platform_type": "SOFAR Spotter Buoy",
+                "model_name": f"{model_name}"
+            }
+        )
+        
+        # Evaluate only the tiny 1D output table into memory
+        result = ds_combined.compute()
+        
+        if parallel is False:
+            print(f"[{init_time}] SUCCESS: Completed interpolation.")
+
+        return result
     
 def build_cycle_inputs(
     start_date_str,

@@ -1,6 +1,7 @@
 import argparse
 import os
 import xarray as xr
+import dask
 import ww3tools.sofar_tools as sf
 
 def main():
@@ -61,20 +62,45 @@ def main():
                                                     rel_path_template=args.model_file_template)
 
     # Test process a single cylce
-    ds_combined = sf.process_single_cycle(cycle_files[0], init_times[0],
-                                        sofar_zarr_path, args.model_name)
-    print(ds_combined)
-    # print("Submitting tasks to Dask workers...")
-    # # Map the function across the lists of varying arguments
-    # futures = client.map(sf.process_single_cycle,
-    #                      cycle_files,
-    #                      init_times,
-    #                      sofar_path=sofar_path_future,
-    #                      model_name=model_name_future)
+    # ds_combined = sf.process_single_cycle(cycle_files[0], init_times[0],
+    #                                     sofar_zarr_path, args.model_name)
+    # print(ds_combined)
+
+    print("Submitting tasks to Dask workers...")
+    # Map the function across the lists of varying arguments
+    futures = client.map(sf.process_single_cycle,
+                         cycle_files,
+                         init_times,
+                         sofar_zarr_path=sofar_path_future,
+                         model_name=model_name_future, 
+                         parallel=True)
 
     # print("Computing interpolations...")
 
+    print(f"Computing interpolations for {len(futures)} cycles...")
+    
+    valid_datasets = []
+    completed_count = 0
+    
+    # as_completed yields each future the moment a worker finishes it
+    for future in dask.distributed.as_completed(futures):
+        completed_count += 1
+        
+        # Print a clean, sequential progress update to your log file
+        print(f"Progress: {completed_count}/{len(futures)} cycles completed.", flush=True)
+        
+        # Get the actual data from the completed future
+        res = future.result()
+        if res is not None:
+            valid_datasets.append(res)
+
+    if not valid_datasets:
+        print("Error: All forecast cycles were skipped. No data to save.")
+        client.close()
+        return None
+
     # # Gather pulls the actual datasets back from the workers to the main script
+    # print("\nAll workers finished. Gathering data...")
     # results = client.gather(futures)
 
     # # Filter out empty results from skipped cycles
@@ -85,16 +111,16 @@ def main():
     #     client.close()
     #     return None
 
-    # print(f"Concatenating {len(valid_datasets)} forecast cycles...")
-    # final_dataset = xr.concat(valid_datasets, dim="obs")
-    # final_dataset = final_dataset.sortby("time")
+    print(f"Concatenating {len(valid_datasets)} forecast cycles...")
+    final_dataset = xr.concat(valid_datasets, dim="obs")
+    final_dataset = final_dataset.sortby("time")
     
-    # matchup_dir = os.path.join(args.work_dir, "matchup_data")
-    # os.makedirs(matchup_dir, exist_ok=True)
-    # output_filename = os.path.join(matchup_dir, f"{args.model_name}_sofar_matchup_{args.start_date}.nc")
+    matchup_dir = os.path.join(args.work_dir, "matchup_data")
+    os.makedirs(matchup_dir, exist_ok=True)
+    output_filename = os.path.join(matchup_dir, f"{args.model_name}_sofar_matchup_{args.start_date}.nc")
     
-    # print(f"Saving final matchup file to {output_filename}...")
-    # final_dataset.to_netcdf(output_filename)
+    print(f"Saving final matchup file to {output_filename}...")
+    final_dataset.to_netcdf(output_filename)
     
     print("Pipeline successfully completed.")
     client.close()
