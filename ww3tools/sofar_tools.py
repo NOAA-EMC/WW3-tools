@@ -26,12 +26,12 @@ def setup_dask_cluster():
     cluster = LocalCluster(
         n_workers=slurm_cpus,     
         threads_per_worker=1,     
-        memory_limit='auto'       
+        memory_limit='4GB'       
     )
     
     client = Client(cluster)
     print(f"Initialized Dask cluster with {slurm_cpus} workers.")
-    return client
+    return client, cluster
 
 # Fetch the Sofar data from the HPSS archive
 def check_and_fetch_sofar_hpss(

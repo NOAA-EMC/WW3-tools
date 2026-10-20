@@ -50,7 +50,7 @@ def main():
                                                             end_date_str=args.end_date)
 
     # Initialize the parallel Dask cluster
-    client = sf.setup_dask_cluster()
+    client, cluster = sf.setup_dask_cluster()
 
     # Broadcast static variables to all workers to save bandwidth
     sofar_path_future = client.scatter(sofar_zarr_path, broadcast=True)
@@ -129,19 +129,19 @@ def main():
     # Save to netCDF
     nc_fname = f"{output_filename_base}.nc"
     print(f"Saving final matchup file to {nc_fname}...")
-    final_dataset.to_netcdf(nc_fname)
+    final_dataset.to_netcdf(nc_fname, mode='w')
 
     # Save the matchup data to a Zarr store
     zarr_filename = f"{output_filename_base}.zarr"
     print(f"Saving final matchup to Zarr: {zarr_filename}...")
-    # mode="w" overwrites if it already exists, consolidated=True speeds up future reads
-    final_dataset.to_zarr(zarr_filename, mode="w", consolidated=True)
+    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=3, consolidated=False,)
 
     # Start an icechunk store or append new data
 
     
     print("Pipeline successfully completed.")
     client.close()
+    cluster.close()
 
 if __name__ == "__main__":
     main()

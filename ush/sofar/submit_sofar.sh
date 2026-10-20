@@ -6,14 +6,14 @@
 #SBATCH -J submit_sofar
 #SBATCH -o submit_sofar.out
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=32        # Adjust as the parallelization is improved
-##SBATCH --mem=0                  # Request all available memory on the node
-##SBATCH --exclusive
+#SBATCH --cpus-per-task=16
+#SBATCH --mem=64G
+#SBATCH --exclusive
 #SBATCH --open-mode=truncate
 
 # ================= USER'S INPUT =======================
 START_DATE="2026-01-01"
-END_DATE="2026-01-05"
+END_DATE="2026-01-31"
 WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev/data"
 ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
 MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
@@ -37,6 +37,8 @@ echo "Work Directory: $WORK_DIR"
 echo "Environment path: $ENV_PATH"
 echo "Model Comparison path: $MODEL_COMPARE_DIR"
 echo "Model directory pattern: $MODEL_PATTERN"
+MEM_GB=$((SLURM_MEM_PER_NODE / 1024))
+echo "Memory per Node: ${SLURM_MEM_PER_NODE} MB (${MEM_GB} GB)"
 
 # Execute the python matchup script
 python -u sofar_matchup_pipeline.py \
