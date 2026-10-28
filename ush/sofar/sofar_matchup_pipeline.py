@@ -66,7 +66,7 @@ def main():
     bytes_per_obs = 128 # 16 variables in your dataset * ~8 bytes per float64 = 128 bytes per row
     
     # Average seconds it takes a single worker to process one cycle
-    avg_cycle_compute_sec = 15
+    avg_cycle_compute_sec = 30
 
     # Calculate Output File Size
     est_size_mb = (num_obs * bytes_per_obs) / (1024 * 1024)
@@ -128,7 +128,7 @@ def main():
     # Save the matchup data to a Zarr store
     zarr_filename = f"{output_filename_base}.zarr"
     print(f"Saving final matchup to Zarr: {zarr_filename}...")
-    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=3, consolidated=False,)
+    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=2, consolidated=True,)
 
     print("Pipeline successfully completed.")
     client.close()
