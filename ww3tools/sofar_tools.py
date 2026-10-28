@@ -519,18 +519,37 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
             method="linear"
         )
 
-        fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
-        init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time))
+        # Convert initialization time to datetime64[s], then Unix epoch seconds
+        init_time_array = np.full(
+            ds_sofar_sub.sizes["obs"],
+            np.datetime64(init_time, "s"),
+            dtype="datetime64[s]",
+        )
+
+        init_time_seconds = (
+            init_time_array.astype("int64").astype("float64")
+        )
+
+        # Convert observation times to Unix epoch seconds
+        time_seconds = (
+            ds_sofar_sub["time"].values
+            .astype("datetime64[s]")
+            .astype("int64")
+            .astype("float64")
+        )
+
+        # Forecast lead time in hours (unchanged)
+        fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, "h")
         
         # Build combined dataset with lazy Dask data arrays
         ds_combined = xr.Dataset(
             data_vars={
                 "buoy_id": ("obs", ds_sofar_sub["platform_id"].data.astype(object), 
                             {"long_name": "SOFAR Spotter Buoy ID"}),
-                "init_time": ("obs", init_time_array, 
-                              {"long_name": "Model Initialization Time"}),
-                "time": ("obs", ds_sofar_sub.time.data,
-                         {"long_name": "Observation and Model Valid Time"}),
+                "init_time": ("obs",init_time_seconds,
+                            {"long_name": "Model Initialization Time","units": "seconds since 1970-01-01 00:00:00",}),
+                "time": ("obs",time_seconds,
+                            {"long_name": "Observation and Model Valid Time", "units": "seconds since 1970-01-01 00:00:00"}),
                 "latitude": ("obs", ds_sofar_sub["latitude"].data, 
                              {"long_name": "Latitude", "units": "degrees_north"}),
                 "longitude": ("obs", (ds_sofar_sub["longitude"] % 360).data, 

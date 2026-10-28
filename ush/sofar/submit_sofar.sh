@@ -50,7 +50,6 @@ SUBMIT_TIME=$(scontrol show job $SLURM_JOB_ID | grep -o 'SubmitTime=[^ ]*' | cut
 echo "Job Submitted: $SUBMIT_TIME"
 echo "Validation Start Date: $START_DATE"
 echo "Validation End Date: $END_DATE"
-echo "Environment path: $ENV_PATH"
 echo "Work Directory: $WORK_DIR"
 echo "Observation Directory: $OBS_DIR"
 echo "Model Comparison path: $MODEL_COMPARE_DIR"
