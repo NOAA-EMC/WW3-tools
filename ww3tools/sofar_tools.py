@@ -4,7 +4,7 @@ import glob
 import datetime
 import re
 from pathlib import Path
-from datetime import datetime, timedelta
+import datetime
 import sys
 
 import numpy as np
@@ -37,8 +37,7 @@ def setup_dask_cluster():
 def check_and_fetch_sofar_hpss(
     start_date_str, 
     end_date_str, 
-    work_dir,
-    data_dir="bufr_data",
+    obs_dir,
     slurm_params=None
 ):
     """
@@ -46,14 +45,11 @@ def check_and_fetch_sofar_hpss(
     If files are missing, submits an HPSS extraction job for those specific 
     files and terminates the current process.
     """
-    target_dir = os.path.join(work_dir, data_dir)
-    os.makedirs(target_dir, exist_ok=True)
-    
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d") + timedelta(days=16)
+    start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d") + datetime.timedelta(days=16)
     
     num_days = (end_date - start_date).days + 1
-    date_list = [start_date + timedelta(days=x) for x in range(num_days)]
+    date_list = [start_date + datetime.timedelta(days=x) for x in range(num_days)]
     
     missing_dates = []
     archive_base = "/NCEPPROD/hpssprod/runhistory"
@@ -65,12 +61,12 @@ def check_and_fetch_sofar_hpss(
         dd = dt.strftime("%d")
         target_file = f"sofar_b001_xx121_{yy}{mm}{dd}"
         
-        if not os.path.exists(os.path.join(target_dir, target_file)):
+        if not os.path.exists(os.path.join(obs_dir, target_file)):
             missing_dates.append(dt)
 
     # Evaluate if the missing_dates list is empty
     if not missing_dates:
-        print("Success: All required Sofar HPSS files are present in the data directory.")
+        print("Success: All required Sofar HPSS files are present in the observation directory.")
         return True
 
     # If files are missing, configure parameters and build extraction commands
@@ -136,7 +132,7 @@ else
 fi
 """
 
-    script_path = os.path.join(target_dir, "submit_hpss.sh")
+    script_path = os.path.join(obs_dir, "submit_hpss.sh")
     with open(script_path, "w") as f:
         f.write(script_content)
 
@@ -158,11 +154,11 @@ def check_model_data(model_dir, start_date_str, end_date_str, pattern_prefix="gf
         sys.exit(0)
 
     # Generate list of required dates
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
+    start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
     
     num_days = (end_date - start_date).days + 1
-    date_list = [start_date + timedelta(days=x) for x in range(num_days)]
+    date_list = [start_date + datetime.timedelta(days=x) for x in range(num_days)]
     
     missing_items = []
 
@@ -193,8 +189,7 @@ def check_model_data(model_dir, start_date_str, end_date_str, pattern_prefix="gf
 # Convert the sofar data from bufr to netCDF
 def convert_sofar_bufr_to_nc(
     work_dir,
-    bufr_subdir="bufr_data", 
-    nc_subdir="nc_data",
+    obs_dir,
     start_date=None,
     end_date=None,
     pattern="sofar_b001_xx121_*"
@@ -206,8 +201,8 @@ def convert_sofar_bufr_to_nc(
     Appends a sixteen-day buffer to the provided end date.
     """
     # Establish relative paths based on the working directory
-    bufr_path = Path(work_dir) / bufr_subdir
-    out_path = Path(work_dir) / nc_subdir
+    obs_path = Path(obs_dir)
+    out_path = Path(work_dir) / "nc_data"
     out_path.mkdir(parents=True, exist_ok=True)
 
     t_start = pd.to_datetime(start_date) if start_date else None
@@ -216,7 +211,7 @@ def convert_sofar_bufr_to_nc(
     t_end = pd.to_datetime(end_date) + pd.Timedelta(days=16) if end_date else None
 
     raw_file_list = sorted([
-        f for f in bufr_path.glob(pattern) 
+        f for f in obs_path.glob(pattern) 
         if not f.name.endswith('.nc') and f.is_file()
     ])
 
@@ -236,7 +231,7 @@ def convert_sofar_bufr_to_nc(
         file_list.append(f)
 
     if not file_list:
-        print(f"No matching BUFR files found in {bufr_path} for the requested date range.")
+        print(f"No matching BUFR files found in {obs_dir} for the requested date range.")
         return []
 
     print(f"Found {len(file_list)} BUFR files in date range to process.")
@@ -477,6 +472,7 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
             coords="minimal", 
             compat="override", 
             chunks={"step": 1},
+            decode_timedelta=True,
             parallel=False, 
             backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
         )
@@ -525,15 +521,15 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
 
         fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, 'h')
         init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time))
-
+        
         # Build combined dataset with lazy Dask data arrays
         ds_combined = xr.Dataset(
             data_vars={
-                "buoy_id": ("obs", ds_sofar_sub["platform_id"].data, 
+                "buoy_id": ("obs", ds_sofar_sub["platform_id"].data.astype(object), 
                             {"long_name": "SOFAR Spotter Buoy ID"}),
                 "init_time": ("obs", init_time_array, 
                               {"long_name": "Model Initialization Time"}),
-                "time": ("obs", ds_sofar_sub.time.data, 
+                "time": ("obs", ds_sofar_sub.time.data,
                          {"long_name": "Observation and Model Valid Time"}),
                 "latitude": ("obs", ds_sofar_sub["latitude"].data, 
                              {"long_name": "Latitude", "units": "degrees_north"}),
@@ -562,10 +558,11 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
                 "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data, 
                             {"long_name": "Observation Mean Wave Period", "units": "s"}),
                 
-                "model_mwdir": ("obs", ds_model_interp["wvdir"].data, 
-                                {"long_name": "Model Mean Wave Direction", "units": "degrees"}),
-                "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data, 
-                              {"long_name": "Observation Mean Wave Direction", "units": "degrees"}),
+                ## Commented this matchup out for now until we can figure out if there are actually matching variables for wave direction
+                # "model_mwdir": ("obs", ds_model_interp["wvdir"].data, 
+                #                 {"long_name": "Model Mean Wave Direction", "units": "degrees"}),
+                # "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data, 
+                #               {"long_name": "Observation Mean Wave Direction", "units": "degrees"}),
             },
             attrs={
                 "platform_type": "SOFAR Spotter Buoy",

@@ -9,7 +9,8 @@ def main():
     parser = argparse.ArgumentParser(description="Build WW3 vs Sofar Buoy Matchup Files")
     parser.add_argument("--start-date", type=str, required=True, help="Start date (YYYY-MM-DD)")
     parser.add_argument("--end-date", type=str, required=True, help="End date (YYYY-MM-DD)")
-    parser.add_argument("--work-dir", type=str, required=True, help="Working directory for data output")
+    parser.add_argument("--work-dir", type=str, required=True, help="Working directory for converted data output")
+    parser.add_argument("--obs-dir", type=str, required=True, help="Directory where observation bufr data is stored")
     parser.add_argument("--model-dir", type=str, required=True, help="Directory where model data to matchup is stored")
     parser.add_argument("--model-pattern", type=str, required=True, help="Pattern for model directories")
     parser.add_argument("--model-name", type=str, required=True, help="Name of the model to be saved as metadata in the matchup file")
@@ -21,28 +22,23 @@ def main():
     print(f"Starting pipeline for dates: {args.start_date} to {args.end_date}")
 
     # Ensure all SOFAR data is present or kill job
-    sf.check_and_fetch_sofar_hpss(
-        start_date_str=args.start_date,
-        end_date_str=args.end_date,
-        work_dir=args.work_dir,
-        data_dir="bufr_data",
-        slurm_params=None
-    )
+    sf.check_and_fetch_sofar_hpss(start_date_str=args.start_date,
+                                  end_date_str=args.end_date,
+                                  obs_dir=args.obs_dir,
+                                  slurm_params=None)
 
     # Ensure all the model data is present between the start and end dates
     sf.check_model_data(args.model_dir, args.start_date,
                         args.end_date, args.model_pattern)
 
     # Check if the bufr files have been converted to netCDF's and are all present, otherwise convert to netCDF
-    sf.convert_sofar_bufr_to_nc(
-                    args.work_dir,
-                    bufr_subdir="bufr_data",
-                    nc_subdir="nc_data",
-                    start_date=args.start_date,
-                    end_date=args.end_date,
-                    pattern="sofar_b001_xx121_*")
+    sf.convert_sofar_bufr_to_nc(work_dir=args.work_dir,
+                                obs_dir=args.obs_dir,
+                                start_date=args.start_date,
+                                end_date=args.end_date,
+                                pattern="sofar_b001_xx121_*")
 
-    # Create a zarr store of the combined SOFAR data that can be accessed by each parallel worker
+    # # Create a zarr store of the combined SOFAR data that can be accessed by each parallel worker
     nc_dir = os.path.join(args.work_dir, "nc_data")
     sofar_zarr_path, num_obs = sf.consolidate_sofar_to_zarr(nc_dir=nc_dir, 
                                                             work_dir=args.work_dir, 
@@ -122,9 +118,7 @@ def main():
     final_dataset = xr.concat(valid_datasets, dim="obs")
     final_dataset = final_dataset.sortby("time")
     
-    matchup_dir = os.path.join(args.work_dir, "matchup_data")
-    os.makedirs(matchup_dir, exist_ok=True)
-    output_filename_base = os.path.join(matchup_dir, f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}")
+    output_filename_base = os.path.join(args.work_dir, f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}")
     
     # Save to netCDF
     nc_fname = f"{output_filename_base}.nc"
@@ -136,9 +130,6 @@ def main():
     print(f"Saving final matchup to Zarr: {zarr_filename}...")
     final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=3, consolidated=False,)
 
-    # Start an icechunk store or append new data
-
-    
     print("Pipeline successfully completed.")
     client.close()
     cluster.close()

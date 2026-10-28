@@ -14,18 +14,35 @@
 # ================= USER'S INPUT =======================
 START_DATE="2026-01-01"
 END_DATE="2026-01-31"
-WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev/data"
-ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
+WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/sofar_work_dir"
+OBS_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/data/sofar_bufr_data"
 MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
 MODEL_PATTERN="gfs."
 MODEL_NAME="GFS_WAVE"
 MODEL_FILE_TEMPLATE="gfs.{dt:%Y%m%d}/{dt:%H}/products/wave/gridded/global.0p25/gfs.t{dt:%H}z.global.0p25.f*.grib2"
 # ======================================================
 
-# Load RDHPCS-conda and activate environment
-module load rdhpcs-conda
-eval "$(conda shell.bash hook)"
-conda activate $ENV_PATH
+# ================= Environment Setup ==================
+# Conda 
+## Load RDHPCS-conda and activate environment
+# ENV_PATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/envs/sofar"
+# module load rdhpcs-conda
+# eval "$(conda shell.bash hook)"
+# conda activate $ENV_PATH
+
+# Prebuilt Modules
+module use /scratch4/NCEPDEV/marine/Saeideh.Banihashemi/installs/python-modules/
+module load stack-oneapi/2024.2.1
+module load ursa-env
+module load bufr
+
+# Prioritize the PATH for the URSA environment over the spack stack python
+export PATH="/scratch4/NCEPDEV/marine/Saeideh.Banihashemi/installs/ursa-env/bin:$PATH"
+
+# Add the ww3-tools repo root to the python path
+cd $SLURM_SUBMIT_DIR
+export PYTHONPATH="../../:${PYTHONPATH}"
+# ======================================================
 
 # Print out the user settings to the log 
 echo "==== Submit SOFAR Validation Job ===="
@@ -33,8 +50,9 @@ SUBMIT_TIME=$(scontrol show job $SLURM_JOB_ID | grep -o 'SubmitTime=[^ ]*' | cut
 echo "Job Submitted: $SUBMIT_TIME"
 echo "Validation Start Date: $START_DATE"
 echo "Validation End Date: $END_DATE"
-echo "Work Directory: $WORK_DIR"
 echo "Environment path: $ENV_PATH"
+echo "Work Directory: $WORK_DIR"
+echo "Observation Directory: $OBS_DIR"
 echo "Model Comparison path: $MODEL_COMPARE_DIR"
 echo "Model directory pattern: $MODEL_PATTERN"
 MEM_GB=$((SLURM_MEM_PER_NODE / 1024))
@@ -45,6 +63,7 @@ python -u sofar_matchup_pipeline.py \
     --start-date "${START_DATE}" \
     --end-date "${END_DATE}" \
     --work-dir "${WORK_DIR}" \
+    --obs-dir "$OBS_DIR" \
     --model-dir "${MODEL_COMPARE_DIR}" \
     --model-pattern "${MODEL_PATTERN}" \
     --model-name "${MODEL_NAME}" \
