@@ -16,7 +16,8 @@ START_DATE="2026-01-01"
 END_DATE="2026-01-31"
 WORK_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/sofar_work_dir"
 OBS_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/data/sofar_bufr_data"
-MODEL_COMPARE_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
+MODEL_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/retrov17_01/"
+WW3TOOLS_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev"
 MODEL_PATTERN="gfs."
 MODEL_NAME="GFS_WAVE"
 MODEL_FILE_TEMPLATE="gfs.{dt:%Y%m%d}/{dt:%H}/products/wave/gridded/global.0p25/gfs.t{dt:%H}z.global.0p25.f*.grib2"
@@ -40,8 +41,9 @@ module load bufr
 export PATH="/scratch4/NCEPDEV/marine/Saeideh.Banihashemi/installs/ursa-env/bin:$PATH"
 
 # Add the ww3-tools repo root to the python path
-cd $SLURM_SUBMIT_DIR
-export PYTHONPATH="../../:${PYTHONPATH}"
+PIPELINE="${WW3TOOLS_DIR}/ww3tools/scripts/sofar_matchup_pipeline.py"
+export PYTHONPATH="${WW3TOOLS_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
+
 # ======================================================
 
 # Print out the user settings to the log 
@@ -52,18 +54,19 @@ echo "Validation Start Date: $START_DATE"
 echo "Validation End Date: $END_DATE"
 echo "Work Directory: $WORK_DIR"
 echo "Observation Directory: $OBS_DIR"
-echo "Model Comparison path: $MODEL_COMPARE_DIR"
+echo "Model Directory: $MODEL_DIR"
+echo "WW3tools Directory: $WW3TOOLS_DIR" 
 echo "Model directory pattern: $MODEL_PATTERN"
 MEM_GB=$((SLURM_MEM_PER_NODE / 1024))
 echo "Memory per Node: ${SLURM_MEM_PER_NODE} MB (${MEM_GB} GB)"
 
 # Execute the python matchup script
-python -u sofar_matchup_pipeline.py \
+python -u "$PIPELINE" \
     --start-date "${START_DATE}" \
     --end-date "${END_DATE}" \
     --work-dir "${WORK_DIR}" \
     --obs-dir "$OBS_DIR" \
-    --model-dir "${MODEL_COMPARE_DIR}" \
+    --model-dir "${MODEL_DIR}" \
     --model-pattern "${MODEL_PATTERN}" \
     --model-name "${MODEL_NAME}" \
     --model-file-template "${MODEL_FILE_TEMPLATE}"

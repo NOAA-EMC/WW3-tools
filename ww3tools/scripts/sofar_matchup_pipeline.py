@@ -22,9 +22,10 @@ def main():
     print(f"Starting pipeline for dates: {args.start_date} to {args.end_date}")
 
     # Ensure all SOFAR data is present or kill job
-    sf.check_sofar_data(start_date_str=args.start_date,
+    sf.check_and_fetch_sofar_hpss(start_date_str=args.start_date,
                                   end_date_str=args.end_date,
-                                  obs_dir=args.obs_dir)
+                                  obs_dir=args.obs_dir,
+                                  slurm_params=None)
 
     # Ensure all the model data is present between the start and end dates
     sf.check_model_data(args.model_dir, args.start_date,
@@ -117,22 +118,17 @@ def main():
     final_dataset = xr.concat(valid_datasets, dim="obs")
     final_dataset = final_dataset.sortby("time")
     
-    # Define base name for output file
-    base_name = f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}"
-
+    output_filename_base = os.path.join(args.work_dir, f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}")
+    
     # Save to netCDF
-    nc_dir = os.path.join(args.work_dir, "nc_matchups")
-    os.makedirs(nc_dir, exist_ok=True) # Force create directory
-    nc_fname = os.path.join(nc_dir, f"{base_name}.nc")
+    nc_fname = f"{output_filename_base}.nc"
     print(f"Saving final matchup file to {nc_fname}...")
     final_dataset.to_netcdf(nc_fname, mode='w')
 
     # Save the matchup data to a Zarr store
-    zarr_dir = os.path.join(args.work_dir, "zarr_matchups")
-    os.makedirs(zarr_dir, exist_ok=True) # Force create directory
-    zarr_filename = os.path.join(zarr_dir, f"{base_name}.zarr")
+    zarr_filename = f"{output_filename_base}.zarr"
     print(f"Saving final matchup to Zarr: {zarr_filename}...")
-    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=2, consolidated=True)
+    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=2, consolidated=True,)
 
     print("Pipeline successfully completed.")
     client.close()
