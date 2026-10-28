@@ -520,23 +520,11 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
         )
 
         # Convert initialization time to datetime64[s], then Unix epoch seconds
-        init_time_array = np.full(
-            ds_sofar_sub.sizes["obs"],
-            np.datetime64(init_time, "s"),
-            dtype="datetime64[s]",
-        )
-
-        init_time_seconds = (
-            init_time_array.astype("int64").astype("float64")
-        )
+        init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time, "s"), dtype="datetime64[s]",)
+        init_time_seconds = (init_time_array.astype("int64").astype("float64"))
 
         # Convert observation times to Unix epoch seconds
-        time_seconds = (
-            ds_sofar_sub["time"].values
-            .astype("datetime64[s]")
-            .astype("int64")
-            .astype("float64")
-        )
+        time_seconds = (ds_sofar_sub["time"].values.astype("datetime64[s]").astype("int64").astype("float64"))
 
         # Forecast lead time in hours (unchanged)
         fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, "h")
