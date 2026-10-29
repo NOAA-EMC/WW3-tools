@@ -33,111 +33,51 @@ def setup_dask_cluster():
     print(f"Initialized Dask cluster with {slurm_cpus} workers.")
     return client, cluster
 
-# Fetch the Sofar data from the HPSS archive
-def check_and_fetch_sofar_hpss(
-    start_date_str, 
-    end_date_str, 
-    obs_dir,
-    slurm_params=None
-):
+def check_sofar_data(start_date_str, end_date_str, obs_dir):
     """
-    Checks for daily Sofar buoy data from start_date to end_date + 16 days.
-    If files are missing, submits an HPSS extraction job for those specific 
-    files and terminates the current process.
+    Checks that the sofar data needed for the matchup pipeline exists in the given
+    observation directory.
+    If any data is missing, it prints the missing files and terminates the job.
     """
+    # Check if the base observation directory actually exists
+    if not os.path.exists(obs_dir):
+        print(f"Error: The observation directory '{obs_dir}' does not exist.")
+        print("Terminating the current job.")
+        sys.exit(0)
+
     start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    # Retaining the 16-day buffer from the original pipeline logic
     end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d") + datetime.timedelta(days=16)
     
     num_days = (end_date - start_date).days + 1
     date_list = [start_date + datetime.timedelta(days=x) for x in range(num_days)]
     
-    missing_dates = []
-    archive_base = "/NCEPPROD/hpssprod/runhistory"
+    missing_items = []
 
-    # First loop: Check all required dates to see if the file is present
+    # Check all required dates to see if the file is present
     for dt in date_list:
         yy = dt.strftime("%Y")
         mm = dt.strftime("%m")
         dd = dt.strftime("%d")
-        target_file = f"sofar_b001_xx121_{yy}{mm}{dd}"
         
-        if not os.path.exists(os.path.join(obs_dir, target_file)):
-            missing_dates.append(dt)
+        target_file = f"sofar_b001_xx121_{yy}{mm}{dd}"
+        target_path = os.path.join(obs_dir, target_file)
+        
+        if not os.path.exists(target_path):
+            missing_items.append(target_path)
 
-    # Evaluate if the missing_dates list is empty
-    if not missing_dates:
-        print("Success: All required Sofar HPSS files are present in the observation directory.")
+    # Evaluate if any items are missing
+    if not missing_items:
+        print(f"Success: All required Sofar data from {start_date_str} to {end_date_str} (+16 days) is present.")
+        print("Continuing with the matchup pipeline...")
         return True
 
-    # If files are missing, configure parameters and build extraction commands
-    print(f"Missing {len(missing_dates)} files. Generating and submitting HPSS retrieval script...")
+    # Missing data path: print exactly what is missing and kill the job
+    print("Error: The following Sofar observation files are missing:")
+    for item in missing_items:
+        print(f" - {item}")
     
-    slurm_params = slurm_params or {
-        "ntasks": 1,
-        "queue": "batch",
-        "partition": "u1-service",
-        "walltime": "01:00:00",
-        "account": "marine-cpu",
-        "job_name": "get_sofar_hpss"
-    }
-
-    extraction_commands = []
-    
-    # Second loop: Build extraction commands ONLY for the missing dates
-    for dt in missing_dates:
-        yy = dt.strftime("%Y")
-        mm = dt.strftime("%m")
-        dd = dt.strftime("%d")
-        target_file = f"sofar_b001_xx121_{yy}{mm}{dd}"
-        file_atm = f"{archive_base}/rh{yy}/{yy}{mm}/{yy}{mm}{dd}/dcom_{yy}{mm}{dd}.tar"
-        
-        extraction_commands.append(f"""
-echo "Processing {yy}-{mm}-{dd}..."
-htar -P -xvf {file_atm} ./b001
-if [ -f "b001/xx121" ]; then
-    mv b001/xx121 "{target_file}"
-    echo "Successfully extracted {target_file}"
-else
-    echo "Warning: Target xx121 not found in {file_atm}"
-    missing_files+=("{target_file}")
-fi
-rm -rf b001
-""")
-
-    job_name = slurm_params.get("job_name", "get_sofar_hpss")
-    script_content = f"""#!/bin/sh --login
-#SBATCH --ntasks={slurm_params.get("ntasks", 1)}
-#SBATCH -q {slurm_params.get("queue", "batch")}
-#SBATCH --partition={slurm_params.get("partition", "u1-service")}
-#SBATCH -t {slurm_params.get("walltime", "01:00:00")}
-#SBATCH -A {slurm_params.get("account", "marine-cpu")}
-#SBATCH -J {job_name}
-#SBATCH -o {target_dir}/{job_name}_%j.out
-
-cd {target_dir}
-
-missing_files=()
-
-{"".join(extraction_commands)}
-
-if [ ${{#missing_files[@]}} -ne 0 ]; then
-    echo "=========================================="
-    echo "The following files could NOT be extracted:"
-    for file in "${{missing_files[@]}}"; do
-        echo " - $file"
-    done
-    echo "=========================================="
-else
-    echo "All requested files were successfully extracted."
-fi
-"""
-
-    script_path = os.path.join(obs_dir, "submit_hpss.sh")
-    with open(script_path, "w") as f:
-        f.write(script_content)
-
-    subprocess.run(["sbatch", script_path], check=True)
-    print("HPSS retrieval job submitted to service node. Terminating current process.")
+    print("Terminating the current job. Please run the standalone HPSS retrieval script to fetch missing data.")
     sys.exit(0)
 
 # Check that model data exists
@@ -564,7 +504,6 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
                               {"long_name": "Model Mean Wave Period", "units": "s"}),
                 "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data, 
                             {"long_name": "Observation Mean Wave Period", "units": "s"}),
-                
                 ## Commented this matchup out for now until we can figure out if there are actually matching variables for wave direction
                 # "model_mwdir": ("obs", ds_model_interp["wvdir"].data, 
                 #                 {"long_name": "Model Mean Wave Direction", "units": "degrees"}),

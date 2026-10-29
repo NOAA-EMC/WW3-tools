@@ -22,10 +22,9 @@ def main():
     print(f"Starting pipeline for dates: {args.start_date} to {args.end_date}")
 
     # Ensure all SOFAR data is present or kill job
-    sf.check_and_fetch_sofar_hpss(start_date_str=args.start_date,
+    sf.check_sofar_data(start_date_str=args.start_date,
                                   end_date_str=args.end_date,
-                                  obs_dir=args.obs_dir,
-                                  slurm_params=None)
+                                  obs_dir=args.obs_dir)
 
     # Ensure all the model data is present between the start and end dates
     sf.check_model_data(args.model_dir, args.start_date,
