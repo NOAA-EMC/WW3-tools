@@ -117,17 +117,22 @@ def main():
     final_dataset = xr.concat(valid_datasets, dim="obs")
     final_dataset = final_dataset.sortby("time")
     
-    output_filename_base = os.path.join(args.work_dir, f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}")
-    
+    # Define base name for output file
+    base_name = f"{args.model_name}_sofar_matchup_{args.start_date}_to_{args.end_date}"
+
     # Save to netCDF
-    nc_fname = f"{output_filename_base}.nc"
+    nc_dir = os.path.join(args.work_dir, "nc_matchups")
+    os.makedirs(nc_dir, exist_ok=True) # Force create directory
+    nc_fname = os.path.join(nc_dir, f"{base_name}.nc")
     print(f"Saving final matchup file to {nc_fname}...")
     final_dataset.to_netcdf(nc_fname, mode='w')
 
     # Save the matchup data to a Zarr store
-    zarr_filename = f"{output_filename_base}.zarr"
+    zarr_dir = os.path.join(args.work_dir, "zarr_matchups")
+    os.makedirs(zarr_dir, exist_ok=True) # Force create directory
+    zarr_filename = os.path.join(zarr_dir, f"{base_name}.zarr")
     print(f"Saving final matchup to Zarr: {zarr_filename}...")
-    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=2, consolidated=True,)
+    final_dataset.to_zarr(zarr_filename, mode="w", zarr_format=2, consolidated=True)
 
     print("Pipeline successfully completed.")
     client.close()
