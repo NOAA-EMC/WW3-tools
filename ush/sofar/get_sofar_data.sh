@@ -51,18 +51,18 @@ TMP_DIR="tmp_extract_${YY}${MM}${DD}_\$SLURM_JOB_ID"
 mkdir -p "\$TMP_DIR"
 cd "\$TMP_DIR"
 
-FILE_ATM="${ARCHIVE_BASE}/rh${YY}/${YY}${MM}/${YY}${MM}${DD}/dcom_${YY}${MM}${DD}.tar"
-echo "Extracting from HPSS at \$FILE_ATM ..."
+FILE="${ARCHIVE_BASE}/rh${YY}/${YY}${MM}/${YY}${MM}${DD}/dcom_${YY}${MM}${DD}.tar"
+echo "Extracting from HPSS at \$FILE ..."
 
 # Extract into the unique temporary directory
-htar -P -xvf "\$FILE_ATM" ./b001
+htar -P -xvf "\$FILE" ./b001
 
 if [ -f "b001/xx121" ]; then
     # Move the extracted file back up to the main observation directory
     mv b001/xx121 "${OBS_DIR}/${TARGET_FILE}"
     echo "Successfully extracted ${TARGET_FILE}"
 else
-    echo "Warning: Target xx121 not found in \$FILE_ATM"
+    echo "Warning: Target xx121 not found in \$FILE"
 fi
 
 # Clean up temporary directory
