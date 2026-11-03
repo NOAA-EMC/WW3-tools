@@ -247,6 +247,9 @@ def convert_sofar_bufr_to_nc(
 
         df = pd.DataFrame(records)
 
+        # Convert longitude from -180–180 to 0–360
+        df['CLONH'] = df['CLONH'] % 360
+
         # Assemble Datetime column
         time_cols = ['YEAR', 'MNTH', 'DAYS', 'HOUR']
         if all(col in df.columns for col in time_cols):
@@ -341,20 +344,21 @@ def consolidate_sofar_to_zarr(
             
         # Run entire read and write pipeline synchronously to prevent C-library collisions
         with dask.config.set(scheduler="synchronous"):
-            ds_combined_obs = xr.open_mfdataset(
-                nc_files, 
-                combine="nested", 
-                concat_dim="obs"
-            )
-            
+            ds_combined_obs = xr.open_mfdataset(nc_files, combine="nested", concat_dim="obs")
+
+            # Reset observation index to ensure globally unique sequential indices
+            ds_combined_obs = ds_combined_obs.assign_coords(
+                obs=np.arange(ds_combined_obs.sizes["obs"]))
+
+            # Filter observations by date
             time_mask = (
-                (ds_combined_obs.time >= np.datetime64(start_dt)) & 
-                (ds_combined_obs.time <= np.datetime64(f"{end_date_str} 23:59:59"))
-            )
+                (ds_combined_obs.time >= np.datetime64(start_dt)) &
+                (ds_combined_obs.time <= np.datetime64(f"{end_date_str} 23:59:59")))
+
             ds_combined_obs = ds_combined_obs.isel(obs=time_mask.compute())
-            
+
             if ds_combined_obs.sizes["obs"] == 0:
-                print(f"Error: No observations found between {start_date_str} and {end_date_str}.")
+                print("No observations found in requested date range.")
                 sys.exit(1)
 
             ds_combined_obs = ds_combined_obs.chunk({"obs": obs_chunk_size})
@@ -379,7 +383,46 @@ def consolidate_sofar_to_zarr(
         
     return zarr_path, num_obs
 
-def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name, parallel=False):
+def create_matchup_qc_flag(obs, model):
+    """
+    Create a quality-control flag for a model-observation matchup.
+
+    Flag values:
+        0 = Valid matchup
+        1 = Model value missing
+        2 = Observation value missing
+        3 = Both values missing
+    """
+
+    obs_missing = obs.isnull()
+    model_missing = model.isnull()
+
+    flag = xr.where(
+        model_missing & obs_missing, 3,
+        xr.where(
+            model_missing, 1,
+            xr.where(obs_missing, 2, 0)
+        )
+    ).astype("int8")
+
+    flag.attrs = {
+        "long_name": "Model-observation matchup quality control flag",
+        "flag_values": np.array([0, 1, 2, 3], dtype=np.int8),
+        "flag_meanings": (
+            "valid_matchup "
+            "model_missing "
+            "observation_missing "
+            "both_missing"
+        ),
+        "flag_0_description": "Both model and observation values are present.",
+        "flag_1_description": "Model value is missing; observation is available.",
+        "flag_2_description": "Observation value is missing; model is available.",
+        "flag_3_description": "Both model and observation values are missing.",
+    }
+
+    return flag
+
+def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name, parallel=False, diagnostics=False):
     """
     Worker: Processes exactly one forecast cycle using lazy Dask execution.
     Only computes the final 1D matchup dataset to minimize RAM usage.
@@ -417,6 +460,9 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
             backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
         )
 
+        # Sort by lat and lon to have a monotonic
+        ds_gfs = ds_gfs.sortby("latitude").sortby("longitude")
+
         if "time" in ds_gfs.dims:
             ds_gfs = ds_gfs.squeeze("time", drop=True)
             
@@ -442,14 +488,6 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
 
         if parallel is False:
             print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
-
-        # Lazily trim the model to only the time range where observations actually exist
-        obs_start = ds_sofar_sub.time.min().values
-        obs_end = ds_sofar_sub.time.max().values
-        ds_gfs = ds_gfs.sel(valid_time=slice(obs_start, obs_end))
-
-        # Rechunk valid_time to -1 across the active slice so xarray can interpolate across time
-        ds_gfs = ds_gfs.chunk({"valid_time": -1})
 
         # Perform linear interpolation lazily (NO .load() call to prevent OOM)
         ds_model_interp = ds_gfs.interp(
@@ -504,11 +542,6 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
                               {"long_name": "Model Mean Wave Period", "units": "s"}),
                 "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data, 
                             {"long_name": "Observation Mean Wave Period", "units": "s"}),
-                ## Commented this matchup out for now until we can figure out if there are actually matching variables for wave direction
-                # "model_mwdir": ("obs", ds_model_interp["wvdir"].data, 
-                #                 {"long_name": "Model Mean Wave Direction", "units": "degrees"}),
-                # "obs_mwdir": ("obs", ds_sofar_sub["sea_surface_wave_from_direction_at_variance_spectral_peak"].data, 
-                #               {"long_name": "Observation Mean Wave Direction", "units": "degrees"}),
             },
             attrs={
                 "platform_type": "SOFAR Spotter Buoy",
@@ -516,6 +549,15 @@ def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name,
             }
         )
         
+        # Create matchup quality-control flags
+        qc_variables = {"hs_qc_flag": ("obs_hs", "model_hs"),
+                        "wnd_qc_flag": ("obs_wnd", "model_wnd"),
+                        "wdir_qc_flag": ("obs_wdir", "model_wdir"),
+                        "mwp_qc_flag": ("obs_mwp", "model_mwp")}
+
+        for flag_name, (obs_var, model_var) in qc_variables.items():
+            ds_combined[flag_name] = create_matchup_qc_flag(obs=ds_combined[obs_var],
+                                                            model=ds_combined[model_var])
         # Evaluate only the tiny 1D output table into memory
         result = ds_combined.compute()
         
