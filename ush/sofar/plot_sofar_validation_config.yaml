@@ -1,0 +1,21 @@
+# Plot SOFAR Validation Configuration
+
+# Map your model labels directly to their file paths
+models:
+  GFS: /scratch3/NCEPDEV/marine/Edwin.Rainville/sofar_work_dir/zarr_matchups/GFS_WAVE_sofar_matchup_2026-01-01_to_2026-01-31.zarr
+
+# Lists of variables and statistics to process
+variables:
+  - hs
+  - wnd
+  - mwp
+
+statistics:
+  - bias
+  - rmse
+  - mse
+
+window_hours: 1.0
+
+# Plotting parameters
+outdir: /scratch3/NCEPDEV/marine/Edwin.Rainville/sofar_work_dir/plots
