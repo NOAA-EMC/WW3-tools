@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import xarray as xr
 import ncepbufr
 import dask
@@ -622,7 +623,7 @@ def compute_windowed_statistics(datasets: list,
     if window_hours <= 0:
         raise ValueError("window_hours must be positive.")
 
-    valid_statistics = {'mse', 'rmse', 'corr'}
+    valid_statistics = {'mse', 'rmse', 'corr', 'count'}
     statistics = [stat.lower() for stat in statistics]
 
     invalid = set(statistics) - valid_statistics
@@ -709,11 +710,23 @@ def compute_windowed_statistics(datasets: list,
                     elif stat == 'rmse':
                         res = np.sqrt((diff_window ** 2).mean(skipna=True))
                     elif stat == 'corr':
-                        res = xr.corr(mod_window, obs_window)
+                        # Count how many points are valid (non-NaN) in model and obs
+                        valid_pairs = (mod_window.notnull() & obs_window.notnull()).sum()
+                        # Only compute correlation if there are at least 2 valid pairs
+                        if valid_pairs >= 2:
+                            res = xr.corr(mod_window, obs_window)
+                        else:
+                            res = np.nan
+                    elif stat == 'count':
+                        # res = diff_window.count()
+                        res = obs_window.count()
 
-                    # Force evaluation to a pure Python float
+                    # Force evaluation to a float or int depending on stat
                     try:
-                        val = float(res.compute().item())
+                        if stat == 'count':
+                            val = int(res.compute().item())
+                        else:
+                            val = float(res.compute().item())
                     except Exception:
                         val = np.nan
                         
