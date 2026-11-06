@@ -11,8 +11,8 @@
 #SBATCH --open-mode=truncate
 
 # ====== USER INPUT ================
-CONFIG_FILE="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev/ush/sofar/plot_sofar_validation_config.yaml"
-WW3TOOLS_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev"
+CONFIG_FILE="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-stats/ush/sofar/plot_sofar_validation_config.yaml"
+WW3TOOLS_DIR="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-stats"
 # ==================================
 
 echo "Loading modules"
@@ -22,7 +22,7 @@ module load ursa-env
 module load bufr
 
 export PATH="/scratch4/NCEPDEV/marine/Saeideh.Banihashemi/installs/ursa-env/bin:$PATH"
-export PYTHONPATH="/scratch3/NCEPDEV/marine/Edwin.Rainville/ww3-tools-dev${PYTHONPATH:+:${PYTHONPATH}}"
+export PYTHONPATH="${WW3TOOLS_DIR}${PYTHONPATH:+:${PYTHONPATH}}"
 PLOT_SCRIPT="${WW3TOOLS_DIR}/ww3tools/scripts/sofar_validation_plots.py"
 
 echo "Starting to make plots"
