@@ -319,17 +319,21 @@ def consolidate_sofar_to_zarr(
     work_dir, 
     start_date_str, 
     end_date_str, 
-    obs_chunk_size=50000
+    obs_chunk_size=50000,
+    pad_days=16
 ):
     """
     Consolidates individual SOFAR observation NetCDF files into a single Zarr store.
     Enforces synchronous execution to avoid multi-threaded libnetcdf segfaults.
     """
     start_dt = pd.to_datetime(start_date_str)
-    end_dt = pd.to_datetime(end_date_str)
+    
+    # Calculate the padded end date for the observations
+    model_end_dt = pd.to_datetime(end_date_str)
+    obs_end_dt = model_end_dt + pd.Timedelta(days=pad_days)
     
     start_fmt = start_dt.strftime("%Y%m%d")
-    end_fmt = end_dt.strftime("%Y%m%d")
+    end_fmt = obs_end_dt.strftime("%Y%m%d")
     
     zarr_filename = f"sofar_reference_{start_fmt}_to_{end_fmt}.zarr"
     zarr_path = os.path.join(work_dir, zarr_filename)
@@ -350,10 +354,11 @@ def consolidate_sofar_to_zarr(
             ds_combined_obs = ds_combined_obs.assign_coords(
                 obs=np.arange(ds_combined_obs.sizes["obs"]))
 
-            # Filter observations by date
+            # Filter observations using the padded observation end date
+            padded_end_str = obs_end_dt.strftime("%Y-%m-%d")
             time_mask = (
                 (ds_combined_obs.time >= np.datetime64(start_dt)) &
-                (ds_combined_obs.time <= np.datetime64(f"{end_date_str} 23:59:59")))
+                (ds_combined_obs.time <= np.datetime64(f"{padded_end_str} 23:59:59")))
 
             ds_combined_obs = ds_combined_obs.isel(obs=time_mask.compute())
 
