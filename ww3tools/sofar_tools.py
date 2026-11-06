@@ -10,6 +10,7 @@ import sys
 import numpy as np
 import pandas as pd
 import netCDF4 as nc
+import matplotlib.pyplot as plt
 import xarray as xr
 import ncepbufr
 import dask
@@ -601,3 +602,218 @@ def build_cycle_inputs(
         cycle_files.append(matched_files)
     
     return init_times, cycle_files
+
+# ============== Validation Statistics ================
+def compute_windowed_statistics(datasets: list,
+                                variables: list,
+                                labels: list,
+                                statistics: list = ['rmse'],
+                                window_hours: float = 1.0) -> xr.Dataset:
+    """
+    Compute windowed statistics for multiple datasets.
+
+    Statistics are calculated across all non-grouped dimensions
+    within each forecast-hour window.
+    """
+
+    if len(datasets) != len(labels):
+        raise ValueError("datasets and labels must have the same length.")
+
+    if window_hours <= 0:
+        raise ValueError("window_hours must be positive.")
+
+    valid_statistics = {'mse', 'rmse', 'corr'}
+    statistics = [stat.lower() for stat in statistics]
+
+    invalid = set(statistics) - valid_statistics
+    if invalid:
+        raise ValueError(f"Unsupported statistics: {invalid}")
+
+    all_results = {}
+
+    print(f"Starting computation for {len(labels)} datasets...")
+
+    for ds, label in zip(datasets, labels):
+        print(f"\n--- Processing Dataset: {label} ---")
+
+        if 'fcst_hr' not in ds:
+            raise ValueError(f"{label}: Missing fcst_hr coordinate.")
+
+        fcst_hr = ds['fcst_hr']
+
+        if not bool(np.isfinite(fcst_hr).any().compute().values):
+            raise ValueError(f"{label}: fcst_hr contains no valid values.")
+
+        fcst_min = fcst_hr.min(skipna=True).compute().values.item()
+        fcst_max = fcst_hr.max(skipna=True).compute().values.item()
+
+        min_hr = np.floor(fcst_min / window_hours) * window_hours
+        max_hr = np.ceil(fcst_max / window_hours) * window_hours
+
+        bins = np.arange(
+            min_hr,
+            max_hr + window_hours + 1e-8,
+            window_hours
+        )
+
+        bin_centers = bins[:-1] + window_hours / 2
+
+        for var in variables:
+            print(f"  -> Variable: {var}")
+
+            mod_var = f"model_{var}"
+            obs_var = f"obs_{var}"
+
+            if mod_var not in ds or obs_var not in ds:
+                print(f"     [!] Warning: Missing {mod_var} or {obs_var} in {label}. Skipping.")
+                continue
+
+            mod = ds[mod_var]
+            obs = ds[obs_var]
+
+            # Align model, observation, and forecast hour coordinates
+            print("     Aligning coordinates and loading into memory... ", end="", flush=True)
+            mod, obs, fcst_hr_aligned = xr.align(
+                mod, obs, ds['fcst_hr'],
+                join='inner'
+            )
+
+            # Load into memory once to speed up the loop
+            mod.load()
+            obs.load()
+            fcst_hr_aligned.load()
+            print("Done.")
+
+            # Calculate statistics for each forecast-hour window
+            for stat in statistics:
+                print(f"     Computing {stat.upper()} across {len(bin_centers)} windows... ", end="", flush=True)
+
+                window_results = []
+
+                for i in range(len(bin_centers)):
+
+                    lower = bins[i]
+                    upper = bins[i + 1]
+
+                    # Identify observations belonging to this window
+                    mask = (fcst_hr_aligned >= lower) & (fcst_hr_aligned < upper)
+
+                    # Select matching observations
+                    mod_window = mod.where(mask)
+                    obs_window = obs.where(mask)
+                    diff_window = mod_window - obs_window
+
+                    # Calculate the raw xarray result
+                    if stat == 'mse':
+                        res = (diff_window ** 2).mean(skipna=True)
+                    elif stat == 'rmse':
+                        res = np.sqrt((diff_window ** 2).mean(skipna=True))
+                    elif stat == 'corr':
+                        res = xr.corr(mod_window, obs_window)
+
+                    # Force evaluation to a pure Python float
+                    try:
+                        val = float(res.compute().item())
+                    except Exception:
+                        val = np.nan
+                        
+                    window_results.append(val)
+
+                # Construct array directly to prevent dimensionality leaks
+                computed_val = xr.DataArray(
+                    window_results,
+                    coords={'fcst_hr_center': bin_centers},
+                    dims=['fcst_hr_center']
+                )
+
+                all_results[f"{label}_{stat}_{var}"] = computed_val
+                print("Done.")
+
+    print("\nComputation complete!")
+    return xr.Dataset(all_results)
+
+def plot_statistics(computed_ds: xr.Dataset,
+                    variables: list,
+                    labels: list,
+                    statistics: list,
+                    window_hours: float = 1.0,
+                    save_dir: str = None):
+    """
+    Plot pre-computed windowed statistics.
+    """
+
+    statistics = [stat.lower() for stat in statistics]
+
+    if save_dir:
+        os.makedirs(save_dir, exist_ok=True)
+
+    for stat in statistics:
+        for var in variables:
+
+            # Make the plot
+            fig, ax = plt.subplots(figsize=(10, 5))
+            plotted = False
+
+            for label in labels:
+
+                var_key = f"{label}_{stat}_{var}"
+
+                if var_key not in computed_ds:
+                    print(f"Warning: {var_key} not found.")
+                    continue
+                
+                # Drop NaNs so matplotlib draws a continuous line instead of breaking it
+                da_plot = computed_ds[var_key].dropna(dim='fcst_hr_center')
+
+                if len(da_plot) == 0:
+                    continue
+
+                ax.plot(
+                    da_plot['fcst_hr_center'],
+                    da_plot,
+                    label=label,
+                    linewidth=2,
+                    marker='o',
+                    markersize=5
+                )
+
+                plotted = True
+
+            if not plotted:
+                plt.close(fig)
+                continue
+
+            ax.set_title(
+                f"Model {stat.upper()} Comparison: {var.upper()}\n"
+                f"({window_hours}-Hour Windows)"
+            )
+
+            ax.set_xlabel("Forecast Hour")
+            ax.set_ylabel(stat.upper())
+
+            ax.legend()
+            ax.grid(True, linestyle=':', alpha=0.7)
+
+            plt.tight_layout()
+
+            if save_dir:
+
+                file_path = os.path.join(
+                    save_dir,
+                    f"timeseries_{stat}_{var}_{window_hours}hr.png"
+                )
+
+                fig.savefig(
+                    file_path,
+                    dpi=300,
+                    bbox_inches='tight'
+                )
+
+                print(f"Saved: {file_path}")
+
+            else:
+                plt.show()
+
+            plt.close(fig)
+# =====================================================
+# =====================================================

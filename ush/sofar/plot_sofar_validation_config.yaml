@@ -11,11 +11,11 @@ variables:
   - mwp
 
 statistics:
-  - bias
-  - rmse
   - mse
+  - rmse
+  - corr
 
-window_hours: 1.0
+window_hours: 10.0
 
 # Plotting parameters
 outdir: /scratch3/NCEPDEV/marine/Edwin.Rainville/sofar_work_dir/plots
