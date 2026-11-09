@@ -623,7 +623,8 @@ def compute_windowed_statistics(datasets: list,
     if window_hours <= 0:
         raise ValueError("window_hours must be positive.")
 
-    valid_statistics = {'mse', 'rmse', 'corr', 'count'}
+    valid_statistics = {'mse', 'rmse', 'corr', 'count', 'error_std', 
+                        'forecast_mean', 'obs_mean', 'scatter_index'}
     statistics = [stat.lower() for stat in statistics]
 
     invalid = set(statistics) - valid_statistics
@@ -700,21 +701,29 @@ def compute_windowed_statistics(datasets: list,
                     obs_window = obs.where(mask)
                     diff_window = mod_window - obs_window
 
-                    # Calculate the raw xarray result
+                    # Calculate each windowed statistic
                     if stat == 'mse':
                         res = (diff_window ** 2).mean(skipna=True)
+                    
                     elif stat == 'rmse':
                         res = np.sqrt((diff_window ** 2).mean(skipna=True))
+                    
                     elif stat == 'corr':
-                        # Count how many points are valid (non-NaN) in model and obs
-                        valid_pairs = (mod_window.notnull() & obs_window.notnull()).sum()
-                        # Only compute correlation if there are at least 2 valid pairs
-                        if valid_pairs >= 2:
-                            res = xr.corr(mod_window, obs_window)
-                        else:
-                            res = np.nan
+                        res = xr.corr(mod_window, obs_window)
+                    
+                    elif stat == 'error_std':
+                        res = np.std(mod_window - obs_window)
+                    
+                    elif stat == 'forecast_mean':
+                        res = mod_window.mean(skipna=True)
+                    
+                    elif stat == 'obs_mean':
+                        res = obs_window.mean(skipna=True)
+                    
+                    elif stat == 'scatter_index':
+                        res = np.sqrt((diff_window ** 2).mean(skipna=True)) / obs_window.mean(skipna=True) * 100
+                    
                     elif stat == 'count':
-                        # res = diff_window.count()
                         res = diff_window.count()
 
                     # Force evaluation to a float or int depending on stat

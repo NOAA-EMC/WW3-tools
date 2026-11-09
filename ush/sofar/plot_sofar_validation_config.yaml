@@ -14,6 +14,10 @@ statistics:
   - mse
   - rmse
   - corr
+  - error_std
+  - forecast_mean
+  - obs_mean
+  - scatter_index
   - count
 
 window_hours: 10.0
