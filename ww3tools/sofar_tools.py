@@ -649,13 +649,9 @@ def compute_windowed_statistics(datasets: list,
         fcst_max = fcst_hr.max(skipna=True).compute().values.item()
 
         min_hr = np.floor(fcst_min / window_hours) * window_hours
-        max_hr = np.ceil(fcst_max / window_hours) * window_hours
+        max_hr = np.floor(fcst_max / window_hours) * window_hours
 
-        bins = np.arange(
-            min_hr,
-            max_hr + window_hours + 1e-8,
-            window_hours
-        )
+        bins = np.arange(min_hr, max_hr + 1e-8, window_hours)
 
         bin_centers = bins[:-1] + window_hours / 2
 
@@ -719,7 +715,7 @@ def compute_windowed_statistics(datasets: list,
                             res = np.nan
                     elif stat == 'count':
                         # res = diff_window.count()
-                        res = obs_window.count()
+                        res = diff_window.count()
 
                     # Force evaluation to a float or int depending on stat
                     try:

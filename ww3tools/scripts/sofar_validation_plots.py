@@ -40,6 +40,12 @@ def main():
             ds = xr.open_dataset(file_path)
         datasets.append(ds)
 
+    # Print number of matchups for each model for comparison
+    for name, ds in zip(labels, datasets):
+        # .count() automatically ignores NaN values
+        valid_count = int(ds['buoy_id'].count().values)
+        print(f"{name}: {valid_count:,} matchups")
+
     # Compute the windowed statistics
     print("Computing statistics...")
     computed_stats_ds = sf.compute_windowed_statistics(
