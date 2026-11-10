@@ -750,6 +750,7 @@ def compute_windowed_statistics(datasets: list,
     print("\nComputation complete!")
     return xr.Dataset(all_results)
 
+
 def plot_statistics(computed_ds: xr.Dataset,
                     variables: list,
                     labels: list,
@@ -767,6 +768,56 @@ def plot_statistics(computed_ds: xr.Dataset,
 
     for stat in statistics:
         for var in variables:
+            
+            # Define variable characteristics
+            if var in ["hs"]:
+                var_name = "Significant Wave Height"
+                var_units = "m"
+
+            elif var in ["wnd"]:
+                var_name = "Wind Speed"
+                var_units = "(m/s)"
+
+            elif var in ["mwp"]:
+                var_name = "Mean Wave Period"
+                var_units = "s"
+
+            else:
+                var_name = var.upper()
+                units = ""
+
+            # Define statistic characteristics
+            if stat == "mse":
+                stat_name = "Mean Square Error (MSE)"
+                reference_value = None
+                units = rf"${var_units}^2$"
+
+            elif stat == "rmse":
+                stat_name = "Root Mean Square Error (RMSE)"
+                reference_value = None
+                units = f"{var_units}"
+
+            elif stat == "corr":
+                stat_name = "Correlation Coefficient"
+                reference_value = 1
+                units = "-"  # Correlation is dimensionless
+
+            elif stat == "error_std":
+                stat_name = 'Error Standard Deviation'
+                reference_value = None
+                units = f"{var_units}"
+
+            elif stat == "scatter_index":
+                stat_name = "Scatter Index"
+                reference_value = None
+                units = "-"
+
+            else:
+                stat_name = stat.upper()
+                reference_value = None
+
+            # Define y-axis label
+            ylabel = f"{stat_name} [{units}]"
 
             # Make the plot
             fig, ax = plt.subplots(figsize=(10, 5))
@@ -779,9 +830,10 @@ def plot_statistics(computed_ds: xr.Dataset,
                 if var_key not in computed_ds:
                     print(f"Warning: {var_key} not found.")
                     continue
-                
-                # Drop NaNs so matplotlib draws a continuous line instead of breaking it
-                da_plot = computed_ds[var_key].dropna(dim='fcst_hr_center')
+
+                da_plot = computed_ds[var_key].dropna(
+                    dim='fcst_hr_center'
+                )
 
                 if len(da_plot) == 0:
                     continue
@@ -791,7 +843,7 @@ def plot_statistics(computed_ds: xr.Dataset,
                     da_plot,
                     label=label,
                     linewidth=2,
-                    marker='o',
+                    marker='^',
                     markersize=5
                 )
 
@@ -801,13 +853,24 @@ def plot_statistics(computed_ds: xr.Dataset,
                 plt.close(fig)
                 continue
 
+            # Add reference line when applicable
+            if reference_value is not None:
+                ax.axhline(
+                    reference_value,
+                    color='black',
+                    linestyle='--',
+                    linewidth=1.2,
+                    alpha=0.7,
+                    label='Reference'
+                )
+
             ax.set_title(
-                f"Model {stat.upper()} Comparison: {var.upper()}\n"
+                f"Model-Sofar Observation Comparison: {var_name}\n"
                 f"({window_hours}-Hour Windows)"
             )
 
             ax.set_xlabel("Forecast Hour")
-            ax.set_ylabel(stat.upper())
+            ax.set_ylabel(ylabel)
 
             ax.legend()
             ax.grid(True, linestyle=':', alpha=0.7)
@@ -833,5 +896,4 @@ def plot_statistics(computed_ds: xr.Dataset,
                 plt.show()
 
             plt.close(fig)
-# =====================================================
 # =====================================================
