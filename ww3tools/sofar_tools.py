@@ -1,0 +1,603 @@
+import subprocess
+import os
+import glob
+import datetime
+import re
+from pathlib import Path
+import datetime
+import sys
+
+import numpy as np
+import pandas as pd
+import netCDF4 as nc
+import xarray as xr
+import ncepbufr
+import dask
+from dask.distributed import Client, LocalCluster
+import zarr
+
+# Setup dask cluster for parallelization
+def setup_dask_cluster():
+    """
+    Initializes a Dask cluster constrained by Slurm's allocated CPUs.
+    """
+    slurm_cpus = int(os.environ.get('SLURM_CPUS_PER_TASK', 4))
+    
+    cluster = LocalCluster(
+        n_workers=slurm_cpus,     
+        threads_per_worker=1,     
+        memory_limit='4GB'       
+    )
+    
+    client = Client(cluster)
+    print(f"Initialized Dask cluster with {slurm_cpus} workers.")
+    return client, cluster
+
+def check_sofar_data(start_date_str, end_date_str, obs_dir):
+    """
+    Checks that the sofar data needed for the matchup pipeline exists in the given
+    observation directory.
+    If any data is missing, it prints the missing files and terminates the job.
+    """
+    # Check if the base observation directory actually exists
+    if not os.path.exists(obs_dir):
+        print(f"Error: The observation directory '{obs_dir}' does not exist.")
+        print("Terminating the current job.")
+        sys.exit(0)
+
+    start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    # Retaining the 16-day buffer from the original pipeline logic
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d") + datetime.timedelta(days=16)
+    
+    num_days = (end_date - start_date).days + 1
+    date_list = [start_date + datetime.timedelta(days=x) for x in range(num_days)]
+    
+    missing_items = []
+
+    # Check all required dates to see if the file is present
+    for dt in date_list:
+        yy = dt.strftime("%Y")
+        mm = dt.strftime("%m")
+        dd = dt.strftime("%d")
+        
+        target_file = f"sofar_b001_xx121_{yy}{mm}{dd}"
+        target_path = os.path.join(obs_dir, target_file)
+        
+        if not os.path.exists(target_path):
+            missing_items.append(target_path)
+
+    # Evaluate if any items are missing
+    if not missing_items:
+        print(f"Success: All required Sofar data from {start_date_str} to {end_date_str} (+16 days) is present.")
+        print("Continuing with the matchup pipeline...")
+        return True
+
+    # Missing data path: print exactly what is missing and kill the job
+    print("Error: The following Sofar observation files are missing:")
+    for item in missing_items:
+        print(f" - {item}")
+    
+    print("Terminating the current job. Please run the standalone HPSS retrieval script to fetch missing data.")
+    sys.exit(0)
+
+# Check that model data exists
+def check_model_data(model_dir, start_date_str, end_date_str, pattern_prefix="gfs."):
+    """
+    Verifies that model data directories or files exist for every day between 
+    the start and end dates.
+    If any data is missing, it prints the missing dates/paths and terminates the job.
+    """
+    # Check if the base model directory actually exists
+    if not os.path.exists(model_dir):
+        print(f"Error: The base model directory '{model_dir}' does not exist.")
+        print("Terminating the current job.")
+        sys.exit(0)
+
+    # Generate list of required dates
+    start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d")
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d")
+    
+    num_days = (end_date - start_date).days + 1
+    date_list = [start_date + datetime.timedelta(days=x) for x in range(num_days)]
+    
+    missing_items = []
+
+    # Check for existing model directories or files for each date
+    for dt in date_list:
+        date_formatted = dt.strftime("%Y%m%d")
+        target_name = f"{pattern_prefix}{date_formatted}"
+        target_path = os.path.join(model_dir, target_name)
+        
+        if not os.path.exists(target_path):
+            missing_items.append(target_path)
+
+    # Evaluate if any items are missing
+    if not missing_items:
+        print(f"Success: All required model data from {start_date_str} to {end_date_str} is present.")
+        print("Continuing with the analysis...")
+        return True
+
+    # Missing data path: print exactly what is missing and kill the job
+    print("Error: The following model data directories or files are missing:")
+    for item in missing_items:
+        print(f" - {item}")
+    
+    print("Terminating the current job. Please ensure the model outputs are properly staged.")
+    sys.exit(0)
+
+
+# Convert the sofar data from bufr to netCDF
+def convert_sofar_bufr_to_nc(
+    work_dir,
+    obs_dir,
+    start_date=None,
+    end_date=None,
+    pattern="sofar_b001_xx121_*"
+):
+    """
+    Converts BUFR marine observation files to CF-compliant NetCDF files.
+    Skips conversion if the target NetCDF file already exists.
+    Directories are built relative to the provided work_dir.
+    Appends a sixteen-day buffer to the provided end date.
+    """
+    # Establish relative paths based on the working directory
+    obs_path = Path(obs_dir)
+    out_path = Path(work_dir) / "nc_data"
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    t_start = pd.to_datetime(start_date) if start_date else None
+    
+    # Add a sixteen-day buffer to the end date to capture trailing data
+    t_end = pd.to_datetime(end_date) + pd.Timedelta(days=16) if end_date else None
+
+    raw_file_list = sorted([
+        f for f in obs_path.glob(pattern) 
+        if not f.name.endswith('.nc') and f.is_file()
+    ])
+
+    # Pre-filter files based on the YYYYMMDD string in the filename
+    file_list = []
+    for f in raw_file_list:
+        match = re.search(r'(\d{8})', f.name)
+        if match:
+            try:
+                file_date = pd.to_datetime(match.group(1), format='%Y%m%d')
+                if t_start is not None and file_date < t_start:
+                    continue
+                if t_end is not None and file_date > t_end:
+                    continue
+            except ValueError:
+                pass # If date extraction fails, keep the file and rely on internal dataframe filtering
+        file_list.append(f)
+
+    if not file_list:
+        print(f"No matching BUFR files found in {obs_dir} for the requested date range.")
+        return []
+
+    print(f"Found {len(file_list)} BUFR files in date range to process.")
+
+    string_vars = ['LSTN']
+    numeric_vars = [
+        'CLATH', 'CLONH', 'YEAR', 'MNTH', 'DAYS', 'HOUR', 'MINU',
+        'SGWH', 'WDIR', 'WSPD', 'DSDW', 'DDWC', 'AVWP', 'SPWP'
+    ]
+    variables = string_vars + numeric_vars
+    wave_keys = ['SGWH', 'WDIR', 'WSPD', 'DSDW', 'DDWC', 'AVWP', 'SPWP']
+
+    # BUFR Mnemonic to CF Standard Variable Name Mapping
+    rename_map = {
+        'CLATH': 'latitude',
+        'CLONH': 'longitude',
+        'LSTN': 'platform_id',
+        'SGWH': 'sea_surface_wave_significant_height',
+        'WDIR': 'wind_from_direction',
+        'WSPD': 'wind_speed',
+        'DSDW': 'sea_surface_wave_directional_spread',
+        'DDWC': 'sea_surface_wave_from_direction_at_variance_spectral_peak',
+        'AVWP': 'sea_surface_wave_mean_period',
+        'SPWP': 'sea_surface_wave_period_at_variance_spectral_peak',
+    }
+
+    converted_files = []
+    skipped_existing = 0
+    newly_converted = 0
+
+    for filepath in file_list:
+        nc_filename = out_path / f"{filepath.name}.nc"
+        
+        # Check if the NetCDF file already exists to bypass conversion
+        if nc_filename.exists():
+            skipped_existing += 1
+            converted_files.append(nc_filename)
+            continue
+
+        records = []
+        try:
+            bufr = ncepbufr.open(str(filepath))
+            while bufr.advance() == 0:
+                while bufr.load_subset() == 0:
+                    rec = {}
+                    for var in variables:
+                        try:
+                            if var in string_vars:
+                                raw = bufr.read_subset(var)
+                                text = raw.view('S8').tobytes().decode('ascii', errors='ignore').replace('\x00', '').strip()
+                                rec[var] = text if text else None
+                            else:
+                                val = bufr.read_subset(var)
+                                v = val.flat[0] if val.size > 0 else np.nan
+                                
+                                if np.ma.is_masked(v) or v >= 1e9:
+                                    rec[var] = np.nan
+                                else:
+                                    rec[var] = float(v)
+                        except Exception:
+                            rec[var] = None if var in string_vars else np.nan
+                    
+                    if any(pd.notna(rec[k]) for k in wave_keys if k in rec):
+                        records.append(rec)
+            bufr.close()
+        except Exception as e:
+            print(f"Error reading BUFR file {filepath.name}: {e}")
+            continue
+
+        if not records:
+            print(f"  [{filepath.name}] No valid records extracted. Skipping.")
+            continue
+
+        df = pd.DataFrame(records)
+
+        # Convert longitude from -180–180 to 0–360
+        df['CLONH'] = df['CLONH'] % 360
+
+        # Assemble Datetime column
+        time_cols = ['YEAR', 'MNTH', 'DAYS', 'HOUR']
+        if all(col in df.columns for col in time_cols):
+            df['time'] = pd.to_datetime({
+                'year': df['YEAR'].fillna(1970).astype(int),
+                'month': df['MNTH'].fillna(1).astype(int),
+                'day': df['DAYS'].fillna(1).astype(int),
+                'hour': df['HOUR'].fillna(0).astype(int),
+                'minute': df.get('MINU', 0).fillna(0).astype(int)
+            })
+            df = df.drop(columns=['YEAR', 'MNTH', 'DAYS', 'HOUR', 'MINU'], errors='ignore')
+
+        # Filter by date range if provided
+        if 'time' in df.columns:
+            if t_start is not None:
+                df = df[df['time'] >= t_start]
+            if t_end is not None:
+                df = df[df['time'] <= t_end]
+
+        if df.empty:
+            print(f"  [{filepath.name}] No records fell within date range [{start_date} to extended end date]. Skipping.")
+            continue
+
+        # Reset index to create observation dimension
+        df = df.reset_index(drop=True)
+        df.index.name = 'obs'
+        ds = df.to_xarray()
+
+        # Rename BUFR mnemonics to CF standard variable names
+        rename_dict = {k: v for k, v in rename_map.items() if k in ds}
+        if rename_dict:
+            ds = ds.rename(rename_dict)
+
+        # Set time as the coordinate
+        ds = ds.set_coords('time')
+
+        # Apply Global Attributes
+        now_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        ds.attrs['Conventions'] = 'CF-1.9'
+        ds.attrs['featureType'] = 'trajectory'
+        ds.attrs['title'] = 'Surface Marine Observation Data Converted from NCEP BUFR'
+        ds.attrs['source'] = f'NCEP BUFR observation file: {filepath.name}'
+        ds.attrs['history'] = f'{now_str}: Converted to CF-compliant NetCDF via ww3-tools pipeline.'
+
+        # Define explicit time encoding
+        encoding = {}
+        if 'time' in ds:
+            encoding['time'] = {
+                'units': 'seconds since 1970-01-01 00:00:00',
+                'calendar': 'gregorian'
+            }
+
+        # Write to NetCDF file
+        ds.to_netcdf(nc_filename, encoding=encoding)
+        converted_files.append(nc_filename)
+        newly_converted += 1
+        print(f"  [{filepath.name}] Saved CF-compliant NetCDF ({len(df)} records) -> {nc_filename.name}")
+
+    if newly_converted == 0 and skipped_existing > 0:
+        print(f"All {skipped_existing} target NetCDF files already existed. No new conversions needed.")
+
+    print(f"\nDone! Successfully checked or converted {len(converted_files)} files.")
+    return converted_files
+
+def consolidate_sofar_to_zarr(
+    nc_dir, 
+    work_dir, 
+    start_date_str, 
+    end_date_str, 
+    obs_chunk_size=50000,
+    pad_days=16
+):
+    """
+    Consolidates individual SOFAR observation NetCDF files into a single Zarr store.
+    Enforces synchronous execution to avoid multi-threaded libnetcdf segfaults.
+    """
+    start_dt = pd.to_datetime(start_date_str)
+    
+    # Calculate the padded end date for the observations
+    model_end_dt = pd.to_datetime(end_date_str)
+    obs_end_dt = model_end_dt + pd.Timedelta(days=pad_days)
+    
+    start_fmt = start_dt.strftime("%Y%m%d")
+    end_fmt = obs_end_dt.strftime("%Y%m%d")
+    
+    zarr_filename = f"sofar_reference_{start_fmt}_to_{end_fmt}.zarr"
+    zarr_path = os.path.join(work_dir, zarr_filename)
+
+    if not os.path.exists(zarr_path):
+        print(f"Consolidating observation files into: '{zarr_filename}'...")
+        
+        nc_files = sorted(glob.glob(os.path.join(nc_dir, "*.nc")))
+        if not nc_files:
+            print(f"Error: No NetCDF observation files found in '{nc_dir}'.")
+            sys.exit(1)
+            
+        # Run entire read and write pipeline synchronously to prevent C-library collisions
+        with dask.config.set(scheduler="synchronous"):
+            ds_combined_obs = xr.open_mfdataset(nc_files, combine="nested", concat_dim="obs")
+
+            # Reset observation index to ensure globally unique sequential indices
+            ds_combined_obs = ds_combined_obs.assign_coords(
+                obs=np.arange(ds_combined_obs.sizes["obs"]))
+
+            # Filter observations using the padded observation end date
+            padded_end_str = obs_end_dt.strftime("%Y-%m-%d")
+            time_mask = (
+                (ds_combined_obs.time >= np.datetime64(start_dt)) &
+                (ds_combined_obs.time <= np.datetime64(f"{padded_end_str} 23:59:59")))
+
+            ds_combined_obs = ds_combined_obs.isel(obs=time_mask.compute())
+
+            if ds_combined_obs.sizes["obs"] == 0:
+                print("No observations found in requested date range.")
+                sys.exit(1)
+
+            ds_combined_obs = ds_combined_obs.chunk({"obs": obs_chunk_size})
+            
+            for var in ds_combined_obs.variables.values():
+                var.encoding.pop("chunks", None)
+                var.encoding.pop("chunksizes", None)
+            
+            ds_combined_obs.to_zarr(
+                zarr_path, 
+                mode="w", 
+                consolidated=True, 
+                zarr_format=2
+            )
+            
+        print(f"Reference Zarr created successfully at '{zarr_path}' with {ds_combined_obs.sizes['obs']:,} records.")
+        num_obs = ds_combined_obs.sizes['obs']
+    else:
+        store = zarr.open(zarr_path, mode='r')
+        num_obs = store['obs'].shape[0]
+        print(f"Reference Zarr store already exists at '{zarr_path}' with {num_obs:,} records. Skipping consolidation.")
+        
+    return zarr_path, num_obs
+
+def create_matchup_qc_flag(obs, model):
+    """
+    Create a quality-control flag for a model-observation matchup.
+
+    Flag values:
+        0 = Valid matchup
+        1 = Model value missing
+        2 = Observation value missing
+        3 = Both values missing
+    """
+
+    obs_missing = obs.isnull()
+    model_missing = model.isnull()
+
+    flag = xr.where(
+        model_missing & obs_missing, 3,
+        xr.where(
+            model_missing, 1,
+            xr.where(obs_missing, 2, 0)
+        )
+    ).astype("int8")
+
+    flag.attrs = {
+        "long_name": "Model-observation matchup quality control flag",
+        "flag_values": np.array([0, 1, 2, 3], dtype=np.int8),
+        "flag_meanings": (
+            "valid_matchup "
+            "model_missing "
+            "observation_missing "
+            "both_missing"
+        ),
+        "flag_0_description": "Both model and observation values are present.",
+        "flag_1_description": "Model value is missing; observation is available.",
+        "flag_2_description": "Observation value is missing; model is available.",
+        "flag_3_description": "Both model and observation values are missing.",
+    }
+
+    return flag
+
+def process_single_cycle(forecast_files, init_time, sofar_zarr_path, model_name, parallel=False, diagnostics=False):
+    """
+    Worker: Processes exactly one forecast cycle using lazy Dask execution.
+    Only computes the final 1D matchup dataset to minimize RAM usage.
+    
+    Args:
+        forecast_files (list): List of GRIB2 forecast file paths for this cycle.
+        init_time (datetime): The initialization time of the cycle.
+        sofar_zarr_path (str): Path to the consolidated SOFAR Zarr store.
+        model_name (str): The name of the wave model (e.g., "GFS_WAVE").
+    """
+    with dask.config.set(scheduler="threads"):
+        if parallel is False:
+            print(f"[{init_time}] Starting processing...")
+        
+        # Immediate exit if file list is empty
+        if not forecast_files:
+            print(f"[{init_time}] SKIP: No GRIB files provided.")
+            return None
+
+        # Open observations natively from the consolidated Zarr store
+        # This completely eliminates Lustre NetCDF metadata contention
+        ds_sofar_ref = xr.open_zarr(sofar_zarr_path, consolidated=True)
+        
+        # Open GFS files lazily with step chunking (1 chunk per file)
+        ds_gfs = xr.open_mfdataset(
+            forecast_files, 
+            engine="cfgrib", 
+            combine="nested", 
+            concat_dim="step",
+            coords="minimal", 
+            compat="override", 
+            chunks={"step": 1},
+            decode_timedelta=True,
+            parallel=False, 
+            backend_kwargs={"filter_by_keys": {"typeOfLevel": "surface"}, "indexpath": ""}
+        )
+
+        # Sort by lat and lon to have a monotonic
+        ds_gfs = ds_gfs.sortby("latitude").sortby("longitude")
+
+        if "time" in ds_gfs.dims:
+            ds_gfs = ds_gfs.squeeze("time", drop=True)
+            
+        coords_to_keep = ["latitude", "longitude", "step"]
+        coords_to_drop = [c for c in ds_gfs.coords if c not in coords_to_keep]
+        if coords_to_drop:
+            ds_gfs = ds_gfs.drop_vars(coords_to_drop)
+            
+        ds_gfs = ds_gfs.assign_coords(valid_time=("step", (np.datetime64(init_time) + ds_gfs["step"]).data))
+        ds_gfs = ds_gfs.swap_dims({"step": "valid_time"}).sortby("valid_time")
+        ds_gfs = ds_gfs[["swh", "ws", "wdir", "mp1", "wvdir"]]
+        
+        model_start = ds_gfs.valid_time.min().values
+        model_end = ds_gfs.valid_time.max().values
+        
+        # Filter observations matching this forecast cycle's total valid time
+        mask = (ds_sofar_ref.time >= model_start) & (ds_sofar_ref.time <= model_end)
+        ds_sofar_sub = ds_sofar_ref.isel(obs=mask.compute()).load()
+
+        if ds_sofar_sub.sizes["obs"] == 0:
+            print(f"[{init_time}] SKIP: No SOFAR observations found for this time window.")
+            return None
+
+        if parallel is False:
+            print(f"[{init_time}] Interpolating {ds_sofar_sub.sizes['obs']} SOFAR observations...")
+
+        # Perform linear interpolation lazily (NO .load() call to prevent OOM)
+        ds_model_interp = ds_gfs.interp(
+            valid_time=ds_sofar_sub.time,
+            latitude=ds_sofar_sub.latitude,
+            longitude=ds_sofar_sub.longitude,
+            method="linear"
+        )
+
+        # Convert initialization time to datetime64[s], then Unix epoch seconds
+        init_time_array = np.full(ds_sofar_sub.sizes["obs"], np.datetime64(init_time, "s"), dtype="datetime64[s]",)
+        init_time_seconds = (init_time_array.astype("int64").astype("float64"))
+
+        # Convert observation times to Unix epoch seconds
+        time_seconds = (ds_sofar_sub["time"].values.astype("datetime64[s]").astype("int64").astype("float64"))
+
+        # Forecast lead time in hours (unchanged)
+        fcst_hr_vals = (ds_sofar_sub.time.values - np.datetime64(init_time)) / np.timedelta64(1, "h")
+        
+        # Build combined dataset with lazy Dask data arrays
+        ds_combined = xr.Dataset(
+            data_vars={
+                "buoy_id": ("obs", ds_sofar_sub["platform_id"].data.astype(object), 
+                            {"long_name": "SOFAR Spotter Buoy ID"}),
+                "init_time": ("obs",init_time_seconds,
+                            {"long_name": "Model Initialization Time","units": "seconds since 1970-01-01 00:00:00",}),
+                "time": ("obs",time_seconds,
+                            {"long_name": "Observation and Model Valid Time", "units": "seconds since 1970-01-01 00:00:00"}),
+                "latitude": ("obs", ds_sofar_sub["latitude"].data, 
+                             {"long_name": "Latitude", "units": "degrees_north"}),
+                "longitude": ("obs", (ds_sofar_sub["longitude"] % 360).data, 
+                              {"long_name": "Longitude", "units": "degrees_east"}), 
+                "fcst_hr": ("obs", fcst_hr_vals, 
+                            {"long_name": "Forecast Lead Time", "units": "hours"}),
+                
+                "model_hs": ("obs", ds_model_interp["swh"].data, 
+                             {"long_name": "Model Significant Wave Height", "units": "m"}),
+                "obs_hs": ("obs", ds_sofar_sub["sea_surface_wave_significant_height"].data, 
+                           {"long_name": "Observation Significant Wave Height", "units": "m"}),
+                
+                "model_wnd": ("obs", ds_model_interp["ws"].data, 
+                              {"long_name": "Model 10m Wind Speed", "units": "m s-1"}),
+                "obs_wnd": ("obs", ds_sofar_sub["wind_speed"].data, 
+                            {"long_name": "Observation Wind Speed", "units": "m s-1"}),
+                
+                "model_wdir": ("obs", ds_model_interp["wdir"].data, 
+                               {"long_name": "Model 10m Wind Direction", "units": "degrees"}),
+                "obs_wdir": ("obs", ds_sofar_sub["wind_from_direction"].data, 
+                             {"long_name": "Observation Wind Direction", "units": "degrees"}),
+                
+                "model_mwp": ("obs", ds_model_interp["mp1"].data, 
+                              {"long_name": "Model Mean Wave Period", "units": "s"}),
+                "obs_mwp": ("obs", ds_sofar_sub["sea_surface_wave_mean_period"].data, 
+                            {"long_name": "Observation Mean Wave Period", "units": "s"}),
+            },
+            attrs={
+                "platform_type": "SOFAR Spotter Buoy",
+                "model_name": f"{model_name}"
+            }
+        )
+        
+        # Create matchup quality-control flags
+        qc_variables = {"hs_qc_flag": ("obs_hs", "model_hs"),
+                        "wnd_qc_flag": ("obs_wnd", "model_wnd"),
+                        "wdir_qc_flag": ("obs_wdir", "model_wdir"),
+                        "mwp_qc_flag": ("obs_mwp", "model_mwp")}
+
+        for flag_name, (obs_var, model_var) in qc_variables.items():
+            ds_combined[flag_name] = create_matchup_qc_flag(obs=ds_combined[obs_var],
+                                                            model=ds_combined[model_var])
+        # Evaluate only the tiny 1D output table into memory
+        result = ds_combined.compute()
+        
+        if parallel is False:
+            print(f"[{init_time}] SUCCESS: Completed interpolation.")
+
+        return result
+    
+def build_cycle_inputs(
+    start_date_str,
+    end_date_str,
+    model_base_dir,
+    rel_path_template):
+    """
+    Generates aligned lists of cycle initialization datetimes and matching files.
+    Formats cycle paths using standard datetime format specifiers.
+    """
+    # Create timestamps spanning each forecast cycle across the date range
+    init_times = pd.date_range(
+        start=start_date_str,
+        end=f"{end_date_str} 23:59:59",
+        freq="6h"
+    ).to_pydatetime().tolist()
+
+    cycle_files = []
+    base_path = Path(model_base_dir)
+
+    # Format the pattern and collect matching files for each cycle
+    for dt in init_times:
+        pattern = str(base_path / rel_path_template.format(dt=dt))
+        matched_files = sorted(glob.glob(pattern))
+        
+        if not matched_files:
+            print(f"Warning: No files found for cycle {dt:%Y-%m-%d %H}z at: {pattern}")
+            
+        cycle_files.append(matched_files)
+    
+    return init_times, cycle_files
