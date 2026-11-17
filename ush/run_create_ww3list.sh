@@ -3,25 +3,24 @@
 set -euo pipefail
 set -x
 
-
+#====================== User Input ======================
 MACHINE="ursa"
 WORKDIR="/scratch4/NCEPDEV/marine/Ming.Chen/ww3tools_dev"
-
-SCRIPTDIR="${WORKDIR}/WW3-tools/ush"
-PY_SCRIPT="create_ww3list.py"
-
 DATA_DIR="/scratch3/NCEPDEV/climate/Jessica.Meixner/Data/gfsv16"
 
 START_DATE="20250501"
 END_DATE="20250510"
-
 CYCLES=("00" "06" "12" "18")
 
-FILENAME_PATTERN="gfswave.t{cycle}z.bull_tar"
-
-OUTDIR="${WORKDIR}/src"
 OUTFILE="ww3list.txt"
 
+FILENAME_PATTERN="gfswave.t{cycle}z.bull_tar"
+#=======================================================
+
+SCRIPTDIR="${WORKDIR}/WW3-tools/ush"
+PY_SCRIPT="create_ww3list.py"
+
+OUTDIR="${WORKDIR}/src"
 
 if [[ "${MACHINE}" == "ursa" ]]; then
     module use /scratch3/NCEPDEV/climate/Jessica.Meixner/general/modulefiles
