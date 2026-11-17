@@ -47,6 +47,7 @@ USAGE:
    station_tar
    spec_ndbc
    spec_ww3
+   spec_tar
  Explanation for each function is contained in the headers
 
 OUTPUT:
@@ -65,9 +66,10 @@ AUTHOR and DATE:
  03/07/2025: Ricardo M. Campos, new functions included: tseriestxt_ndbc, tseriesnc_cdip, tseriesnc_microswift,
  tseries_spotter, tseriesnc_dwsd, tseriesnc_saildrone, tseriesnc_wsra, tseriestxt_ww3. New satellite missions
  added to AODN altimeter data reading
-
+ 05/15/2026: Ming Chen, new functions, spec_tar to read spec_tar.gz operational point output
 PERSON OF CONTACT:
  Ricardo M Campos: ricardo.campos@noaa.gov
+ Ming Chen: ming.chen1@noaa.gov
 
 """
 
@@ -90,7 +92,9 @@ from matplotlib import ticker
 # import pickle
 import sys
 import warnings; warnings.filterwarnings("ignore")
-
+import gzip
+import io
+import tarfile
 
 def readconfig(fname):
     """
@@ -100,7 +104,7 @@ def readconfig(fname):
      the full path '/home/user/ww3tools.yaml'
     """
 
-    try: 
+    try:
         with open(fname, 'r') as file:
 	        wconfig = yaml.safe_load(file)
     except:
@@ -161,11 +165,11 @@ def mask(*args):
         if 'distcoast' in f.variables.keys():
             result['distcoast'] = np.array(f.variables['distcoast'][:,:])
         if 'depth' in f.variables.keys():
-            result['depth'] = np.array(f.variables['depth'][:,:])    
+            result['depth'] = np.array(f.variables['depth'][:,:])
         if 'GlobalOceansSeas' in f.variables.keys():
-            result['GlobalOceansSeas'] = np.array(f.variables['GlobalOceansSeas'][:,:])        
+            result['GlobalOceansSeas'] = np.array(f.variables['GlobalOceansSeas'][:,:])
         if 'HighSeasMarineZones' in f.variables.keys():
-            result['HighSeasMarineZones'] = np.array(f.variables['HighSeasMarineZones'][:,:])    
+            result['HighSeasMarineZones'] = np.array(f.variables['HighSeasMarineZones'][:,:])
         if 'names_GlobalOceansSeas' in f.variables.keys():
             result['names_GlobalOceansSeas'] = f.variables['names_GlobalOceansSeas'][:]
         if 'names_HighSeasMarineZones' in f.variables.keys():
@@ -192,7 +196,7 @@ def cyclonemap(*args):
         f=nc.MFDataset(fname, aggdim='time')
         at=f.variables['time'][:]; adate=[]
         for j in range(0,at.shape[0]):
-            adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
+            adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
         # --------
         # build dictionary
         result={'latitude':np.array(f.variables['lat'][:]),'longitude':np.array(f.variables['lon'][:]),
@@ -207,7 +211,7 @@ def cyclonemap(*args):
         del result
 
 
-# ================= OBSERVATIONS ================= 
+# ================= OBSERVATIONS =================
 # --- Buoys ---
 # Observations NDBC, netcdf format
 def tseriesnc_ndbc(fname=None,anh=None):
@@ -215,7 +219,7 @@ def tseriesnc_ndbc(fname=None,anh=None):
     Observations NDBC, time series/table, netcdf format
     one file per buoy and year
     Input: file name (example: 46047h2016.nc), and anemometer height (optional)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays sst,mslp,dwp,tmp,gst(10-m height),wsp(10-m height),wdir,hs,tm,tp,dm
     '''
     if fname==None:
@@ -283,8 +287,8 @@ def tseriesnc_ndbc(fname=None,anh=None):
         result={'latitude':blat,'longitude':blon,
         'time':btime,'date':ds['time'].values[:],
         'sst':bsst, 'mslp':bmslp, 'dewpt_temp':bdwp,
-        'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,    
-        'wind_dir':bwdir, 'hs':bhs, 'tm':btm,    
+        'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,
+        'wind_dir':bwdir, 'hs':bhs, 'tm':btm,
         'tp':btp, 'dm':bdm, 'tm':btm}
 
         return result
@@ -314,7 +318,7 @@ def tseriestxt_ndbc(fname=None,anh=None):
             ds['date']=pd.to_datetime(ds['date'],format='%Y %m %d %H')
 
         for i in range(0,btime.shape[0]):
-            btime[i]=double(ds['date'][i].timestamp())    
+            btime[i]=double(ds['date'][i].timestamp())
 
     except:
         sys.exit(" Cannot open "+fname)
@@ -349,7 +353,7 @@ def tseriestxt_ndbc(fname=None,anh=None):
                 if 'W' in auxlatlon:
                     blon=-float(auxlatlon[8:16])
                 else:
-                    blon=float(auxlatlon[8:16])    
+                    blon=float(auxlatlon[8:16])
 
             except:
                 if anh==None:
@@ -388,8 +392,8 @@ def tseriestxt_ndbc(fname=None,anh=None):
         result={'latitude':blat,'longitude':blon,
         'time':btime,'date':ds['date'].values[:],
         'sst':bsst, 'mslp':bmslp, 'dewpt_temp':bdwp,
-        'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,    
-        'wind_dir':bwdir, 'hs':bhs, 'tm':btm,    
+        'air_temp':btmp, 'gust':bgst, 'wind_spd':bwsp,
+        'wind_dir':bwdir, 'hs':bhs, 'tm':btm,
         'tp':btp, 'dm':bdm, 'tm':btm}
 
         return result
@@ -401,7 +405,7 @@ def tseriesnc_copernicus(*args):
     Observations NDBC, time series/table, netcdf format
     one file per buoy
     Input: file name (example: GL_TS_MO_41004.nc)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays with the environmental variables available.
     '''
     if len(args) == 1:
@@ -422,8 +426,8 @@ def tseriesnc_copernicus(*args):
         result={'latitude':np.array(blat),'longitude':np.array(blon),
         'time':btime,'date':ds['TIME'].values[:]}
 
-        if 'DEPH' in ds.keys():        
-            bdepth = np.nanmean(ds['DEPH'].values[:,:],axis=1) # Depth 
+        if 'DEPH' in ds.keys():
+            bdepth = np.nanmean(ds['DEPH'].values[:,:],axis=1) # Depth
             result['depth']=np.array(bdepth)
 
         if 'VHM0' in ds.keys():
@@ -435,7 +439,7 @@ def tseriesnc_copernicus(*args):
             bhs[(bhs<0.1)|(bhs>20)]=np.nan
             result['hs']=np.array(bhs)
 
-        if 'VAVH' in ds.keys():  
+        if 'VAVH' in ds.keys():
             bvavh = np.nanmean(ds['VAVH'].values[:,:],axis=1) # H 1/3 vavh
             bvavh[(bvavh<0.1)|(bvavh>20)]=np.nan
             result['hs_vavh']=np.array(bvavh)
@@ -459,8 +463,8 @@ def tseriesnc_copernicus(*args):
             btp[(btp<1)|(btp>30)]=np.nan
             result['tp']=np.array(btp)
 
-        if 'TEMP' in ds.keys():        
-            bsst = np.nanmean(ds['TEMP'].values[:,:],axis=1) # SST 
+        if 'TEMP' in ds.keys():
+            bsst = np.nanmean(ds['TEMP'].values[:,:],axis=1) # SST
             bsst[np.abs(bsst)>70]=np.nan
             result['sst']=np.array(bsst)
 
@@ -486,13 +490,13 @@ def tseriesnc_copernicus(*args):
             result['gust']=np.array(bgst)
 
         if 'WSPD' in ds.keys():
-            bwsp = np.nanmean(ds['WSPD'].values[:,:],axis=1) # wind speed        
+            bwsp = np.nanmean(ds['WSPD'].values[:,:],axis=1) # wind speed
             bwsp=np.copy(((10./4.0)**(0.12))*bwsp) # conversion to 10m, approximation DNVGL C-205 Table 2-1
             bwsp[(bwsp<0)|(bwsp>150)]=np.nan
             result['wind_spd']=np.array(bwsp)
 
         if 'WDIR' in ds.keys():
-            bwdir = np.nanmean(ds['WDIR'].values[:,:],axis=1) # wind direction        
+            bwdir = np.nanmean(ds['WDIR'].values[:,:],axis=1) # wind direction
             bwdir[(bwdir<-180)|(bwdir>360)]=np.nan
             result['wind_dir']=np.array(bwdir)
 
@@ -501,7 +505,7 @@ def tseriesnc_copernicus(*args):
             bhcmax[(bhcmax<0)|(bhcmax>30)]=np.nan
             result['hc_max']=np.array(bhcmax)
 
-        if 'VMDR' in ds.keys():    
+        if 'VMDR' in ds.keys():
             bdm = np.nanmean(ds['VMDR'].values[:,:],axis=1) # Mean direction
             bdm[(bdm<-180)|(bdm>360)]=np.nan
             result['dm']=np.array(bdm)
@@ -520,7 +524,7 @@ def tseriesnc_cdip(*args):
     Observations CDIP, time series/table, netcdf format
     one file per buoy
     Input: file name (example: CDIP_buoy_144_historic.nc)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays hs,tm,tp,tz,dp
     '''
 
@@ -569,7 +573,7 @@ def tseriesnc_microswift(*args):
     Observations microSWIFT, time series/table, netcdf format
     one file per buoy
     Input: file name (example: microSWIFT041_HurricaneLee_Sep2023.nc)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays hs,tp,dp,sst
     '''
 
@@ -614,7 +618,7 @@ def tseries_spotter(*args):
     multiple buoys in the same file
     Input: file name (example: campos_hurricane_spotters_2022_spectra_with_direction_coefficients.pkl)
      and station ID.
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays hs,tm,tp,dm,dp
     '''
 
@@ -684,7 +688,7 @@ def tseriesnc_dwsd(*args):
     multiple buoys in the same file
     Input: file name (example: LDL_AtlanticHurricane2021_4a61_8818_8454.nc)
      and station ID.
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays wsp (10-m height),wdir,slp,sst,hs,tm,tp,dp
     '''
 
@@ -751,7 +755,7 @@ def tseriesnc_dwsd(*args):
 
         result={'latitude':blat,'longitude':blon,
         'time':btime,'date':bdate,
-        'wind_spd':bwsp, 'wind_dir':bwdir, 'slp':bslp, 'sst':bsst,  
+        'wind_spd':bwsp, 'wind_dir':bwdir, 'slp':bslp, 'sst':bsst,
         'hs':bhs, 'tm':btm, 'tp':btp, 'dp':bdp}
 
         return result
@@ -764,7 +768,7 @@ def tseriesnc_saildrone(*args):
     Observations saildrones, time series/table, netcdf format
     one file per saildrone
     Input: file name (example: sd1031_hurricane_2024_af17_91e6_4d06.nc)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays wsp (10-m height),wdir,sst,slp,rh,tmp,hs,tp
     '''
 
@@ -800,7 +804,7 @@ def tseriesnc_saildrone(*args):
         # dictionary
         result={'latitude':blat,'longitude':blon,
         'time':btime,'date':ds['time'].values[:],
-        'sst':bsst, 'mlp':bslp, 'rh':brh, 'air_temp':btmp, 
+        'sst':bsst, 'mlp':bslp, 'rh':brh, 'air_temp':btmp,
         'hs':bhs, 'tp':btp}
 
         if 'WIND_SPEED_MEAN' in ds.keys():
@@ -832,7 +836,7 @@ def tseriesnc_wsra(*args):
     '''
     Observations WSRA_L4, time series/table, netcdf format
     Input: file name (example: WSRA-L4-20220924H1.nc)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays wsp(10-m height),wdir,sst,slp,rh,tmp,hs,tp
     '''
 
@@ -885,7 +889,7 @@ def tseriesnc_wsra(*args):
         # rdp[(rdp<-180)|(rdp>360)]=np.nan
         # rrflr[(rrflr<0)|(rrflr>200)]=np.nan
         # rrflrm[(rrflrm<0)|(rrflrm>50)]=np.nan
-        # 
+        #
         # pralt[(pralt<1000)|(pralt>4000)]=np.nan
         # pseed[(pseed<80)|(pseed>250)]=np.nan
         # wcroll[(wcroll<-2.5)|(wcroll>2.5)]=np.nan
@@ -893,9 +897,9 @@ def tseriesnc_wsra(*args):
         # dictionary
         result={'latitude':rlat,'longitude':rlon,
         'time':rtime,'date':ds['time'].values[:],
-        'wind_spd':rwsp, 'wind_dir':rwdir,  
+        'wind_spd':rwsp, 'wind_dir':rwdir,
         'hs':rhs, 'dhs':rdwh, 'dp':rdp, 'rainfall_rate':rrflr, 'rainfall_rate_median':rrflrm,
-        'porient':porient, 'wcroll':wcroll, 'pralt':pralt, 'pseed':pseed, 
+        'porient':porient, 'wcroll':wcroll, 'pralt':pralt, 'pseed':pseed,
         'hurricane_eye_distance':rhed, 'diff_pcourse':diffcourse }
 
         return result
@@ -1072,7 +1076,7 @@ def tseriestxt_ww3(*args):
     WAVEWATCH III, time series/table, text tab format
     This file format has all point outputs (results) in the same file (not divided by point/buoy).
     Input:  file name (example: tab50.ww3), and number of point ouputs (example: 4)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays with the wave variables available. Inside the dictionary, the arrays of wave variables
       have dimension (point_outputs, time).
     '''
@@ -1091,7 +1095,7 @@ def tseriestxt_ww3(*args):
 
         tt = int(np.size(mcontent)/(7+tnb)+1)
         myear = []; mmonth = [] ; mday = [] ; mhour = []; mmin = []
-        mlon = np.zeros((tnb,tt),'f'); mlat = np.zeros((tnb,tt),'f'); mhs = np.zeros((tnb,tt),'f'); mL = np.zeros((tnb,tt),'f') 
+        mlon = np.zeros((tnb,tt),'f'); mlat = np.zeros((tnb,tt),'f'); mhs = np.zeros((tnb,tt),'f'); mL = np.zeros((tnb,tt),'f')
         mtm = np.zeros((tnb,tt),'f'); mdm = np.zeros((tnb,tt),'f'); mspr = np.zeros((tnb,tt),'f')
         atp = np.zeros((tnb,tt),'f'); mdp = np.zeros((tnb,tt),'f'); mpspr = np.zeros((tnb,tt),'f')
         for i in range(0,tt):
@@ -1114,7 +1118,7 @@ def tseriestxt_ww3(*args):
                 mpspr[k,i] =  mcontent[j+tnb+1+k].strip().split()[9]
 
         mtp = np.zeros((atp.shape[0],atp.shape[1]),'f')*np.nan
-        for i in range(0,mtp.shape[0]):    
+        for i in range(0,mtp.shape[0]):
             #mtp[i,atp[i,:]>0.0] = 1./atp[i,atp[i,:]>0.0]
             indtp=np.where(atp[i,:]>0.0)
             if np.size(indtp)>0:
@@ -1138,7 +1142,7 @@ def tseriesnc_ww3(*args):
     '''
     WAVEWATCH III, time series/table, netcdf format
     Input:  file name (example: ww3gefs.20160928_tab.nc), and station name (example: 41002)
-    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon, 
+    Output: dictionary containing the arrays: time(seconds since 1970),time(datetime64),lat,lon,
       and arrays with the wave variables available.
     '''
     if len(args) == 2:
@@ -1155,7 +1159,7 @@ def tseriesnc_ww3(*args):
     else:
         mtime = np.array(f.variables['time'][:]*24*3600 + timegm( strptime(str(f.variables['time'].units).split(' ')[2][0:4]+'01010000', '%Y%m%d%H%M') )).astype('double')
         f.close(); del f
-    
+
         auxstationname=ds['station_name'].values[:,:]; stationname=[]
         for i in range(0,auxstationname.shape[0]):
             stationname=np.append(stationname,"".join(np.array(auxstationname[i,:]).astype('str')))
@@ -1170,7 +1174,7 @@ def tseriesnc_ww3(*args):
         mlon = np.nanmean(ds['longitude'].values[:,inds])
         # dictionary
         result={'latitude':np.array(mlat),'longitude':np.array(mlon),
-        'time':mtime,'date':ds['time'].values[:]}    
+        'time':mtime,'date':ds['time'].values[:]}
 
         if 'hs' in ds.keys():
             mhs = ds['hs'].values[:,inds]
@@ -1266,7 +1270,7 @@ def bull(*args):
 
                 del hour,day,month,year
                 for j in range(0,at.shape[0]):
-                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
+                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
                 # --------
 
                 ahs=[]; atp=[]
@@ -1280,7 +1284,7 @@ def bull(*args):
 
                 # build dictionary
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
-                'latitude':alat,'longitude':alon,'station_name':stname,                
+                'latitude':alat,'longitude':alon,'station_name':stname,
                 'hs':np.array(ahs),'tp':np.array(atp)}
 
             # GFS, HAFS, and other formats
@@ -1317,7 +1321,7 @@ def bull(*args):
 
                 del hour,day,month,year
                 for j in range(0,at.shape[0]):
-                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))        
+                    adate=np.append(adate,date2num(datetime.datetime(time.gmtime(at[j])[0],time.gmtime(at[j])[1],time.gmtime(at[j])[2],time.gmtime(at[j])[3],time.gmtime(at[j])[4])))
                 # --------
 
                 for j in range(7,np.size(lines)-8):
@@ -1326,21 +1330,21 @@ def bull(*args):
 
                         # aux... is organizing the partitions. Ready for future versions (not included yet)
                         auxhs=[]
-                        for k in range(0,4):        
+                        for k in range(0,4):
                             if len(str(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
                                 auxhs=np.append(auxhs,float(lines[j][int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
                             else:
                                 auxhs=np.append(auxhs,np.nan)
 
                         auxtp=[]
-                        for k in range(0,4):        
+                        for k in range(0,4):
                             if len(str(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
                                 auxtp=np.append(auxtp,float(lines[j][int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
                             else:
                                 auxtp=np.append(auxtp,np.nan)
 
                         auxdp=[]
-                        for k in range(0,4):        
+                        for k in range(0,4):
                             if len(str(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
                                 auxdp=np.append(auxdp,float(lines[j][int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
                             else:
@@ -1402,7 +1406,7 @@ def bull_tar(*args):
             # GEFS specific format
             if 'gefs' in str(fname).split('/')[-1]:
                 iauxhs=[10,15];iauxtp=[28,33]
-                
+
                 for t in range(0,np.size(tar.getmembers())):
                     # station names
                     stname=np.append(stname,str(str(tar.getmembers()[t].name).split('/')[-1]).split('/')[-1].split('.')[-2])
@@ -1460,10 +1464,10 @@ def bull_tar(*args):
                             atp[t,:]=np.array(auxtp)
                         else:
                             print("   Time duration of "+tar.getmembers()[t]+" (in "+fname+") do not match the other stations. Mantained NaN.")
-    
+
                         del auxhs,auxtp,tfile,lines
 
-                # build dictionary            
+                # build dictionary
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
                 'hs':np.array(ahs),'tp':np.array(atp)}
@@ -1494,7 +1498,7 @@ def bull_tar(*args):
                         else:
                             alon=np.append(alon,-1.*float(auxpos[7:13]))
 
-                        if t==0:                
+                        if t==0:
                             # time array ----
                             auxdate = str(lines[2]).split(':')[1].split('UTC')[0][1::]
                             auxt = np.double(timegm( strptime(  auxdate[0:8]+' '+auxdate[9:11]+'00', '%Y%m%d %H%M') ))
@@ -1527,21 +1531,21 @@ def bull_tar(*args):
                             if len(auxlines[10:15].replace(' ',''))>0:
                                 auxhs=np.append(auxhs,float(auxlines[10:15]))
                                 fuxhs=[]
-                                for k in range(0,4):        
+                                for k in range(0,4):
                                     if len(str(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]).replace(' ', '')):
                                         fuxhs=np.append(fuxhs,float(auxlines[int(iauxhs[0]+18*k):int(iauxhs[1]+18*k)]))
                                     else:
                                         fuxhs=np.append(fuxhs,np.nan)
 
                                 fuxtp=[]
-                                for k in range(0,4):        
+                                for k in range(0,4):
                                     if len(str(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]).replace(' ', '')):
                                         fuxtp=np.append(fuxtp,float(auxlines[int(iauxtp[0]+18*k):int(iauxtp[1]+18*k)]))
                                     else:
                                         fuxtp=np.append(fuxtp,np.nan)
 
                                 fuxdp=[]
-                                for k in range(0,4):        
+                                for k in range(0,4):
                                     if len(str(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]).replace(' ', '')):
                                         fuxdp=np.append(fuxdp,float(auxlines[int(iauxdp[0]+18*k):int(iauxdp[1]+18*k)]))
                                     else:
@@ -1569,7 +1573,7 @@ def bull_tar(*args):
 
                         del auxhs,auxtp,auxdp,tfile,lines
 
-                # build dictionary            
+                # build dictionary
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'latitude':np.array(alat),'longitude':np.array(alon),'station_name':np.array(stname),
                 'hs':np.array(ahs),'tp':np.array(atp),'dp':np.array(adp)}
@@ -1621,7 +1625,7 @@ def ts(*args):
                         ahspr=np.append(ahspr,np.nan)
                         atp=np.append(atp,np.nan)
 
-                # build dictionary            
+                # build dictionary
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'station_name':np.array(stname),'hs':np.array(ahs),'hs_spr':np.array(ahspr),'tp':np.array(atp)}
 
@@ -1657,7 +1661,7 @@ def ts(*args):
 
                 atp[atp<0.01]=np.nan; atp=1./atp
 
-                # build dictionary            
+                # build dictionary
                 result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
                 'station_name':np.array(stname),
                 'hs':np.array(ahs),'l':np.array(al),
@@ -1738,7 +1742,7 @@ def station_tar(*args):
 
                     del auxhs,auxhspr,auxtp,tfile,lines
 
-            # build dictionary            
+            # build dictionary
             result={'time':np.array(at).astype('double'),'date':np.array(adate).astype('double'),
             'station_name':np.array(stname),'hs':np.array(ahs),'hs_spr':np.array(ahspr),'tp':np.array(atp)}
 
@@ -1784,7 +1788,7 @@ def spec_ndbc(*args):
         freq = ds['frequency'].values[:]
         pspec = ds['spectral_wave_density'].values[::sk,:,0,0]
         dmspec = ds['mean_wave_dir'][::sk,:,0,0]
-        dpspec = ds['principal_wave_dir'][::sk,:,0,0]    
+        dpspec = ds['principal_wave_dir'][::sk,:,0,0]
         r1spec = ds['wave_spectrum_r1'][::sk,:,0,0]
         r2spec = ds['wave_spectrum_r2'][::sk,:,0,0]
         ds.close(); del ds
@@ -1801,10 +1805,10 @@ def spec_ndbc(*args):
         # final directional wave spectrum (frequency X direction)
         dirspec = np.zeros((btime.shape[0],freq.shape[0],theta.shape[0]),'f')
         for t in range(0,btime.shape[0]):
-            dirspec[t,:,:] = np.array([pspec[t,:]]).T * (1/pi)*(0.5+  np.array([r1spec[t,:]]).T * cos(np.array( np.array([theta])-np.array([dmspec[t,:]]).T )*(pi/180)) 
+            dirspec[t,:,:] = np.array([pspec[t,:]]).T * (1/pi)*(0.5+  np.array([r1spec[t,:]]).T * cos(np.array( np.array([theta])-np.array([dmspec[t,:]]).T )*(pi/180))
                 + np.array([r2spec[t,:]]).T*cos(2*np.array( np.array([theta]) - np.array([dpspec[t,:]]).T )*(pi/180)))
 
-    # build dictionary            
+    # build dictionary
     result={'time':btime,'date':bdate,'latitude':blat,'longitude':blon,
     'freq':freq,'deltafreq':dfreq,'pspec':pspec,'dmspec':dmspec,'dpspec':dpspec,
     'theta':theta,'dirspec':dirspec}
@@ -1874,8 +1878,8 @@ def spec_ww3(*args):
             # water depth (constant in time)
             depth=np.nanmean(ds['dpt'].values[::sk,inds],axis=0)
             lon=np.array(np.nanmean(ds['longitude'].values[::sk,inds],axis=0))
-            lat=np.array(np.nanmean(ds['latitude'].values[::sk,inds],axis=0))    
-            
+            lat=np.array(np.nanmean(ds['latitude'].values[::sk,inds],axis=0))
+
             ds.close(); del ds, auxstationname, inds, stationname
             freq1=freq; freq2=freq
 
@@ -1889,7 +1893,7 @@ def spec_ww3(*args):
             cabc=fp.readline(); cabc=cabc.strip().split()
             nf=int(cabc[3]) # number of frequencies
             nd=int(cabc[4]) # number of directions
-            npo=int(cabc[5]) # number of point outputs 
+            npo=int(cabc[5]) # number of point outputs
 
             freq=zeros(nf,'f');dire=zeros(nd,'f')
             dspec=zeros((nt,nf,nd),'f')
@@ -1912,7 +1916,7 @@ def spec_ww3(*args):
                 line=line.strip().split()
                 for i in range(0,rncf):
                     freq[k]=float(line[i])
-                    k=k+1	
+                    k=k+1
 
             # DF in frequency (dfreq)
             dfreq=np.zeros(freq.shape[0],'f')
@@ -1944,7 +1948,7 @@ def spec_ww3(*args):
             wnds=np.zeros((nt),'f');wndd=np.zeros((nt),'f')
 
             for t in range(0,nt):
-				    
+
                 cabc=fp.readline(); cabc.strip().split()[0]
                 mtime[t] = np.double(timegm( strptime(cabc.strip().split()[0]+cabc.strip().split()[1][0:2], '%Y%m%d%H') ))
                 cabc=fp.readline(); cabc=cabc.strip().split()
@@ -1997,7 +2001,7 @@ def spec_ww3(*args):
             adspec[t,:,nd-(inddire+1):nd]=dspec[t,:,0:(inddire+1)]
             for i in range(0,nd):
                 dspec[t,:,i]=adspec[t,:,nd-i-1]
-	        
+
             adspec[t,:,0:int(nd/2)]=dspec[t,:,int(nd/2):nd]
             adspec[t,:,int(nd/2):nd]=dspec[t,:,0:int(nd/2)]
             dspec[t,:,:]=adspec[t,:,:]
@@ -2007,7 +2011,7 @@ def spec_ww3(*args):
     # 1D directional spectrum
     d1sp=np.zeros((dspec.shape[0],nf),'f')
     for t in range(0,dspec.shape[0]):
-        for il in range(0,nf):    
+        for il in range(0,nf):
             a = np.sum(dspec[t,il,:] * np.array(np.sin((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
             b = np.sum(dspec[t,il,:] * np.array(np.cos((pi*dire)/180.)/np.sum(dspec[t,il,:])) )
             aux = math.atan2(a,b)*(180./pi)
@@ -2025,4 +2029,129 @@ def spec_ww3(*args):
     return result
     del mtime,mdate,lat,lon,wnds,wndd,freq,freq1,freq2,dfreq,pwst,dire,d1sp,dspec
 
+# WAVEWATCH III spectra output for wind speed and direction
+def spec_tar(*args):
+    '''
+    WAVEWATCH III, spec_tar.gz operational point output.
+    Input:  file name (example: gfswave.t00z.spec_tar.gz)
+    Output: dictionary containing:
+      time(seconds since 1970),lat,lon,station names; Arrays: wind_spd, wind_dir
+    '''
+
+    if len(args) == 1:
+        fname = str(args[0])
+    else:
+        sys.exit(' One input is required: spec_tar.gz file name')
+
+    print("  reading ww3 spec_tar.gz file for wind ...")
+
+    # Open gzip -> tar
+    try:
+        with gzip.open(fname, "rb") as gz:
+            tar_bytes = gz.read()
+
+        tar = tarfile.open(fileobj=io.BytesIO(tar_bytes), mode="r:")
+
+    except:
+        sys.exit('   Cannot open ' + fname)
+
+    members = [m for m in tar.getmembers() if m.isfile()]
+
+    station_name_all = []
+    wsp_all = []
+    wdir_all = []
+    time_all = None
+
+    # Loop station files
+    for member in members:
+
+        try:
+            tfile = tar.extractfile(member)
+            lines = tfile.readlines()
+        except:
+            print("   Cannot read " + member.name + ". Skipped.")
+            continue
+
+        at = []
+        awsp = []
+        awdir = []
+        stname = None
+
+        # Parse file
+        for j in range(len(lines) - 1):
+
+            line = lines[j].decode("utf-8", errors="ignore").strip()
+            parts = line.split()
+
+            # Time line follows the pattern: YYYYMMDD HHMMSS
+            if (
+                len(parts) == 2
+                and len(parts[0]) == 8
+                and len(parts[1]) == 6
+                and parts[0].isdigit()
+                and parts[1].isdigit()
+            ):
+
+                info_line = lines[j+1].decode(
+                    "utf-8",
+                    errors="ignore"
+                ).strip()
+
+                info = info_line.replace("'", "").split()
+
+                # Expected line contains:
+                # station lat lon depth wspd wdir current cdir
+                if len(info) >= 6:
+
+                    try:
+                        tsec = np.double(
+                            timegm(
+                                strptime(
+                                    parts[0] + parts[1],
+                                    '%Y%m%d%H%M%S'
+                                )
+                            )
+                        )
+
+                        stname = str(info[0])
+
+                        at.append(tsec)
+                        awsp.append(float(info[4]))
+                        awdir.append(float(info[5]))
+
+                    except:
+                        continue
+
+        if len(at) == 0:
+            print("   No wind records found in " + member.name)
+            continue
+
+        station_name_all.append(stname)
+        wsp_all.append(awsp)
+        wdir_all.append(awdir)
+
+        # Use first station as reference time
+        if time_all is None:
+            time_all = np.array(at).astype('double')
+
+    tar.close()
+
+    # Convert to arrays
+    wind_spd = np.array(wsp_all).astype('float')
+    wind_dir = np.array(wdir_all).astype('float')
+
+    # Basic QC
+    wind_spd[(wind_spd < 0.0) | (wind_spd > 100.0)] = np.nan
+    wind_dir[(wind_dir < 0.0) | (wind_dir > 360.0)] = np.nan
+
+    result = {
+        'station_name': np.array(station_name_all).astype('str'),
+        'time': np.array(time_all).astype('double'),
+        'wind_spd': wind_spd,
+        'wind_dir': wind_dir
+    }
+
+    print("  ww3 spec_tar.gz wind file OK. " + fname)
+
+    return result
 
