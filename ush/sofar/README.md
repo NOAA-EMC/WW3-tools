@@ -1,11 +1,12 @@
-# SOFAR Spotter Buoy-Model Matchup Pipeline
+# SOFAR Spotter Buoy-Model Validation and Verification Pipeline
 Interpolates wave model forecasts (e.g., NOAA GFS) with drifting SOFAR Spotter buoy observations.
 
 ### Scripts & Inputs 
-The workflow is controlled by two bash scripts. Both scripts can be run from anywhere—just update the absolute paths in the user inputs.
+Run scripts are designed to be run from anywhere — just update the absolute paths in the user inputs.
 
 1. **`get_sofar_data.sh`**: Fetches SOFAR data from HPSS system on Ursa.
-2. **`make_sofar_matchup.sh`**: Runs the parallelized 3D interpolation and generates the final matchup files. Output is converted netCDF files for all SOFAR bufr files and both a netCDF and Zarr matchup file. 
+2. **`make_sofar_matchup.sh`**: Runs the parallelized 3D interpolation (lat, lon, time) and generates the final matchup files. Output is converted netCDF files for all SOFAR bufr files and both a netCDF and Zarr matchup file. 
+3. **`plot_sofar_validation.sh`**: Computes forecast-hour windowed statistics from one or more matchup files and saves comparison plots. Settings are read from `plot_sofar_validation_config.yaml`.
 
 **Required Input Adjustments:**
 Edit the variable block at the top of *both* scripts before running:
@@ -25,6 +26,8 @@ Edit the variable block at the top of *both* scripts before running:
    `bash get_sofar_data.sh`
 4. Once data retrieval finishes, submit the matchup job:
    `sbatch make_sofar_matchup.sh`
+5. Once the matchup job finishes, edit `plot_sofar_validation_config.yaml` and `CONFIG_FILE` / `WW3TOOLS_DIR` in `plot_sofar_validation.sh`, then submit the plotting job:
+   `sbatch plot_sofar_validation.sh`
 
 ---
 ### Pipeline Architecture
@@ -33,6 +36,18 @@ Edit the variable block at the top of *both* scripts before running:
 3. **Zarr Staging:** Consolidates sofar observations for fast parallel reading.
 4. **Interpolation:** Maps forecast cycle data to buoy time and positions.
 5. **Consolidation:** Aggregates final data into unified netCDF and Zarr store.
+
+---
+### Validation Plots
+`plot_sofar_validation.sh` runs `ww3tools/scripts/sofar_validation_plots.py`, which groups matchups into forecast-hour windows, computes statistics in each window, and plots one line per model. All inputs come from `plot_sofar_validation_config.yaml`:
+
+* `models`: Model label mapped to its matchup file (`.zarr` or `.nc`). Add one entry per model to compare them on the same plots, e.g. `GFS: /path/to/GFS_WAVE_sofar_matchup.zarr`.
+* `variables`: Variables to evaluate: `hs` (significant wave height), `wnd` (wind speed), `mwp` (mean wave period).
+* `statistics`: Any of `mse`, `rmse`, `corr`, `error_std`, `mean`, `scatter_index` (RMSE / observation mean, in %), `count` (number of matchups per window).
+* `window_hours`: Width of each forecast-hour window (default 1). Windows stop a whole window before the last forecast hour so the final window is never partial.
+* `outdir`: Directory for the output PNGs, created if needed.
+
+Only paired matchups (valid model value, valid observation, valid forecast hour) are used, so every statistic in a window is computed from the same points. One PNG is saved per statistic and variable, named `timeseries_{stat}_{var}_{window}hr.png` which will include multiple lines for the multiple models being validated if that is defined by the user.
 
 ---
 ### Environment Setup

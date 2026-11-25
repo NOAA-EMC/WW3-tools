@@ -14,5 +14,7 @@ dependencies:
   - eccodes
   - nceplibs-bufr
   - pip
+  - matplotlib
+  - pyyaml
 pip: 
   - -e .
