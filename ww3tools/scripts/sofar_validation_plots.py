@@ -1,7 +1,5 @@
 import argparse
-import matplotlib.pyplot as plt
 import yaml
-import numpy as np
 import xarray as xr
 
 from ww3tools import sofar_tools as sf

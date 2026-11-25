@@ -15,8 +15,7 @@ statistics:
   - rmse
   - corr
   - error_std
-  - forecast_mean
-  - obs_mean
+  - mean
   - scatter_index
   - count
 

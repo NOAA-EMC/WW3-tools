@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 import netCDF4 as nc
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 import xarray as xr
 import ncepbufr
 import dask
@@ -605,17 +604,76 @@ def build_cycle_inputs(
     return init_times, cycle_files
 
 # ============== Validation Statistics ================
+VALID_STATISTICS = ['mse', 'rmse', 'corr', 'count', 'error_std',
+                    'mean', 'scatter_index']
+
+
+def compute_pair_statistic(stat: str, model: np.ndarray, obs: np.ndarray) -> float:
+    """
+    Compute one statistic from paired model and observation values.
+
+    model and obs must be 1D arrays of the same length with no NaNs.
+    Returns NaN when the statistic cannot be computed.
+    """
+
+    if stat == 'count':
+        return model.size
+
+    if model.size == 0:
+        return np.nan
+
+    diff = model - obs
+
+    if stat == 'mse':
+        return np.mean(diff ** 2)
+
+    elif stat == 'rmse':
+        return np.sqrt(np.mean(diff ** 2))
+
+    elif stat == 'corr':
+        # Correlation needs at least 2 points and some variation in both
+        if model.size < 2 or np.std(model) == 0 or np.std(obs) == 0:
+            return np.nan
+        return np.corrcoef(model, obs)[0, 1]
+
+    elif stat == 'error_std':
+        return np.std(diff)
+
+    elif stat == 'model_mean':
+        return np.mean(model)
+
+    elif stat == 'obs_mean':
+        return np.mean(obs)
+
+    elif stat == 'scatter_index':
+        obs_mean = np.mean(obs)
+        if obs_mean == 0:
+            return np.nan
+        return np.sqrt(np.mean(diff ** 2)) / obs_mean * 100
+
+    raise ValueError(f"Unsupported statistic: {stat}")
+
+
 def compute_windowed_statistics(datasets: list,
                                 variables: list,
                                 labels: list,
-                                statistics: list = ['rmse'],
+                                statistics: list = None,
                                 window_hours: float = 1.0) -> xr.Dataset:
     """
-    Compute windowed statistics for multiple datasets.
+    Compute statistics in forecast-hour windows for multiple matchup datasets.
 
-    Statistics are calculated across all non-grouped dimensions
-    within each forecast-hour window.
+    Only paired matchups are used: points where the forecast hour, the model
+    value and the observation value are all valid. Every statistic in a
+    window therefore uses the same set of points.
+
+    Returns a Dataset with one variable per model, statistic and variable,
+    named "{label}_{stat}_{var}", on the dimension "fcst_hr_center".
+    The 'mean' statistic is stored as two variables, "{label}_model_mean_{var}"
+    and "{label}_obs_mean_{var}".
     """
+
+    if statistics is None:
+        statistics = ['rmse']
 
     if len(datasets) != len(labels):
         raise ValueError("datasets and labels must have the same length.")
@@ -623,13 +681,19 @@ def compute_windowed_statistics(datasets: list,
     if window_hours <= 0:
         raise ValueError("window_hours must be positive.")
 
-    valid_statistics = {'mse', 'rmse', 'corr', 'count', 'error_std', 
-                        'forecast_mean', 'obs_mean', 'scatter_index'}
     statistics = [stat.lower() for stat in statistics]
 
-    invalid = set(statistics) - valid_statistics
+    invalid = set(statistics) - set(VALID_STATISTICS)
     if invalid:
         raise ValueError(f"Unsupported statistics: {invalid}")
+
+    # 'mean' is computed as a model mean and an observation mean
+    compute_list = []
+    for stat in statistics:
+        if stat == 'mean':
+            compute_list += ['model_mean', 'obs_mean']
+        else:
+            compute_list.append(stat)
 
     all_results = {}
 
@@ -639,21 +703,19 @@ def compute_windowed_statistics(datasets: list,
         print(f"\n--- Processing Dataset: {label} ---")
 
         if 'fcst_hr' not in ds:
-            raise ValueError(f"{label}: Missing fcst_hr coordinate.")
+            raise ValueError(f"{label}: Missing fcst_hr variable.")
 
-        fcst_hr = ds['fcst_hr']
+        # Load the forecast hours into memory once per dataset
+        fcst_hr = ds['fcst_hr'].values
 
-        if not bool(np.isfinite(fcst_hr).any().compute().values):
+        if not np.isfinite(fcst_hr).any():
             raise ValueError(f"{label}: fcst_hr contains no valid values.")
 
-        fcst_min = fcst_hr.min(skipna=True).compute().values.item()
-        fcst_max = fcst_hr.max(skipna=True).compute().values.item()
-
-        min_hr = np.floor(fcst_min / window_hours) * window_hours
-        max_hr = np.floor(fcst_max / window_hours) * window_hours
+        # Windows end a whole window before the last forecast hour
+        min_hr = np.floor(np.nanmin(fcst_hr) / window_hours) * window_hours
+        max_hr = np.floor(np.nanmax(fcst_hr) / window_hours) * window_hours
 
         bins = np.arange(min_hr, max_hr + 1e-8, window_hours)
-
         bin_centers = bins[:-1] + window_hours / 2
 
         for var in variables:
@@ -666,86 +728,40 @@ def compute_windowed_statistics(datasets: list,
                 print(f"     [!] Warning: Missing {mod_var} or {obs_var} in {label}. Skipping.")
                 continue
 
-            mod = ds[mod_var]
-            obs = ds[obs_var]
-
-            # Align model, observation, and forecast hour coordinates
-            print("     Aligning coordinates and loading into memory... ", end="", flush=True)
-            mod, obs, fcst_hr_aligned = xr.align(
-                mod, obs, ds['fcst_hr'],
-                join='inner'
-            )
-
-            # Load into memory once to speed up the loop
-            mod.load()
-            obs.load()
-            fcst_hr_aligned.load()
+            print("     Loading into memory... ", end="", flush=True)
+            mod = ds[mod_var].values
+            obs = ds[obs_var].values
             print("Done.")
 
-            # Calculate statistics for each forecast-hour window
-            for stat in statistics:
-                print(f"     Computing {stat.upper()} across {len(bin_centers)} windows... ", end="", flush=True)
+            # Keep only points where everything is valid
+            paired = np.isfinite(mod) & np.isfinite(obs) & np.isfinite(fcst_hr)
 
-                window_results = []
+            # One result array per statistic
+            results = {stat: np.full(len(bin_centers), np.nan) for stat in compute_list}
 
-                for i in range(len(bin_centers)):
+            print(f"     Computing {len(compute_list)} statistics across "
+                  f"{len(bin_centers)} windows... ", end="", flush=True)
 
-                    lower = bins[i]
-                    upper = bins[i + 1]
+            for i in range(len(bin_centers)):
+                in_window = paired & (fcst_hr >= bins[i]) & (fcst_hr < bins[i + 1])
+                mod_window = mod[in_window]
+                obs_window = obs[in_window]
 
-                    # Identify observations belonging to this window
-                    mask = (fcst_hr_aligned >= lower) & (fcst_hr_aligned < upper)
+                for stat in compute_list:
+                    results[stat][i] = compute_pair_statistic(stat, mod_window, obs_window)
 
-                    # Select matching observations
-                    mod_window = mod.where(mask)
-                    obs_window = obs.where(mask)
-                    diff_window = mod_window - obs_window
+            print("Done.")
 
-                    # Calculate each windowed statistic
-                    if stat == 'mse':
-                        res = (diff_window ** 2).mean(skipna=True)
-                    
-                    elif stat == 'rmse':
-                        res = np.sqrt((diff_window ** 2).mean(skipna=True))
-                    
-                    elif stat == 'corr':
-                        res = xr.corr(mod_window, obs_window)
-                    
-                    elif stat == 'error_std':
-                        res = np.std(mod_window - obs_window)
-                    
-                    elif stat == 'forecast_mean':
-                        res = mod_window.mean(skipna=True)
-                    
-                    elif stat == 'obs_mean':
-                        res = obs_window.mean(skipna=True)
-                    
-                    elif stat == 'scatter_index':
-                        res = np.sqrt((diff_window ** 2).mean(skipna=True)) / obs_window.mean(skipna=True) * 100
-                    
-                    elif stat == 'count':
-                        res = diff_window.count()
+            for stat in compute_list:
+                values = results[stat]
+                if stat == 'count':
+                    values = values.astype(int)
 
-                    # Force evaluation to a float or int depending on stat
-                    try:
-                        if stat == 'count':
-                            val = int(res.compute().item())
-                        else:
-                            val = float(res.compute().item())
-                    except Exception:
-                        val = np.nan
-                        
-                    window_results.append(val)
-
-                # Construct array directly to prevent dimensionality leaks
-                computed_val = xr.DataArray(
-                    window_results,
+                all_results[f"{label}_{stat}_{var}"] = xr.DataArray(
+                    values,
                     coords={'fcst_hr_center': bin_centers},
                     dims=['fcst_hr_center']
                 )
-
-                all_results[f"{label}_{stat}_{var}"] = computed_val
-                print("Done.")
 
     print("\nComputation complete!")
     return xr.Dataset(all_results)
@@ -758,8 +774,19 @@ def plot_statistics(computed_ds: xr.Dataset,
                     window_hours: float = 1.0,
                     save_dir: str = None):
     """
-    Plot pre-computed windowed statistics.
+    Plot pre-computed windowed statistics, one figure per statistic and variable,
+    with one line per model. For 'mean', each model gets a solid line for the
+    model mean and a dashed line, in the same color, for the observation mean.
+
+    Saves PNGs to save_dir if given, otherwise shows the figures.
     """
+
+    # Display name and units for each variable
+    variable_info = {
+        'hs': ("Significant Wave Height", "m"),
+        'wnd': ("Wind Speed", "m/s"),
+        'mwp': ("Mean Wave Period", "s"),
+    }
 
     statistics = [stat.lower() for stat in statistics]
 
@@ -768,86 +795,71 @@ def plot_statistics(computed_ds: xr.Dataset,
 
     for stat in statistics:
         for var in variables:
-            
-            # Define variable characteristics
-            if var in ["hs"]:
-                var_name = "Significant Wave Height"
-                var_units = "m"
 
-            elif var in ["wnd"]:
-                var_name = "Wind Speed"
-                var_units = "(m/s)"
+            var_name, var_units = variable_info.get(var, (var.upper(), ""))
 
-            elif var in ["mwp"]:
-                var_name = "Mean Wave Period"
-                var_units = "s"
-
+            # Squared units, with brackets around compound units like m/s
+            if not var_units:
+                squared_units = ""
+            elif "/" in var_units:
+                squared_units = f"({var_units})²"
             else:
-                var_name = var.upper()
-                units = ""
+                squared_units = f"{var_units}²"
 
-            # Define statistic characteristics
-            if stat == "mse":
-                stat_name = "Mean Square Error (MSE)"
-                reference_value = None
-                units = rf"${var_units}^2$"
+            # Display name, units and reference value for each statistic
+            stat_info = {
+                'mse': ("Mean Square Error (MSE)", squared_units, None),
+                'rmse': ("Root Mean Square Error (RMSE)", var_units, None),
+                'corr': ("Correlation Coefficient", "-", 1),
+                'error_std': ("Error Standard Deviation", var_units, None),
+                'mean': ("Mean", var_units, None),
+                'scatter_index': ("Scatter Index", "%", None),
+                'count': ("Number of Matchups", "-", None),
+            }
 
-            elif stat == "rmse":
-                stat_name = "Root Mean Square Error (RMSE)"
-                reference_value = None
-                units = f"{var_units}"
+            stat_name, units, reference_value = stat_info.get(stat, (stat.upper(), "", None))
 
-            elif stat == "corr":
-                stat_name = "Correlation Coefficient"
-                reference_value = 1
-                units = "-"  # Correlation is dimensionless
-
-            elif stat == "error_std":
-                stat_name = 'Error Standard Deviation'
-                reference_value = None
-                units = f"{var_units}"
-
-            elif stat == "scatter_index":
-                stat_name = "Scatter Index"
-                reference_value = None
-                units = "-"
-
-            else:
-                stat_name = stat.upper()
-                reference_value = None
-
-            # Define y-axis label
-            ylabel = f"{stat_name} [{units}]"
+            ylabel = f"{stat_name} [{units}]" if units else stat_name
 
             # Make the plot
             fig, ax = plt.subplots(figsize=(10, 5))
             plotted = False
 
-            for label in labels:
+            # One color per model, shared by all of that model's lines
+            colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
-                var_key = f"{label}_{stat}_{var}"
+            for i, label in enumerate(labels):
 
-                if var_key not in computed_ds:
-                    print(f"Warning: {var_key} not found.")
-                    continue
+                # Lines to draw for this model: (dataset key, legend label, line style, marker)
+                if stat == 'mean':
+                    lines = [(f"{label}_model_mean_{var}", f"{label} model", '-', '^'),
+                             (f"{label}_obs_mean_{var}", f"{label} obs", '--', 'o')]
+                else:
+                    lines = [(f"{label}_{stat}_{var}", label, '-', '^')]
 
-                da_plot = computed_ds[var_key].dropna(
-                    dim='fcst_hr_center'
-                )
+                for var_key, line_label, line_style, marker in lines:
 
-                if len(da_plot) == 0:
-                    continue
+                    if var_key not in computed_ds:
+                        print(f"Warning: {var_key} not found.")
+                        continue
 
-                ax.plot(
-                    da_plot['fcst_hr_center'],
-                    da_plot,
-                    label=label,
-                    linewidth=2,
-                    marker='^',
-                    markersize=5
-                )
+                    da_plot = computed_ds[var_key].dropna(dim='fcst_hr_center')
 
-                plotted = True
+                    if len(da_plot) == 0:
+                        continue
+
+                    ax.plot(
+                        da_plot['fcst_hr_center'],
+                        da_plot,
+                        label=line_label,
+                        color=colors[i % len(colors)],
+                        linestyle=line_style,
+                        linewidth=2,
+                        marker=marker,
+                        markersize=5
+                    )
+
+                    plotted = True
 
             if not plotted:
                 plt.close(fig)
@@ -866,7 +878,7 @@ def plot_statistics(computed_ds: xr.Dataset,
 
             ax.set_title(
                 f"Model-Sofar Observation Comparison: {var_name}\n"
-                f"({window_hours}-Hour Windows)"
+                f"({window_hours:g}-Hour Windows)"
             )
 
             ax.set_xlabel("Forecast Hour")
@@ -875,23 +887,15 @@ def plot_statistics(computed_ds: xr.Dataset,
             ax.legend()
             ax.grid(True, linestyle=':', alpha=0.7)
 
-            plt.tight_layout()
+            fig.tight_layout()
 
             if save_dir:
-
                 file_path = os.path.join(
                     save_dir,
-                    f"timeseries_{stat}_{var}_{window_hours}hr.png"
+                    f"timeseries_{stat}_{var}_{window_hours:g}hr.png"
                 )
-
-                fig.savefig(
-                    file_path,
-                    dpi=300,
-                    bbox_inches='tight'
-                )
-
+                fig.savefig(file_path, dpi=300, bbox_inches='tight')
                 print(f"Saved: {file_path}")
-
             else:
                 plt.show()
 
